@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTR Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #C41A1A; --blue: #2D6CFF; --cream: #F8F2E4;
+    --bg: #0d0b08; --panel: #17130e; --panel2: #201a13;
+    --line: #2e261b; --muted: #8A7E68; --ok: #3fa15c; --warn: #c8922a; --err: #c0392b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--cream); font-family: 'Barlow', sans-serif; min-height: 100vh; }
+  h1, h2, h3, .brand { font-family: 'Bebas Neue', sans-serif; letter-spacing: .04em; font-weight: 400; }
+  a { color: var(--blue); text-decoration: none; }
+  button { font-family: 'Barlow', sans-serif; cursor: pointer; border: none; border-radius: 6px; }
+  input, select, textarea {
+    font-family: 'Barlow', sans-serif; background: var(--panel2); color: var(--cream);
+    border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-size: 15px; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { outline: 1px solid var(--warn); }
+
+  .lock-wrap { max-width: 460px; margin: 12vh auto; padding: 0 20px; text-align: center; }
+  .lock-logo { font-size: 46px; }
+  .lock-logo .r { color: var(--red); } .lock-logo .b { color: var(--blue); }
+  .lock-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 28px; margin-top: 24px; text-align: left; }
+  .lock-card p { color: var(--muted); font-size: 14px; margin-bottom: 14px; line-height: 1.5; }
+  .btn { padding: 11px 18px; font-size: 15px; font-weight: 600; }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-blue { background: var(--blue); color: #fff; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .full { width: 100%; margin-top: 12px; }
+
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  header .brand { font-size: 26px; }
+  header .brand .r { color: var(--red); } header .brand .b { color: var(--blue); }
+  header .spacer { flex: 1; }
+  header .who { color: var(--muted); font-size: 13px; }
+  nav { display: flex; gap: 4px; padding: 10px 22px 0; border-bottom: 1px solid var(--line); background: var(--panel); }
+  nav button { background: transparent; color: var(--muted); padding: 10px 18px; font-size: 15px; font-weight: 600; border-radius: 8px 8px 0 0; }
+  nav button.active { background: var(--bg); color: var(--cream); border: 1px solid var(--line); border-bottom-color: var(--bg); }
+  main { max-width: 1060px; margin: 0 auto; padding: 26px 22px 80px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .card h3 { font-size: 22px; margin-bottom: 6px; }
+  .card .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; line-height: 1.4; }
+  .row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); user-select: none; }
+  .chk input { width: auto; }
+  .dry-note { font-size: 12px; color: var(--warn); margin-top: 8px; }
+
+  .runs { margin-top: 30px; }
+  .runs-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .runs table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .runs th { text-align: left; color: var(--muted); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .runs td { padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .pill.ok { background: rgba(63,161,92,.15); color: var(--ok); }
+  .pill.bad { background: rgba(192,57,43,.15); color: var(--err); }
+  .pill.busy { background: rgba(45,108,255,.15); color: var(--blue); }
+  .pill.other { background: rgba(138,126,104,.15); color: var(--muted); }
+
+  .artists-layout { display: grid; grid-template-columns: 260px 1fr; gap: 20px; }
+  .artist-list { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; max-height: 70vh; overflow-y: auto; }
+  .artist-list button { display: block; width: 100%; text-align: left; background: transparent; color: var(--cream); padding: 11px 16px; font-size: 15px; border-bottom: 1px solid var(--line); border-radius: 0; }
+  .artist-list button:hover { background: var(--panel2); }
+  .artist-list button.sel { background: var(--panel2); border-left: 3px solid var(--red); }
+  .artist-list .inactive { color: var(--muted); }
+  .editor label { display: block; color: var(--muted); font-size: 13px; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .06em; }
+  .editor .toggles { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 16px; }
+  .save-bar { display: flex; gap: 12px; align-items: center; margin-top: 24px; flex-wrap: wrap; }
+  .after-save { margin-top: 18px; padding: 16px; border: 1px dashed var(--line); border-radius: 10px; }
+  .after-save p { color: var(--muted); font-size: 14px; margin-bottom: 10px; }
+
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--line); color: var(--cream); padding: 12px 20px; border-radius: 10px; font-size: 14px; display: none; max-width: 90vw; z-index: 50; }
+  #toast.err { border-color: var(--err); }
+  .hidden { display: none !important; }
+  @media (max-width: 760px) { .artists-layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ============ LOCK SCREEN ============ -->
+<div id="lock" class="lock-wrap">
+  <div class="lock-logo brand"><span class="r">HTR</span> <span>STUDIO</span></div>
+  <div class="lock-card">
+    <p>Paste your GitHub access token to unlock. It is stored only in this
+    browser, on this device — never sent anywhere except to GitHub itself.</p>
+    <input id="patInput" type="password" placeholder="github_pat_...">
+    <button id="unlockBtn" class="btn btn-red full">Unlock</button>
+    <p id="lockMsg" style="margin-top:12px"></p>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <header>
+    <div class="brand"><span class="r">HTR</span> <span>STUDIO</span></div>
+    <div class="spacer"></div>
+    <div class="who" id="whoami"></div>
+    <button class="btn btn-ghost" onclick="window.lockApp()">Lock</button>
+  </header>
+  <nav>
+    <button id="tab-dashboard" class="active" onclick="window.showTab('dashboard')">Dashboard</button>
+    <button id="tab-artists" onclick="window.showTab('artists')">Artists</button>
+  </nav>
+  <main>
+
+    <!-- ============ DASHBOARD ============ -->
+    <section id="view-dashboard">
+      <div class="grid">
+        <div class="card">
+          <h3>Build Artist Site</h3>
+          <div class="sub">Rebuilds one artist's site from master data and publishes it.</div>
+          <select id="buildArtistSel"></select>
+          <div class="row">
+            <label class="chk"><input type="checkbox" id="dryArtist" checked> Dry run (practice, publish nothing)</label>
+          </div>
+          <div class="row"><button class="btn btn-blue" onclick="window.runArtistBuild()">Run</button></div>
+        </div>
+        <div class="card">
+          <h3>Publish Homepage</h3>
+          <div class="sub">Rebuilds hellotexasrecords.com homepage data (roster, latest releases).</div>
+          <div class="row">
+            <label class="chk"><input type="checkbox" id="dryHome" checked> Dry run</label>
+          </div>
+          <div class="row"><button class="btn btn-blue" onclick="window.runWorkflow('publish-homepage.yml', {}, 'dryHome', 'Publish Homepage')">Run</button></div>
+        </div>
+        <div class="card">
+          <h3>Publish HTR Radio</h3>
+          <div class="sub">Rebuilds all radio station data and updates the radio site + homepage player.</div>
+          <div class="row">
+            <label class="chk"><input type="checkbox" id="dryRadio" checked> Dry run</label>
+          </div>
+          <div class="row"><button class="btn btn-blue" onclick="window.runWorkflow('publish-radio.yml', {}, 'dryRadio', 'Publish HTR Radio')">Run</button></div>
+        </div>
+      </div>
+      <div class="dry-note">Dry run = the build happens in the cloud and shows what would change, but nothing goes live. Uncheck it only when you mean it.</div>
+
+      <div class="runs">
+        <div class="runs-head">
+          <h2>Recent runs</h2>
+          <button class="btn btn-ghost" onclick="window.loadRuns()">Refresh</button>
+          <span id="runsMsg" style="color:var(--muted);font-size:13px"></span>
+        </div>
+        <table>
+          <thead><tr><th>Workflow</th><th>Status</th><th>Started</th><th></th></tr></thead>
+          <tbody id="runsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ ARTISTS ============ -->
+    <section id="view-artists" class="hidden">
+      <div class="artists-layout">
+        <div class="artist-list" id="artistList"></div>
+        <div>
+          <div class="card editor" id="artistEditor">
+            <h3 id="edName">Select an artist</h3>
+            <div class="sub" id="edMeta"></div>
+            <div id="edFields" class="hidden">
+              <label>Tagline</label>
+              <input id="edTagline" type="text">
+              <label>Genre</label>
+              <input id="edGenre" type="text">
+              <div class="toggles">
+                <label class="chk"><input type="checkbox" id="edActive"> Active</label>
+                <label class="chk"><input type="checkbox" id="edHome"> Show on label homepage</label>
+                <label class="chk"><input type="checkbox" id="edRadio"> Include on HTR Radio</label>
+              </div>
+              <div class="save-bar">
+                <button class="btn btn-red" id="saveBtn" onclick="window.saveArtist()">Save changes</button>
+                <span id="saveMsg" style="color:var(--muted);font-size:14px"></span>
+              </div>
+              <div class="after-save hidden" id="afterSave">
+                <p>Saved. The change is in the master data — publish it live when ready:</p>
+                <button class="btn btn-blue" onclick="window.publishAfterSave()">Rebuild this artist's site + homepage (LIVE)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const OWNER = 'SteveP999';
+  const REPO = 'htr-studio';
+  const API = 'https://api.github.com';
+  const PAT_KEY = 'htr_studio_pat';
+
+  let token = null;
+  let artists = [];
+  let artistsSha = null;
+  let selectedId = null;
+  let pollTimer = null;
+  let pollUntil = 0;
+
+  // ---------- helpers ----------
+  const $ = (id) => document.getElementById(id);
+
+  function toast(msg, isErr) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = isErr ? 'err' : '';
+    t.style.display = 'block';
+    clearTimeout(t._h);
+    t._h = setTimeout(() => { t.style.display = 'none'; }, isErr ? 7000 : 3500);
+  }
+
+  function b64decode(b64) {
+    const bin = atob(b64.replace(/\n/g, ''));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  function b64encode(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(bin);
+  }
+
+  async function gh(path, opts) {
+    opts = opts || {};
+    const res = await fetch(API + path, {
+      method: opts.method || 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    if (res.status === 204) return null;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error((data && data.message) ? data.message : ('GitHub error ' + res.status));
+    }
+    return data;
+  }
+
+  // ---------- lock / unlock ----------
+  async function unlock() {
+    const val = $('patInput').value.trim();
+    if (!val) return;
+    $('lockMsg').textContent = 'Checking token...';
+    token = val;
+    try {
+      const user = await gh('/user');
+      localStorage.setItem(PAT_KEY, val);
+      $('whoami').textContent = 'Signed in as ' + (user.login || 'unknown');
+      $('lock').classList.add('hidden');
+      $('app').classList.remove('hidden');
+      $('lockMsg').textContent = '';
+      await loadArtists();
+      await loadRuns();
+    } catch (e) {
+      token = null;
+      $('lockMsg').textContent = 'Token rejected: ' + e.message;
+      $('lockMsg').style.color = 'var(--err)';
+    }
+  }
+
+  window.lockApp = function () {
+    localStorage.removeItem(PAT_KEY);
+    token = null;
+    $('app').classList.add('hidden');
+    $('lock').classList.remove('hidden');
+    $('patInput').value = '';
+  };
+
+  // ---------- tabs ----------
+  window.showTab = function (name) {
+    ['dashboard', 'artists'].forEach((t) => {
+      $('view-' + t).classList.toggle('hidden', t !== name);
+      $('tab-' + t).classList.toggle('active', t === name);
+    });
+  };
+
+  // ---------- data ----------
+  async function loadArtists() {
+    const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/artists.json');
+    artistsSha = f.sha;
+    artists = JSON.parse(b64decode(f.content));
+
+    const sel = $('buildArtistSel');
+    sel.innerHTML = '';
+    const list = $('artistList');
+    list.innerHTML = '';
+    artists.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((a) => {
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = a.name;
+      sel.appendChild(opt);
+
+      const btn = document.createElement('button');
+      btn.textContent = a.name + (a.active === false ? '  (inactive)' : '');
+      btn.className = a.active === false ? 'inactive' : '';
+      btn.onclick = () => selectArtist(a.id, btn);
+      list.appendChild(btn);
+    });
+  }
+
+  function selectArtist(id, btnEl) {
+    selectedId = id;
+    document.querySelectorAll('.artist-list button').forEach((b) => b.classList.remove('sel'));
+    if (btnEl) btnEl.classList.add('sel');
+    const a = artists.find((x) => x.id === id);
+    if (!a) return;
+    $('edName').textContent = a.name;
+    $('edMeta').textContent = a.id + '  ·  ' + (a.githubRepo || '') + '  ·  ' + (a.siteUrl || '');
+    $('edFields').classList.remove('hidden');
+    $('edTagline').value = a.tagline || '';
+    $('edGenre').value = a.genre || '';
+    $('edActive').checked = a.active !== false;
+    $('edHome').checked = a.includeOnLabelHome !== false;
+    $('edRadio').checked = a.includeOnRadio !== false;
+    $('afterSave').classList.add('hidden');
+    $('saveMsg').textContent = '';
+  }
+
+  window.saveArtist = async function () {
+    if (!selectedId) return;
+    const btn = $('saveBtn');
+    btn.disabled = true;
+    $('saveMsg').textContent = 'Saving...';
+    try {
+      // refresh to latest to avoid clobbering concurrent edits
+      const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/artists.json');
+      artistsSha = f.sha;
+      artists = JSON.parse(b64decode(f.content));
+      const a = artists.find((x) => x.id === selectedId);
+      if (!a) throw new Error('Artist not found in latest data');
+      a.tagline = $('edTagline').value.trim();
+      a.genre = $('edGenre').value.trim();
+      a.active = $('edActive').checked;
+      a.includeOnLabelHome = $('edHome').checked;
+      a.includeOnRadio = $('edRadio').checked;
+
+      const body = {
+        message: 'HTR Studio: update ' + selectedId + ' (tagline/genre/flags)',
+        content: b64encode(JSON.stringify(artists, null, 2)),
+        sha: artistsSha
+      };
+      const out = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/artists.json', { method: 'PUT', body: body });
+      artistsSha = out.content.sha;
+      $('saveMsg').textContent = 'Saved to master data.';
+      $('afterSave').classList.remove('hidden');
+      toast('Saved ' + a.name);
+    } catch (e) {
+      $('saveMsg').textContent = '';
+      toast('Save failed: ' + e.message, true);
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  window.publishAfterSave = async function () {
+    if (!selectedId) return;
+    if (!confirm('Publish LIVE: rebuild ' + selectedId + "'s site and the label homepage?")) return;
+    try {
+      await dispatch('build-artist.yml', { artist_id: selectedId, dry_run: 'false' });
+      await dispatch('publish-homepage.yml', { dry_run: 'false' });
+      toast('Publishing... check Recent runs on the Dashboard.');
+      $('afterSave').classList.add('hidden');
+      showTab('dashboard');
+      startPolling();
+    } catch (e) {
+      toast('Dispatch failed: ' + e.message, true);
+    }
+  };
+
+  // ---------- workflows ----------
+  async function dispatch(workflowFile, inputs) {
+    await gh('/repos/' + OWNER + '/' + REPO + '/actions/workflows/' + workflowFile + '/dispatches', {
+      method: 'POST',
+      body: { ref: 'main', inputs: inputs }
+    });
+  }
+
+  window.runWorkflow = async function (file, extraInputs, dryChkId, label) {
+    const dry = $(dryChkId).checked;
+    if (!dry && !confirm('This will publish LIVE: ' + label + '. Continue?')) return;
+    const inputs = Object.assign({}, extraInputs, { dry_run: dry ? 'true' : 'false' });
+    try {
+      await dispatch(file, inputs);
+      toast(label + (dry ? ' (dry run)' : ' (LIVE)') + ' started.');
+      startPolling();
+    } catch (e) {
+      toast('Failed to start: ' + e.message, true);
+    }
+  };
+
+  window.runArtistBuild = function () {
+    const id = $('buildArtistSel').value;
+    window.runWorkflow('build-artist.yml', { artist_id: id }, 'dryArtist', 'Build ' + id);
+  };
+
+  window.loadRuns = async function () {
+    $('runsMsg').textContent = 'Loading...';
+    try {
+      const data = await gh('/repos/' + OWNER + '/' + REPO + '/actions/runs?per_page=12');
+      const body = $('runsBody');
+      body.innerHTML = '';
+      let anyBusy = false;
+      (data.workflow_runs || []).forEach((r) => {
+        const tr = document.createElement('tr');
+        let pill, cls;
+        if (r.status !== 'completed') {
+          pill = r.status; cls = 'busy'; anyBusy = true;
+        } else if (r.conclusion === 'success') {
+          pill = 'success'; cls = 'ok';
+        } else if (r.conclusion === 'failure') {
+          pill = 'failed'; cls = 'bad';
+        } else {
+          pill = r.conclusion || '?'; cls = 'other';
+        }
+        const when = new Date(r.created_at).toLocaleString();
+        tr.innerHTML = '<td>' + r.name + '</td>' +
+          '<td><span class="pill ' + cls + '">' + pill + '</span></td>' +
+          '<td>' + when + '</td>' +
+          '<td><a href="' + r.html_url + '" target="_blank" rel="noopener">logs</a></td>';
+        body.appendChild(tr);
+      });
+      $('runsMsg').textContent = '';
+      return anyBusy;
+    } catch (e) {
+      $('runsMsg').textContent = 'Could not load runs: ' + e.message;
+      return false;
+    }
+  };
+
+  function startPolling() {
+    pollUntil = Date.now() + 4 * 60 * 1000;
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      const busy = await window.loadRuns();
+      if (!busy || Date.now() > pollUntil) { clearInterval(pollTimer); pollTimer = null; }
+    }, 8000);
+    setTimeout(window.loadRuns, 2500);
+  }
+
+  // ---------- boot ----------
+  $('unlockBtn').onclick = unlock;
+  $('patInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') unlock(); });
+
+  const saved = localStorage.getItem(PAT_KEY);
+  if (saved) {
+    $('patInput').value = saved;
+    unlock();
+  }
+})();
+</script>
+</body>
+</html>
