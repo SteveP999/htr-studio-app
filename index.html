@@ -108,6 +108,7 @@
   <nav>
     <button id="tab-dashboard" class="active" onclick="window.showTab('dashboard')">Dashboard</button>
     <button id="tab-artists" onclick="window.showTab('artists')">Artists</button>
+    <button id="tab-addsong" onclick="window.showTab('addsong')">Add Song</button>
   </nav>
   <main>
 
@@ -183,6 +184,39 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ADD SONG ============ -->
+    <section id="view-addsong" class="hidden">
+      <div class="card editor" style="max-width:640px">
+        <h3>Add Song</h3>
+        <div class="sub">Adds a song to master data. MP3 must already be in Dropbox
+        (right-click the file &rarr; Copy Dropbox link). Cover PNG uploads straight
+        into the artist's repo.</div>
+        <label>Artist</label>
+        <select id="asArtist"></select>
+        <label>Song title</label>
+        <input id="asTitle" type="text">
+        <label>Album (default: Singles)</label>
+        <input id="asAlbum" type="text" placeholder="Singles">
+        <label>Dropbox MP3 link (file link, /scl/fi/...)</label>
+        <input id="asAudio" type="text" placeholder="https://www.dropbox.com/scl/fi/...">
+        <label>Song cover PNG (uploads to the artist repo)</label>
+        <input id="asCover" type="file" accept="image/png">
+        <div class="toggles">
+          <label class="chk"><input type="checkbox" id="asLatest" checked> Latest / featured</label>
+          <label class="chk"><input type="checkbox" id="asRadio" checked> Include on HTR Radio</label>
+          <label class="chk"><input type="checkbox" id="asExplicit"> Explicit</label>
+        </div>
+        <div class="save-bar">
+          <button class="btn btn-red" id="asSaveBtn" onclick="window.addSong()">Add song to master data</button>
+          <span id="asMsg" style="color:var(--muted);font-size:14px"></span>
+        </div>
+        <div class="after-save hidden" id="asAfter">
+          <p>Song saved. Publish when ready:</p>
+          <button class="btn btn-blue" onclick="window.publishNewSong()">Rebuild artist site + homepage (LIVE)</button>
         </div>
       </div>
     </section>
@@ -288,7 +322,7 @@
 
   // ---------- tabs ----------
   window.showTab = function (name) {
-    ['dashboard', 'artists'].forEach((t) => {
+    ['dashboard', 'artists', 'addsong'].forEach((t) => {
       $('view-' + t).classList.toggle('hidden', t !== name);
       $('tab-' + t).classList.toggle('active', t === name);
     });
@@ -302,6 +336,14 @@
 
     const sel = $('buildArtistSel');
     sel.innerHTML = '';
+    const asSel = $('asArtist');
+    asSel.innerHTML = '';
+    artists.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((a) => {
+      const o = document.createElement('option');
+      o.value = a.id;
+      o.textContent = a.name;
+      asSel.appendChild(o);
+    });
     const list = $('artistList');
     list.innerHTML = '';
     artists.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((a) => {
@@ -456,6 +498,151 @@
     }, 8000);
     setTimeout(window.loadRuns, 2500);
   }
+
+  // ---------- add song ----------
+  const RADIO_EXCLUDED = ['lucas-harlow', 'neon-thunder'];
+  let lastAddedArtistId = null;
+
+  function slugify(text) {
+    return String(text || '').toLowerCase()
+      .replace(/&/g, 'and').replace(/['’‘]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+
+  function normalizeDropbox(url) {
+    url = String(url || '').trim();
+    if (!url) return '';
+    if (url.indexOf('dropbox.com') !== -1) {
+      url = url.replace(/[&?](dl|raw)=\d/g, '');
+      url += (url.indexOf('?') !== -1) ? '&raw=1' : '?raw=1';
+    }
+    return url;
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(',')[1]);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function putFile(repoFull, path, b64content, message) {
+    let sha;
+    try {
+      const existing = await gh('/repos/' + repoFull + '/contents/' + path);
+      sha = existing.sha;
+    } catch (e) { /* new file */ }
+    const body = { message: message, content: b64content };
+    if (sha) body.sha = sha;
+    return gh('/repos/' + repoFull + '/contents/' + path, { method: 'PUT', body: body });
+  }
+
+  window.addSong = async function () {
+    const btn = $('asSaveBtn');
+    const artistId = $('asArtist').value;
+    const title = $('asTitle').value.trim();
+    const album = $('asAlbum').value.trim() || 'Singles';
+    const audioIn = $('asAudio').value.trim();
+    if (!title) return toast('Song title required', true);
+    if (audioIn.indexOf('/scl/fi/') === -1) {
+      return toast('That is not a file link — right-click the MP3 itself in Dropbox and copy ITS link (/scl/fi/...)', true);
+    }
+    btn.disabled = true;
+    $('asMsg').textContent = 'Working...';
+    try {
+      const artist = artists.find((x) => x.id === artistId);
+      const repoFull = artist.githubRepo;
+      const songSlug = slugify(title);
+      const albumSlug = slugify(album);
+      const coverName = artistId + '-' + songSlug + '-cover.png';
+
+      // 1. Upload cover if provided
+      const coverFile = $('asCover').files[0];
+      if (coverFile) {
+        $('asMsg').textContent = 'Uploading cover...';
+        const b64 = await fileToBase64(coverFile);
+        await putFile(repoFull, 'images/covers/' + coverName, b64, 'HTR Studio: cover for ' + title);
+      }
+
+      // 2. Load master songs + artists fresh
+      $('asMsg').textContent = 'Updating master data...';
+      const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      const songs = JSON.parse(b64decode(sf.content));
+      const af = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/artists.json');
+      const artistsData = JSON.parse(b64decode(af.content));
+
+      const latest = $('asLatest').checked;
+      const dup = songs.some((s) => s.artistId === artistId && (s.title || '').toLowerCase() === title.toLowerCase());
+      let radio = $('asRadio').checked;
+      if (RADIO_EXCLUDED.indexOf(artistId) !== -1) radio = false;
+      if (dup && !confirm('"' + title + '" already exists for this artist. Add anyway?')) {
+        throw new Error('Cancelled (duplicate title)');
+      }
+
+      let songId = slugify(artistId + '-' + title);
+      let n = 2;
+      const ids = songs.map((s) => s.id);
+      while (ids.indexOf(songId) !== -1) { songId = slugify(artistId + '-' + title) + '-' + n; n++; }
+
+      const coverUrl = 'https://raw.githubusercontent.com/' + repoFull + '/main/images/covers/' + coverName;
+      const albumCoverUrl = 'https://raw.githubusercontent.com/' + repoFull + '/main/images/covers/' + artistId + '-' + albumSlug + '-ALBUM-cover.png';
+      const audio = normalizeDropbox(audioIn);
+
+      const newSong = {
+        id: songId, artistId: artistId, artist: artist.name, title: title,
+        album: album, genre: artist.genre || '', releaseType: 'single', releaseDate: '',
+        coverImage: coverUrl, albumCover: albumCoverUrl,
+        audioFile: audio, audioSrc: audio, youtubeUrl: '', videos: [],
+        featured: latest, explicit: $('asExplicit').checked,
+        includeOnRadio: radio, includeOnHomepage: latest, tags: [], isLatest: latest
+      };
+
+      if (latest) {
+        songs.forEach((s) => {
+          if (s.artistId === artistId) { if (s.featured) s.featured = false; if (s.isLatest) s.isLatest = false; }
+        });
+        const ad = artistsData.find((x) => x.id === artistId);
+        if (ad) ad.latestTitle = title;
+      }
+      songs.push(newSong);
+
+      await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', {
+        method: 'PUT',
+        body: { message: 'HTR Studio: add song ' + title + ' (' + artistId + ')', content: b64encode(JSON.stringify(songs, null, 2)), sha: sf.sha }
+      });
+      await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/artists.json', {
+        method: 'PUT',
+        body: { message: 'HTR Studio: latestTitle for ' + artistId, content: b64encode(JSON.stringify(artistsData, null, 2)), sha: af.sha }
+      });
+
+      lastAddedArtistId = artistId;
+      $('asMsg').textContent = 'Saved: ' + title;
+      $('asAfter').classList.remove('hidden');
+      toast('Song added to master data');
+    } catch (e) {
+      $('asMsg').textContent = '';
+      toast('Add failed: ' + e.message, true);
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  window.publishNewSong = async function () {
+    if (!lastAddedArtistId) return;
+    if (!confirm('Publish LIVE: rebuild ' + lastAddedArtistId + "'s site and the homepage?")) return;
+    try {
+      await dispatch('build-artist.yml', { artist_id: lastAddedArtistId, dry_run: 'false' });
+      await dispatch('publish-homepage.yml', { dry_run: 'false' });
+      toast('Publishing... watch Recent runs.');
+      $('asAfter').classList.add('hidden');
+      showTab('dashboard');
+      startPolling();
+    } catch (e) {
+      toast('Dispatch failed: ' + e.message, true);
+    }
+  };
 
   // ---------- boot ----------
   $('unlockBtn').onclick = unlock;
