@@ -109,6 +109,7 @@
     <button id="tab-dashboard" class="active" onclick="window.showTab('dashboard')">Dashboard</button>
     <button id="tab-artists" onclick="window.showTab('artists')">Artists</button>
     <button id="tab-addsong" onclick="window.showTab('addsong')">Add Song</button>
+    <button id="tab-extras" onclick="window.showTab('extras')">Song Extras</button>
   </nav>
   <main>
 
@@ -184,6 +185,46 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SONG EXTRAS ============ -->
+    <section id="view-extras" class="hidden">
+      <div class="card editor" style="max-width:640px">
+        <h3>Song Extras — Videos &amp; Streaming Links</h3>
+        <div class="sub">Pick a song, then add a video or streaming links. Publish when done.</div>
+        <label>Artist</label>
+        <select id="exArtist" onchange="window.exLoadSongs()"></select>
+        <label>Song</label>
+        <select id="exSong"></select>
+
+        <label style="margin-top:26px;color:var(--warn)">— Add Video —</label>
+        <label>YouTube URL</label>
+        <input id="exVideoUrl" type="text" placeholder="https://youtu.be/...">
+        <label>Video title (default: Official Video)</label>
+        <input id="exVideoTitle" type="text" placeholder="Official Video">
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.exSaveVideo()">Add video to song</button>
+        </div>
+
+        <label style="margin-top:26px;color:var(--warn)">— Streaming Links —</label>
+        <label>Spotify URL</label>
+        <input id="exSpotify" type="text">
+        <label>Apple Music URL</label>
+        <input id="exApple" type="text">
+        <label>YouTube Music URL</label>
+        <input id="exYtm" type="text">
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="exWholeAlbum"> Apply links to the song's entire album</label>
+        </div>
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.exSaveStreaming()">Save streaming links</button>
+          <span id="exMsg" style="color:var(--muted);font-size:14px"></span>
+        </div>
+        <div class="after-save hidden" id="exAfter">
+          <p>Saved. Publish when ready:</p>
+          <button class="btn btn-blue" onclick="window.exPublish()">Rebuild artist site + homepage (LIVE)</button>
         </div>
       </div>
     </section>
@@ -322,7 +363,7 @@
 
   // ---------- tabs ----------
   window.showTab = function (name) {
-    ['dashboard', 'artists', 'addsong'].forEach((t) => {
+    ['dashboard', 'artists', 'addsong', 'extras'].forEach((t) => {
       $('view-' + t).classList.toggle('hidden', t !== name);
       $('tab-' + t).classList.toggle('active', t === name);
     });
@@ -343,7 +384,10 @@
       o.value = a.id;
       o.textContent = a.name;
       asSel.appendChild(o);
+      const o2 = o.cloneNode(true);
+      $('exArtist').appendChild(o2);
     });
+    window.exLoadSongs();
     const list = $('artistList');
     list.innerHTML = '';
     artists.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((a) => {
@@ -637,6 +681,120 @@
       await dispatch('publish-homepage.yml', { dry_run: 'false' });
       toast('Publishing... watch Recent runs.');
       $('asAfter').classList.add('hidden');
+      showTab('dashboard');
+      startPolling();
+    } catch (e) {
+      toast('Dispatch failed: ' + e.message, true);
+    }
+  };
+
+  // ---------- song extras ----------
+  let exSongs = [];
+  let exLastArtist = null;
+
+  window.exLoadSongs = async function () {
+    const artistId = $('exArtist').value;
+    if (!artistId) return;
+    $('exSong').innerHTML = '<option>Loading...</option>';
+    try {
+      const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      exSongs = JSON.parse(b64decode(sf.content));
+      const mine = exSongs.filter((s) => s.artistId === artistId);
+      const sel = $('exSong');
+      sel.innerHTML = '';
+      mine.forEach((s) => {
+        const o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = (s.album || '?') + ' — ' + s.title;
+        sel.appendChild(o);
+      });
+    } catch (e) {
+      toast('Could not load songs: ' + e.message, true);
+    }
+  };
+
+  async function exUpdateSongs(mutate, message) {
+    // fresh read-modify-write to avoid clobbering
+    const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+    const songs = JSON.parse(b64decode(sf.content));
+    const count = mutate(songs);
+    if (!count) throw new Error('Target song not found');
+    await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', {
+      method: 'PUT',
+      body: { message: message, content: b64encode(JSON.stringify(songs, null, 2)), sha: sf.sha }
+    });
+    return count;
+  }
+
+  window.exSaveVideo = async function () {
+    const songId = $('exSong').value;
+    const url = $('exVideoUrl').value.trim();
+    if (!url) return toast('YouTube URL required', true);
+    const title = $('exVideoTitle').value.trim() || 'Official Video';
+    $('exMsg').textContent = 'Saving video...';
+    try {
+      await exUpdateSongs((songs) => {
+        const s = songs.find((x) => x.id === songId);
+        if (!s) return 0;
+        if (!Array.isArray(s.videos)) s.videos = [];
+        s.videos.push({ title: title, youtube: url, order: s.videos.length + 1 });
+        if (!s.youtubeUrl) s.youtubeUrl = url;
+        return 1;
+      }, 'HTR Studio: add video to ' + songId);
+      exLastArtist = $('exArtist').value;
+      $('exMsg').textContent = 'Video added.';
+      $('exAfter').classList.remove('hidden');
+      $('exVideoUrl').value = '';
+      toast('Video saved');
+    } catch (e) {
+      $('exMsg').textContent = '';
+      toast('Failed: ' + e.message, true);
+    }
+  };
+
+  window.exSaveStreaming = async function () {
+    const songId = $('exSong').value;
+    const links = {};
+    if ($('exSpotify').value.trim()) links.spotify = $('exSpotify').value.trim();
+    if ($('exApple').value.trim()) links.apple = $('exApple').value.trim();
+    if ($('exYtm').value.trim()) links.youtubeMusic = $('exYtm').value.trim();
+    if (!Object.keys(links).length) return toast('Enter at least one link', true);
+    const wholeAlbum = $('exWholeAlbum').checked;
+    $('exMsg').textContent = 'Saving links...';
+    try {
+      const n = await exUpdateSongs((songs) => {
+        const target = songs.find((x) => x.id === songId);
+        if (!target) return 0;
+        const ids = wholeAlbum
+          ? songs.filter((x) => x.artistId === target.artistId && x.album === target.album).map((x) => x.id)
+          : [songId];
+        let count = 0;
+        songs.forEach((s) => {
+          if (ids.indexOf(s.id) !== -1) {
+            s.streaming = Object.assign({}, s.streaming || {}, links);
+            count++;
+          }
+        });
+        return count;
+      }, 'HTR Studio: streaming links (' + Object.keys(links).join(', ') + ')');
+      exLastArtist = $('exArtist').value;
+      $('exMsg').textContent = 'Links saved to ' + n + ' song(s).';
+      $('exAfter').classList.remove('hidden');
+      toast('Streaming links saved');
+    } catch (e) {
+      $('exMsg').textContent = '';
+      toast('Failed: ' + e.message, true);
+    }
+  };
+
+  window.exPublish = async function () {
+    if (!exLastArtist) return;
+    if (!confirm('Publish LIVE: rebuild ' + exLastArtist + "'s site and the homepage?")) return;
+    try {
+      await dispatch('build-artist.yml', { artist_id: exLastArtist, dry_run: 'false' });
+      await dispatch('publish-homepage.yml', { dry_run: 'false' });
+      toast('Publishing... watch Recent runs.');
+      $('exAfter').classList.add('hidden');
       showTab('dashboard');
       startPolling();
     } catch (e) {
