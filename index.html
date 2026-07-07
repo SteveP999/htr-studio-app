@@ -208,6 +208,16 @@
           <button class="btn btn-red" onclick="window.exSaveVideo()">Add video to song</button>
         </div>
 
+        <label style="margin-top:26px;color:var(--warn)">— Replace Audio (new version of the song) —</label>
+        <div class="sub">Tip: if you overwrite the MP3 in Dropbox keeping the same filename,
+        the old link keeps working and you don't need this at all. Use this only when the
+        new version is a new file/link.</div>
+        <label>New Dropbox MP3 link (/scl/fi/...)</label>
+        <input id="exNewAudio" type="text" placeholder="https://www.dropbox.com/scl/fi/...">
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.exReplaceAudio()">Replace audio on this song</button>
+        </div>
+
         <label style="margin-top:26px;color:var(--warn)">— Streaming Links —</label>
         <label>Spotify URL</label>
         <input id="exSpotify" type="text">
@@ -746,6 +756,34 @@
       $('exAfter').classList.remove('hidden');
       $('exVideoUrl').value = '';
       toast('Video saved');
+    } catch (e) {
+      $('exMsg').textContent = '';
+      toast('Failed: ' + e.message, true);
+    }
+  };
+
+  window.exReplaceAudio = async function () {
+    const songId = $('exSong').value;
+    const url = $('exNewAudio').value.trim();
+    if (url.indexOf('/scl/fi/') === -1) {
+      return toast('Need the FILE link (/scl/fi/...) — right-click the MP3 in Dropbox', true);
+    }
+    if (!confirm('Replace the audio for this song with the new link?')) return;
+    $('exMsg').textContent = 'Replacing audio...';
+    try {
+      await exUpdateSongs((songs) => {
+        const s = songs.find((x) => x.id === songId);
+        if (!s) return 0;
+        const clean = normalizeDropbox(url);
+        s.audioFile = clean;
+        s.audioSrc = clean;
+        return 1;
+      }, 'HTR Studio: replace audio for ' + songId);
+      exLastArtist = $('exArtist').value;
+      $('exMsg').textContent = 'Audio replaced.';
+      $('exAfter').classList.remove('hidden');
+      $('exNewAudio').value = '';
+      toast('Audio replaced — publish to go live');
     } catch (e) {
       $('exMsg').textContent = '';
       toast('Failed: ' + e.message, true);
