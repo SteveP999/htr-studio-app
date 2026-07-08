@@ -107,6 +107,17 @@
   .cell-auto { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: transparent; border: 1px solid #2e261b; vertical-align: middle; }
   .cell-auto.on { background: rgba(200,146,42,.4); }
   .rgrid tbody tr:hover td.stick { background: var(--panel2); }
+
+  /* ===== Top 20 editor ===== */
+  table.t20grid { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+  table.t20grid th, table.t20grid td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+  table.t20grid thead th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .t20-pos { width: 44px; font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--warn); text-align: center; }
+  .t20-move select { width: auto; padding: 4px 8px; font-size: 13px; }
+  .t20-actions { white-space: nowrap; text-align: right; }
+  .t20-actions button { background: var(--panel2); color: var(--cream); border: 1px solid var(--line); padding: 4px 10px; margin-left: 4px; font-size: 13px; border-radius: 6px; }
+  .t20-actions button:hover:not(:disabled) { border-color: var(--warn); }
+  .t20-actions button:disabled { opacity: .35; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -137,6 +148,7 @@
     <button id="tab-addsong" onclick="window.showTab('addsong')">Add Song</button>
     <button id="tab-extras" onclick="window.showTab('extras')">Song Extras</button>
     <button id="tab-radio" onclick="window.showTab('radio')">Radio</button>
+    <button id="tab-top20" onclick="window.showTab('top20')">Top 20</button>
   </nav>
   <main>
 
@@ -321,8 +333,33 @@
         <button class="btn btn-blue" onclick="window.radioPublishDry()">Publish HTR Radio — dry run</button>
       </div>
       <div class="dry-note">Gold cell = song is ON that station — click to toggle. Faded columns
-      (Open Road, New, Top&nbsp;20) are automatic and can't be toggled here. Save writes to
-      radio-stations.json; publish LIVE from the Dashboard when you're happy.</div>
+      (Open Road, Top&nbsp;20) are automatic and can't be toggled here (Top 20 has its own tab). Save
+      writes to radio-stations.json; publish LIVE from the Dashboard when you're happy.</div>
+    </section>
+
+    <!-- ============ TOP 20 EDITOR ============ -->
+    <section id="view-top20" class="hidden">
+      <div class="radio-head">
+        <h2>HTR Top 20 Editor</h2>
+        <span id="t20Stats" class="rstats"></span>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost" onclick="window.loadTop20(true)">Reload</button>
+        <button class="btn btn-red" id="t20SaveBtn" onclick="window.saveTop20()" disabled>Save changes</button>
+      </div>
+      <div class="radio-toolbar">
+        <select id="t20AddSel" style="max-width:420px"></select>
+        <button class="btn btn-blue" onclick="window.t20Add()">Add to chart</button>
+        <span id="t20Msg" style="color:var(--muted);font-size:13px"></span>
+      </div>
+      <div class="radio-wrap" id="t20Wrap" style="max-height:none">
+        <div style="padding:20px;color:var(--muted)">Loading…</div>
+      </div>
+      <div class="after-save hidden" id="t20After">
+        <p>Saved to chart.json. Preview it in the cloud (nothing goes live):</p>
+        <button class="btn btn-blue" onclick="window.radioPublishDry()">Publish HTR Radio — dry run</button>
+      </div>
+      <div class="dry-note">Rank is set by order — top row is #1. Use ↑ ↓ to reorder, ✕ to remove,
+      the dropdown to add. Save writes chart.json; the Top 20 station rebuilds on the next radio publish.</div>
     </section>
 
   </main>
@@ -426,11 +463,12 @@
 
   // ---------- tabs ----------
   window.showTab = function (name) {
-    ['dashboard', 'artists', 'addsong', 'extras', 'radio'].forEach((t) => {
+    ['dashboard', 'artists', 'addsong', 'extras', 'radio', 'top20'].forEach((t) => {
       $('view-' + t).classList.toggle('hidden', t !== name);
       $('tab-' + t).classList.toggle('active', t === name);
     });
     if (name === 'radio' && !radioLoaded) window.loadRadio();
+    if (name === 'top20' && !t20Loaded) window.loadTop20();
   };
 
   // ---------- data ----------
@@ -1083,6 +1121,123 @@
       startPolling();
     } catch (e) {
       toast('Dispatch failed: ' + e.message, true);
+    }
+  };
+
+  // ---------- top 20 editor ----------
+  let t20Songs = [];
+  let t20Chart = [];
+  let t20Sha = null;
+  let t20Dirty = false;
+  let t20Loaded = false;
+  const T20_MOVES = ['NEW', 'UP', 'DOWN', 'SAME', 'RE-ENTRY'];
+
+  window.loadTop20 = async function (force) {
+    if (t20Loaded && !force) return;
+    $('t20Wrap').innerHTML = '<div style="padding:20px;color:var(--muted)">Loading…</div>';
+    try {
+      const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      const cf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/chart.json');
+      t20Songs = JSON.parse(b64decode(sf.content));
+      t20Chart = JSON.parse(b64decode(cf.content));
+      t20Sha = cf.sha;
+      const sel = $('t20AddSel');
+      sel.innerHTML = '<option value="">— pick a song to add —</option>';
+      t20Songs.slice().sort((a, b) =>
+        (a.artist || '').localeCompare(b.artist || '') || (a.title || '').localeCompare(b.title || ''))
+        .forEach((s) => {
+          const o = document.createElement('option');
+          o.value = s.id;
+          o.textContent = (s.artist || '?') + ' — ' + (s.title || s.id);
+          sel.appendChild(o);
+        });
+      t20Dirty = false;
+      renderTop20();
+      t20Loaded = true;
+    } catch (e) {
+      $('t20Wrap').innerHTML = '<div style="padding:20px;color:var(--err)">Could not load: ' + esc(e.message) + '</div>';
+    }
+  };
+
+  function renderTop20() {
+    const map = {};
+    t20Songs.forEach((s) => { map[s.id] = s; });
+    let html = '<table class="t20grid"><thead><tr><th class="t20-pos">#</th><th>Song</th><th>Move</th><th></th></tr></thead><tbody>';
+    t20Chart.forEach((e, i) => {
+      const s = map[e.songId];
+      const label = s ? (esc(s.artist) + ' — ' + esc(s.title))
+        : '<span style="color:var(--err)">' + esc(e.songId) + ' (not in master)</span>';
+      const cur = (e.movement || '').toUpperCase();
+      const opts = T20_MOVES.map((m) => '<option' + (cur === m ? ' selected' : '') + '>' + m + '</option>').join('');
+      html += '<tr><td class="t20-pos">' + (i + 1) + '</td>' +
+        '<td>' + label + '</td>' +
+        '<td class="t20-move"><select onchange="window.t20SetMove(' + i + ',this.value)">' + opts + '</select></td>' +
+        '<td class="t20-actions">' +
+        '<button onclick="window.t20Move(' + i + ',-1)"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+        '<button onclick="window.t20Move(' + i + ',1)"' + (i === t20Chart.length - 1 ? ' disabled' : '') + '>↓</button>' +
+        '<button onclick="window.t20Remove(' + i + ')">✕</button>' +
+        '</td></tr>';
+    });
+    html += '</tbody></table>';
+    $('t20Wrap').innerHTML = html;
+    updateT20();
+  }
+
+  function updateT20() {
+    $('t20Stats').textContent = t20Chart.length + ' songs in chart · ' + (t20Dirty ? 'unsaved changes' : 'saved');
+    $('t20SaveBtn').disabled = !t20Dirty;
+  }
+
+  window.t20Move = function (i, d) {
+    const j = i + d;
+    if (j < 0 || j >= t20Chart.length) return;
+    const tmp = t20Chart[i]; t20Chart[i] = t20Chart[j]; t20Chart[j] = tmp;
+    t20Dirty = true; renderTop20();
+  };
+  window.t20Remove = function (i) {
+    t20Chart.splice(i, 1);
+    t20Dirty = true; renderTop20();
+  };
+  window.t20SetMove = function (i, v) {
+    if (t20Chart[i]) { t20Chart[i].movement = v; t20Dirty = true; updateT20(); }
+  };
+  window.t20Add = function () {
+    const id = $('t20AddSel').value;
+    if (!id) return;
+    if (t20Chart.some((e) => e.songId === id)) return toast('Already in the chart', true);
+    t20Chart.push({ songId: id, position: t20Chart.length + 1, movement: 'NEW', introAudio: '' });
+    $('t20AddSel').value = '';
+    t20Dirty = true; renderTop20();
+  };
+
+  window.saveTop20 = async function () {
+    if (!t20Dirty) return toast('No changes to save');
+    const btn = $('t20SaveBtn');
+    btn.disabled = true;
+    $('t20Msg').textContent = 'Saving…';
+    try {
+      t20Chart.forEach((e, i) => { e.position = i + 1; if (e.introAudio === undefined) e.introAudio = ''; });
+      const body = {
+        message: 'HTR Studio: update Top 20 chart (' + t20Chart.length + ' songs)',
+        content: b64encode(JSON.stringify(t20Chart, null, 2)),
+        sha: t20Sha
+      };
+      const out = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/chart.json', { method: 'PUT', body: body });
+      t20Sha = out.content.sha;
+      t20Dirty = false;
+      renderTop20();
+      $('t20Msg').textContent = 'Saved.';
+      $('t20After').classList.remove('hidden');
+      toast('Top 20 saved');
+    } catch (e) {
+      $('t20Msg').textContent = '';
+      if (String(e.message).indexOf('does not match') !== -1) {
+        toast('Chart changed elsewhere — hit Reload, then redo.', true);
+      } else {
+        toast('Save failed: ' + e.message, true);
+      }
+    } finally {
+      btn.disabled = !t20Dirty;
     }
   };
 
