@@ -397,6 +397,7 @@
         <select id="lyrMode" onchange="window.lyrSetMode()">
           <option value="catalog">Catalog song (saves timestamps next to the MP3 in Dropbox)</option>
           <option value="upload">Upload a file (experiment — copy/download only, no Dropbox)</option>
+          <option value="suno">Suno link (experiment — copy/download only, no Dropbox)</option>
         </select>
         <div id="lyrCatalog">
           <label>Artist</label>
@@ -407,6 +408,10 @@
         <div id="lyrUpload" class="hidden">
           <label>MP3 file (any version — e.g. an alternate mix)</label>
           <input type="file" id="lyrFile" accept="audio/*,.mp3">
+        </div>
+        <div id="lyrSunoWrap" class="hidden">
+          <label>Suno link (the cloud pulls the audio; paste the song's lyrics below)</label>
+          <input type="text" id="lyrSuno" placeholder="https://suno.com/s/... or https://suno.com/song/...">
         </div>
         <label>Lyrics</label>
         <textarea id="lyrText" rows="12" placeholder="[Verse 1]&#10;First line of the verse&#10;Second line&#10;[Chorus]&#10;..."></textarea>
@@ -1490,9 +1495,10 @@
   }
 
   window.lyrSetMode = function () {
-    const upload = $('lyrMode').value === 'upload';
-    $('lyrCatalog').classList.toggle('hidden', upload);
-    $('lyrUpload').classList.toggle('hidden', !upload);
+    const m = $('lyrMode').value;
+    $('lyrCatalog').classList.toggle('hidden', m !== 'catalog');
+    $('lyrUpload').classList.toggle('hidden', m !== 'upload');
+    $('lyrSunoWrap').classList.toggle('hidden', m !== 'suno');
   };
 
   window.lyrGenerate = async function () {
@@ -1507,6 +1513,11 @@
       if (!file) return toast('Choose an MP3 file', true);
       songId = 'upload-' + slugify(file.name.replace(/\.[^.]+$/, '')) + '-' + Date.now().toString(36);
       mp3 = 'data/lyric-uploads/' + songId + '.mp3';   // repo path; the workflow uses it directly
+    } else if (mode === 'suno') {
+      const link = $('lyrSuno').value.trim();
+      if (link.indexOf('suno.com') === -1) return toast('Paste a valid Suno link', true);
+      songId = 'suno-' + Date.now().toString(36);
+      mp3 = link;   // the cloud resolves the Suno link to the audio
     } else {
       const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
       if (!song) return toast('Pick a song', true);
@@ -1527,8 +1538,8 @@
       await lyrCommitFile('data/lyric-jobs/' + songId + '.txt', lyrics, 'Lyric job: ' + songId);
       await dispatch('align-lyrics.yml', { song_id: songId, mp3_url: mp3 });
       $('lyrStatus').textContent = 'Aligning in the cloud (CPU) — a few minutes. Leave this open; the result appears below'
-        + (mode === 'upload' ? ' to copy/download.' : ' and saves next to the MP3 in Dropbox.');
-      lyrStartPoll(songId, mode === 'upload');
+        + (mode === 'catalog' ? ' and saves next to the MP3 in Dropbox.' : ' to copy/download.');
+      lyrStartPoll(songId, mode !== 'catalog');
     } catch (e) {
       $('lyrStatus').textContent = '';
       btn.disabled = false;
