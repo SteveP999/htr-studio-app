@@ -443,6 +443,9 @@
   const REPO = 'htr-studio';
   const API = 'https://api.github.com';
   const PAT_KEY = 'htr_studio_pat';
+  // Lyrics-only mode for co-writers: open the app with ?lyrics to hide everything
+  // except the Lyric Timestamps tool (Suno / upload). No publishing, no label data.
+  const LYRICS_ONLY = new URLSearchParams(location.search).has('lyrics');
 
   let token = null;
   let artists = [];
@@ -512,6 +515,7 @@
       $('lock').classList.add('hidden');
       $('app').classList.remove('hidden');
       $('lockMsg').textContent = '';
+      if (LYRICS_ONLY) applyLyricsOnly();
       await loadArtists();
       await loadRuns();
     } catch (e) {
@@ -539,6 +543,18 @@
     if (name === 'top20' && !t20Loaded) window.loadTop20();
     if (name === 'lyrics' && !lyrLoaded) window.loadLyrics();
   };
+
+  function applyLyricsOnly() {
+    ['dashboard', 'artists', 'addsong', 'extras', 'radio', 'top20'].forEach((t) => {
+      const b = $('tab-' + t); if (b) b.classList.add('hidden');
+    });
+    // co-writers experiment with Suno / uploaded files, not the label's catalog
+    const opt = $('lyrMode').querySelector('option[value="catalog"]');
+    if (opt) opt.remove();
+    window.showTab('lyrics');
+    $('lyrMode').value = 'suno';
+    window.lyrSetMode();
+  }
 
   // ---------- data ----------
   async function loadArtists() {
