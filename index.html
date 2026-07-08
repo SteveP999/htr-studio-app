@@ -393,10 +393,21 @@
         [brackets] become instrumental sections). The cloud aligns them to the audio and
         saves a <b>-timestamps.txt</b> next to the MP3 in Dropbox. Runs on CPU, so give it
         a few minutes. (At home, HTR-Menu #22 on your GPU does the same thing faster.)</div>
-        <label>Artist</label>
-        <select id="lyrArtist" onchange="window.lyrLoadSongs()"></select>
-        <label>Song</label>
-        <select id="lyrSong"></select>
+        <label>Source</label>
+        <select id="lyrMode" onchange="window.lyrSetMode()">
+          <option value="catalog">Catalog song (saves timestamps next to the MP3 in Dropbox)</option>
+          <option value="upload">Upload a file (experiment — copy/download only, no Dropbox)</option>
+        </select>
+        <div id="lyrCatalog">
+          <label>Artist</label>
+          <select id="lyrArtist" onchange="window.lyrLoadSongs()"></select>
+          <label>Song</label>
+          <select id="lyrSong"></select>
+        </div>
+        <div id="lyrUpload" class="hidden">
+          <label>MP3 file (any version — e.g. an alternate mix)</label>
+          <input type="file" id="lyrFile" accept="audio/*,.mp3">
+        </div>
         <label>Lyrics</label>
         <textarea id="lyrText" rows="12" placeholder="[Verse 1]&#10;First line of the verse&#10;Second line&#10;[Chorus]&#10;..."></textarea>
         <div class="save-bar">
@@ -1478,23 +1489,46 @@
     return gh('/repos/' + OWNER + '/' + REPO + '/contents/' + path, { method: 'PUT', body: body });
   }
 
+  window.lyrSetMode = function () {
+    const upload = $('lyrMode').value === 'upload';
+    $('lyrCatalog').classList.toggle('hidden', upload);
+    $('lyrUpload').classList.toggle('hidden', !upload);
+  };
+
   window.lyrGenerate = async function () {
-    const songId = $('lyrSong').value;
-    const song = lyrSongs.find((s) => s.id === songId);
+    const mode = $('lyrMode').value;
     const lyrics = $('lyrText').value.trim();
-    if (!song) return toast('Pick a song', true);
-    const mp3 = song.audioFile || song.audioSrc || song.audio || '';
-    if (!mp3) return toast('That song has no MP3 link in master data', true);
     if (!lyrics) return toast('Paste the lyrics first', true);
     const btn = $('lyrGenBtn');
+
+    let songId, mp3;
+    if (mode === 'upload') {
+      const file = $('lyrFile').files[0];
+      if (!file) return toast('Choose an MP3 file', true);
+      songId = 'upload-' + slugify(file.name.replace(/\.[^.]+$/, '')) + '-' + Date.now().toString(36);
+      mp3 = 'data/lyric-uploads/' + songId + '.mp3';   // repo path; the workflow uses it directly
+    } else {
+      const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+      if (!song) return toast('Pick a song', true);
+      songId = song.id;
+      mp3 = song.audioFile || song.audioSrc || song.audio || '';
+      if (!mp3) return toast('That song has no MP3 link in master data', true);
+    }
+
     btn.disabled = true;
     $('lyrResult').classList.add('hidden');
     $('lyrStatus').textContent = 'Submitting job…';
     try {
+      if (mode === 'upload') {
+        $('lyrStatus').textContent = 'Uploading MP3…';
+        const b64 = await fileToBase64($('lyrFile').files[0]);
+        await putFile(OWNER + '/' + REPO, mp3, b64, 'Lyric upload: ' + songId);
+      }
       await lyrCommitFile('data/lyric-jobs/' + songId + '.txt', lyrics, 'Lyric job: ' + songId);
       await dispatch('align-lyrics.yml', { song_id: songId, mp3_url: mp3 });
-      $('lyrStatus').textContent = 'Aligning in the cloud (CPU) — a few minutes. You can leave this open; the result appears here and saves to Dropbox next to the MP3.';
-      lyrStartPoll(songId);
+      $('lyrStatus').textContent = 'Aligning in the cloud (CPU) — a few minutes. Leave this open; the result appears below'
+        + (mode === 'upload' ? ' to copy/download.' : ' and saves next to the MP3 in Dropbox.');
+      lyrStartPoll(songId, mode === 'upload');
     } catch (e) {
       $('lyrStatus').textContent = '';
       btn.disabled = false;
@@ -1502,7 +1536,7 @@
     }
   };
 
-  function lyrStartPoll(songId) {
+  function lyrStartPoll(songId, isUpload) {
     if (lyrPoll) clearInterval(lyrPoll);
     const path = 'data/lyrics/' + songId + '-timestamps.txt';
     const until = Date.now() + 12 * 60 * 1000;
@@ -1513,7 +1547,9 @@
         clearInterval(lyrPoll); lyrPoll = null;
         $('lyrOut').value = txt;
         $('lyrResult').classList.remove('hidden');
-        $('lyrStatus').textContent = 'Done — saved next to the MP3 in Dropbox (once Dropbox is connected).';
+        $('lyrStatus').textContent = isUpload
+          ? 'Done — copy or download below.'
+          : 'Done — also saved next to the MP3 in Dropbox.';
         $('lyrGenBtn').disabled = false;
       } catch (e) {
         if (Date.now() > until) {
