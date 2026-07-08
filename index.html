@@ -149,6 +149,7 @@
     <button id="tab-extras" onclick="window.showTab('extras')">Song Extras</button>
     <button id="tab-radio" onclick="window.showTab('radio')">Radio</button>
     <button id="tab-top20" onclick="window.showTab('top20')">Top 20</button>
+    <button id="tab-lyrics" onclick="window.showTab('lyrics')">Lyrics</button>
   </nav>
   <main>
 
@@ -384,6 +385,35 @@
       the dropdown to add. Save writes chart.json; the Top 20 station rebuilds on the next radio publish.</div>
     </section>
 
+    <!-- ============ LYRIC TIMESTAMPS ============ -->
+    <section id="view-lyrics" class="hidden">
+      <div class="card editor" style="max-width:720px">
+        <h3>Lyric Timestamps</h3>
+        <div class="sub">Pick a song and paste its lyrics (Suno format is fine — lines in
+        [brackets] become instrumental sections). The cloud aligns them to the audio and
+        saves a <b>-timestamps.txt</b> next to the MP3 in Dropbox. Runs on CPU, so give it
+        a few minutes. (At home, HTR-Menu #22 on your GPU does the same thing faster.)</div>
+        <label>Artist</label>
+        <select id="lyrArtist" onchange="window.lyrLoadSongs()"></select>
+        <label>Song</label>
+        <select id="lyrSong"></select>
+        <label>Lyrics</label>
+        <textarea id="lyrText" rows="12" placeholder="[Verse 1]&#10;First line of the verse&#10;Second line&#10;[Chorus]&#10;..."></textarea>
+        <div class="save-bar">
+          <button class="btn btn-red" id="lyrGenBtn" onclick="window.lyrGenerate()">Generate timestamps</button>
+          <span id="lyrStatus" style="color:var(--muted);font-size:14px"></span>
+        </div>
+        <div id="lyrResult" class="hidden">
+          <label>Timestamps</label>
+          <textarea id="lyrOut" rows="12" readonly></textarea>
+          <div class="save-bar">
+            <button class="btn btn-blue" onclick="window.lyrCopy()">Copy</button>
+            <button class="btn btn-ghost" onclick="window.lyrDownload()">Download .txt</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -485,12 +515,13 @@
 
   // ---------- tabs ----------
   window.showTab = function (name) {
-    ['dashboard', 'artists', 'addsong', 'extras', 'radio', 'top20'].forEach((t) => {
+    ['dashboard', 'artists', 'addsong', 'extras', 'radio', 'top20', 'lyrics'].forEach((t) => {
       $('view-' + t).classList.toggle('hidden', t !== name);
       $('tab-' + t).classList.toggle('active', t === name);
     });
     if (name === 'radio' && !radioLoaded) window.loadRadio();
     if (name === 'top20' && !t20Loaded) window.loadTop20();
+    if (name === 'lyrics' && !lyrLoaded) window.loadLyrics();
   };
 
   // ---------- data ----------
@@ -1399,6 +1430,113 @@
     } finally {
       btn.disabled = !t20Dirty;
     }
+  };
+
+  // ---------- lyric timestamps ----------
+  let lyrSongs = [];
+  let lyrLoaded = false;
+  let lyrPoll = null;
+
+  window.loadLyrics = async function () {
+    if (lyrLoaded) return;
+    const asel = $('lyrArtist');
+    asel.innerHTML = '';
+    artists.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((a) => {
+      const o = document.createElement('option');
+      o.value = a.id; o.textContent = a.name;
+      asel.appendChild(o);
+    });
+    await window.lyrLoadSongs();
+    lyrLoaded = true;
+  };
+
+  window.lyrLoadSongs = async function () {
+    const artistId = $('lyrArtist').value;
+    if (!artistId) return;
+    $('lyrSong').innerHTML = '<option>Loading…</option>';
+    try {
+      const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      lyrSongs = JSON.parse(b64decode(sf.content));
+      const mine = lyrSongs.filter((s) => s.artistId === artistId);
+      const sel = $('lyrSong');
+      sel.innerHTML = '';
+      mine.forEach((s) => {
+        const o = document.createElement('option');
+        o.value = s.id; o.textContent = (s.album || '?') + ' — ' + s.title;
+        sel.appendChild(o);
+      });
+    } catch (e) {
+      toast('Could not load songs: ' + e.message, true);
+    }
+  };
+
+  async function lyrCommitFile(path, content, message) {
+    let sha;
+    try { const ex = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + path); sha = ex.sha; } catch (e) { /* new */ }
+    const body = { message: message, content: b64encode(content) };
+    if (sha) body.sha = sha;
+    return gh('/repos/' + OWNER + '/' + REPO + '/contents/' + path, { method: 'PUT', body: body });
+  }
+
+  window.lyrGenerate = async function () {
+    const songId = $('lyrSong').value;
+    const song = lyrSongs.find((s) => s.id === songId);
+    const lyrics = $('lyrText').value.trim();
+    if (!song) return toast('Pick a song', true);
+    const mp3 = song.audioFile || song.audioSrc || song.audio || '';
+    if (!mp3) return toast('That song has no MP3 link in master data', true);
+    if (!lyrics) return toast('Paste the lyrics first', true);
+    const btn = $('lyrGenBtn');
+    btn.disabled = true;
+    $('lyrResult').classList.add('hidden');
+    $('lyrStatus').textContent = 'Submitting job…';
+    try {
+      await lyrCommitFile('data/lyric-jobs/' + songId + '.txt', lyrics, 'Lyric job: ' + songId);
+      await dispatch('align-lyrics.yml', { song_id: songId, mp3_url: mp3 });
+      $('lyrStatus').textContent = 'Aligning in the cloud (CPU) — a few minutes. You can leave this open; the result appears here and saves to Dropbox next to the MP3.';
+      lyrStartPoll(songId);
+    } catch (e) {
+      $('lyrStatus').textContent = '';
+      btn.disabled = false;
+      toast('Failed to start: ' + e.message, true);
+    }
+  };
+
+  function lyrStartPoll(songId) {
+    if (lyrPoll) clearInterval(lyrPoll);
+    const path = 'data/lyrics/' + songId + '-timestamps.txt';
+    const until = Date.now() + 12 * 60 * 1000;
+    lyrPoll = setInterval(async () => {
+      try {
+        const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + path + '?ref=main');
+        const txt = b64decode(f.content);
+        clearInterval(lyrPoll); lyrPoll = null;
+        $('lyrOut').value = txt;
+        $('lyrResult').classList.remove('hidden');
+        $('lyrStatus').textContent = 'Done — saved next to the MP3 in Dropbox (once Dropbox is connected).';
+        $('lyrGenBtn').disabled = false;
+      } catch (e) {
+        if (Date.now() > until) {
+          clearInterval(lyrPoll); lyrPoll = null;
+          $('lyrStatus').textContent = 'Still running or failed — check the run on the Dashboard.';
+          $('lyrGenBtn').disabled = false;
+        }
+      }
+    }, 15000);
+  }
+
+  window.lyrCopy = function () {
+    const t = $('lyrOut');
+    t.select();
+    try { document.execCommand('copy'); toast('Copied'); } catch (e) { toast('Copy failed', true); }
+  };
+  window.lyrDownload = function () {
+    const songId = $('lyrSong').value || 'lyrics';
+    const blob = new Blob([$('lyrOut').value], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = songId + '-timestamps.txt';
+    a.click();
   };
 
   // ---------- boot ----------
