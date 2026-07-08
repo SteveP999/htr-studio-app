@@ -271,6 +271,17 @@
           <button class="btn btn-red" onclick="window.exSaveStreaming()">Save streaming links</button>
           <span id="exMsg" style="color:var(--muted);font-size:14px"></span>
         </div>
+
+        <label style="margin-top:26px;color:var(--warn)">— Move / Album Placement —</label>
+        <div class="sub">Move the selected song onto an album (or back to Singles). Updates its
+        album and album cover so it shows under that album on the site. Pick the target album, then Move.</div>
+        <label>Target album</label>
+        <select id="exAlbumTarget"></select>
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.exMoveAlbum()">Move song to this album</button>
+          <span id="exMoveMsg" style="color:var(--muted);font-size:14px"></span>
+        </div>
+
         <div class="after-save hidden" id="exAfter">
           <p>Saved. Publish when ready:</p>
           <button class="btn btn-blue" onclick="window.exPublish()">Rebuild artist site + homepage (LIVE)</button>
@@ -810,6 +821,18 @@
         o.textContent = (s.album || '?') + ' — ' + s.title;
         sel.appendChild(o);
       });
+      // populate the "move to album" target dropdown with this artist's albums (+ Singles)
+      const albums = [];
+      mine.forEach((s) => { if (s.album && albums.indexOf(s.album) === -1) albums.push(s.album); });
+      if (!albums.some((a) => a.toLowerCase() === 'singles')) albums.push('Singles');
+      albums.sort((a, b) => a.localeCompare(b));
+      const asel = $('exAlbumTarget');
+      asel.innerHTML = '';
+      albums.forEach((a) => {
+        const o = document.createElement('option');
+        o.value = a; o.textContent = a;
+        asel.appendChild(o);
+      });
     } catch (e) {
       toast('Could not load songs: ' + e.message, true);
     }
@@ -914,6 +937,47 @@
     } catch (e) {
       $('exMsg').textContent = '';
       toast('Failed: ' + e.message, true);
+    }
+  };
+
+  function albumCoverFor(songs, artist, albumName, movingSong) {
+    // prefer an existing track's albumCover on that album (they share one)
+    const other = songs.find((s) =>
+      artist && s.artistId === artist.id && s.album === albumName &&
+      s.id !== (movingSong && movingSong.id) && s.albumCover);
+    if (other) return other.albumCover;
+    // else construct from the standard naming pattern
+    const repo = (artist && artist.githubRepo) || '';
+    const albumSlug = slugify(albumName);
+    const aid = artist ? artist.id : '';
+    return 'https://raw.githubusercontent.com/' + repo + '/main/images/covers/' +
+      aid + '-' + albumSlug + '-ALBUM-cover.png';
+  }
+
+  window.exMoveAlbum = async function () {
+    const songId = $('exSong').value;
+    const albumName = $('exAlbumTarget').value;
+    if (!songId || !albumName) return toast('Pick a song and a target album', true);
+    if (!confirm('Move this song onto album "' + albumName + '"?')) return;
+    $('exMoveMsg').textContent = 'Moving…';
+    try {
+      await exUpdateSongs((songs) => {
+        const s = songs.find((x) => x.id === songId);
+        if (!s) return 0;
+        const artist = artists.find((a) => a.id === s.artistId);
+        s.album = albumName;
+        s.albumCover = albumCoverFor(songs, artist, albumName, s);
+        s.releaseType = (albumName.toLowerCase() === 'singles') ? 'single' : 'album track';
+        return 1;
+      }, 'HTR Studio: move ' + songId + ' to album ' + albumName);
+      exLastArtist = $('exArtist').value;
+      $('exMoveMsg').textContent = 'Moved to ' + albumName + '.';
+      $('exAfter').classList.remove('hidden');
+      toast('Song moved — publish to update the site');
+      window.exLoadSongs();
+    } catch (e) {
+      $('exMoveMsg').textContent = '';
+      toast('Move failed: ' + e.message, true);
     }
   };
 
