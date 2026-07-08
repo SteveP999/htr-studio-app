@@ -282,6 +282,17 @@
           <span id="exMoveMsg" style="color:var(--muted);font-size:14px"></span>
         </div>
 
+        <label style="margin-top:26px;color:var(--warn)">— Reorder Tracks on Album —</label>
+        <div class="sub">Set the play order of tracks within an album. Pick the album, use ↑ ↓ to
+        arrange, then Save track order.</div>
+        <label>Album</label>
+        <select id="exReorderAlbum" onchange="window.exRenderReorder()"></select>
+        <div id="exReorderList" class="radio-wrap" style="max-height:none;margin-top:10px"></div>
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.exSaveOrder()">Save track order</button>
+          <span id="exOrderMsg" style="color:var(--muted);font-size:14px"></span>
+        </div>
+
         <div class="after-save hidden" id="exAfter">
           <p>Saved. Publish when ready:</p>
           <button class="btn btn-blue" onclick="window.exPublish()">Rebuild artist site + homepage (LIVE)</button>
@@ -833,6 +844,15 @@
         o.value = a; o.textContent = a;
         asel.appendChild(o);
       });
+      // reorder dropdown: real albums only (Singles has no meaningful order)
+      const rsel = $('exReorderAlbum');
+      rsel.innerHTML = '';
+      albums.filter((a) => a.toLowerCase() !== 'singles').forEach((a) => {
+        const o = document.createElement('option');
+        o.value = a; o.textContent = a;
+        rsel.appendChild(o);
+      });
+      window.exRenderReorder();
     } catch (e) {
       toast('Could not load songs: ' + e.message, true);
     }
@@ -937,6 +957,82 @@
     } catch (e) {
       $('exMsg').textContent = '';
       toast('Failed: ' + e.message, true);
+    }
+  };
+
+  // ---- reorder tracks on an album ----
+  let exOrder = [];  // working list of song objects for the chosen album
+
+  function exTrackOrd(s) {
+    let v = (s.trackNumber != null) ? s.trackNumber
+          : (s.albumOrder != null) ? s.albumOrder
+          : (s.num != null ? parseInt(s.num, 10) : null);
+    return (v == null || isNaN(v)) ? 9999 : v;
+  }
+
+  window.exRenderReorder = function () {
+    const artistId = $('exArtist').value;
+    const album = $('exReorderAlbum').value;
+    const wrap = $('exReorderList');
+    if (!album) { wrap.innerHTML = ''; exOrder = []; return; }
+    exOrder = exSongs.filter((s) => s.artistId === artistId && s.album === album)
+      .sort((a, b) => exTrackOrd(a) - exTrackOrd(b) || String(a.title || '').localeCompare(String(b.title || '')));
+    renderExOrder();
+  };
+
+  function renderExOrder() {
+    const wrap = $('exReorderList');
+    if (!exOrder.length) {
+      wrap.innerHTML = '<div style="padding:14px;color:var(--muted)">No tracks on this album.</div>';
+      return;
+    }
+    let html = '<table class="t20grid"><tbody>';
+    exOrder.forEach((s, i) => {
+      html += '<tr><td class="t20-pos">' + (i + 1) + '</td><td>' + esc(s.title || s.id) + '</td>' +
+        '<td class="t20-actions">' +
+        '<button onclick="window.exOrderMove(' + i + ',-1)"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+        '<button onclick="window.exOrderMove(' + i + ',1)"' + (i === exOrder.length - 1 ? ' disabled' : '') + '>↓</button>' +
+        '</td></tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  }
+
+  window.exOrderMove = function (i, d) {
+    const j = i + d;
+    if (j < 0 || j >= exOrder.length) return;
+    const tmp = exOrder[i]; exOrder[i] = exOrder[j]; exOrder[j] = tmp;
+    renderExOrder();
+  };
+
+  window.exSaveOrder = async function () {
+    if (!exOrder.length) return toast('Nothing to reorder', true);
+    const album = $('exReorderAlbum').value;
+    $('exOrderMsg').textContent = 'Saving order…';
+    try {
+      const idOrder = exOrder.map((s) => s.id);
+      await exUpdateSongs((songs) => {
+        let n = 0;
+        idOrder.forEach((id, idx) => {
+          const s = songs.find((x) => x.id === id);
+          if (s) {
+            s.trackNumber = idx + 1;
+            s.albumOrder = idx + 1;
+            s.num = String(idx + 1).padStart(2, '0');
+            n++;
+          }
+        });
+        return n;
+      }, 'HTR Studio: reorder tracks on ' + album);
+      exLastArtist = $('exArtist').value;
+      // refresh local copy so the numbers stick if they reorder again
+      exOrder.forEach((s, idx) => { s.trackNumber = idx + 1; s.albumOrder = idx + 1; s.num = String(idx + 1).padStart(2, '0'); });
+      $('exOrderMsg').textContent = 'Order saved.';
+      $('exAfter').classList.remove('hidden');
+      toast('Track order saved — publish to update the site');
+    } catch (e) {
+      $('exOrderMsg').textContent = '';
+      toast('Save failed: ' + e.message, true);
     }
   };
 
