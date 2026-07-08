@@ -81,6 +81,32 @@
   #toast.err { border-color: var(--err); }
   .hidden { display: none !important; }
   @media (max-width: 760px) { .artists-layout { grid-template-columns: 1fr; } }
+
+  /* ===== Radio dashboard ===== */
+  .radio-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .radio-head h2 { font-size: 24px; }
+  .radio-head .spacer { flex: 1; }
+  .rstats { color: var(--muted); font-size: 13px; }
+  .radio-toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+  .radio-wrap { overflow: auto; max-height: 70vh; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+  table.rgrid { border-collapse: separate; border-spacing: 0; font-size: 12.5px; min-width: 100%; }
+  table.rgrid th, table.rgrid td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; white-space: nowrap; }
+  table.rgrid thead th { position: sticky; top: 0; background: var(--panel2); z-index: 3; font-weight: 600; color: var(--cream); }
+  table.rgrid thead th.colh { text-align: center; color: var(--muted); font-size: 11px; letter-spacing: .03em; }
+  table.rgrid thead th.colh.auto { color: #6a5f48; font-style: italic; }
+  .rgrid td.cellwrap { text-align: center; }
+  .rgrid .stick { position: sticky; background: var(--panel); z-index: 2; }
+  .rgrid thead th.stick { z-index: 4; background: var(--panel2); }
+  .rgrid .s0 { left: 0; min-width: 120px; }
+  .rgrid .s1 { left: 120px; min-width: 150px; border-right: 1px solid var(--line); }
+  .rgrid td.alb { color: var(--muted); max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+  .cell-toggle { display: inline-block; width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--line); background: transparent; cursor: pointer; vertical-align: middle; }
+  .cell-toggle:hover { border-color: var(--warn); }
+  .cell-toggle.on { background: var(--warn); border-color: var(--warn); }
+  .cell-toggle.chg { box-shadow: 0 0 0 2px var(--blue); }
+  .cell-auto { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: transparent; border: 1px solid #2e261b; vertical-align: middle; }
+  .cell-auto.on { background: rgba(200,146,42,.4); }
+  .rgrid tbody tr:hover td.stick { background: var(--panel2); }
 </style>
 </head>
 <body>
@@ -110,6 +136,7 @@
     <button id="tab-artists" onclick="window.showTab('artists')">Artists</button>
     <button id="tab-addsong" onclick="window.showTab('addsong')">Add Song</button>
     <button id="tab-extras" onclick="window.showTab('extras')">Song Extras</button>
+    <button id="tab-radio" onclick="window.showTab('radio')">Radio</button>
   </nav>
   <main>
 
@@ -272,6 +299,32 @@
       </div>
     </section>
 
+    <!-- ============ RADIO DASHBOARD ============ -->
+    <section id="view-radio" class="hidden">
+      <div class="radio-head">
+        <h2>HTR Radio Dashboard</h2>
+        <span id="radioStats" class="rstats"></span>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost" onclick="window.loadRadio(true)">Reload</button>
+        <button class="btn btn-red" id="radioSaveBtn" onclick="window.saveRadio()" disabled>Save changes</button>
+      </div>
+      <div class="radio-toolbar">
+        <input id="radioFilter" type="text" placeholder="Filter by artist, title, or album…" style="max-width:340px">
+        <label class="chk"><input type="checkbox" id="radioOnlyChanged"> Show only changed rows</label>
+        <span id="radioMsg" style="color:var(--muted);font-size:13px"></span>
+      </div>
+      <div class="radio-wrap" id="radioWrap">
+        <div style="padding:20px;color:var(--muted)">Loading…</div>
+      </div>
+      <div class="after-save hidden" id="radioAfter">
+        <p>Saved to master data. Preview it in the cloud (nothing goes live):</p>
+        <button class="btn btn-blue" onclick="window.radioPublishDry()">Publish HTR Radio — dry run</button>
+      </div>
+      <div class="dry-note">Gold cell = song is ON that station — click to toggle. Faded columns
+      (Open Road, New, Top&nbsp;20) are automatic and can't be toggled here. Save writes to
+      radio-stations.json; publish LIVE from the Dashboard when you're happy.</div>
+    </section>
+
   </main>
 </div>
 
@@ -373,10 +426,11 @@
 
   // ---------- tabs ----------
   window.showTab = function (name) {
-    ['dashboard', 'artists', 'addsong', 'extras'].forEach((t) => {
+    ['dashboard', 'artists', 'addsong', 'extras', 'radio'].forEach((t) => {
       $('view-' + t).classList.toggle('hidden', t !== name);
       $('tab-' + t).classList.toggle('active', t === name);
     });
+    if (name === 'radio' && !radioLoaded) window.loadRadio();
   };
 
   // ---------- data ----------
@@ -840,9 +894,210 @@
     }
   };
 
+  // ---------- radio dashboard ----------
+  let radioSongs = [];
+  let radioStations = [];
+  let radioSha = null;
+  let radioChart = [];
+  let radioOrigMembership = {};   // stationId -> Set(songId) at last load/save
+  let radioDirty = new Set();     // "stationId|songId" that differ from original
+  let radioLoaded = false;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+  function audioOf(s) { return s.audioFile || s.audioSrc || s.audio || ''; }
+
+  // Toggleable = hand-curated by a song list. open-road (auto-everything),
+  // new-releases (auto-latest) and htr-top-20 (chart) are computed → read-only.
+  function stationToggleable(st) {
+    return (st.type === 'genre' && st.id !== 'open-road') || st.source === 'manual';
+  }
+  function songIdsOf(st) {
+    return (st.songs || []).map((e) => (e && typeof e === 'object') ? e.songId : e);
+  }
+  function computedMember(st, song, chartIds) {
+    const aud = audioOf(song);
+    if (st.id === 'open-road') {
+      return song.artistId !== 'lucas-harlow'
+        && (song.album || '').toLowerCase().indexOf('texxxas tales') === -1
+        && !!aud;
+    }
+    if (st.source === 'auto-latest') return !!song.isLatest && !!aud;
+    if (st.source === 'chart.json') return chartIds.has(song.id);
+    return false;
+  }
+
+  function snapshotMembership() {
+    radioOrigMembership = {};
+    radioStations.forEach((st) => {
+      if (stationToggleable(st)) radioOrigMembership[st.id] = new Set(songIdsOf(st));
+    });
+  }
+
+  window.loadRadio = async function (force) {
+    if (radioLoaded && !force) return;
+    const wrap = $('radioWrap');
+    wrap.innerHTML = '<div style="padding:20px;color:var(--muted)">Loading songs and stations…</div>';
+    try {
+      const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      const rf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/radio-stations.json');
+      radioSongs = JSON.parse(b64decode(sf.content));
+      radioStations = (JSON.parse(b64decode(rf.content)).stations) || [];
+      radioSha = rf.sha;
+      try {
+        const cf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/chart.json');
+        radioChart = JSON.parse(b64decode(cf.content));
+      } catch (e) { radioChart = []; }
+      radioDirty = new Set();
+      snapshotMembership();
+      renderRadio();
+      radioLoaded = true;
+    } catch (e) {
+      wrap.innerHTML = '<div style="padding:20px;color:var(--err)">Could not load: ' + esc(e.message) + '</div>';
+    }
+  };
+
+  function renderRadio() {
+    if (!radioStations.length) return;
+    const filter = ($('radioFilter').value || '').toLowerCase();
+    const onlyChanged = $('radioOnlyChanged').checked;
+    const chartIds = new Set(radioChart.map((e) => e.songId));
+    const cols = radioStations;
+
+    let html = '<table class="rgrid"><thead><tr>' +
+      '<th class="stick s0">Artist</th><th class="stick s1">Title</th><th>Album</th>';
+    cols.forEach((st) => {
+      const auto = stationToggleable(st) ? '' : ' auto';
+      const tip = st.name + (stationToggleable(st) ? '' : ' (automatic)');
+      html += '<th class="colh' + auto + '" title="' + esc(tip) + '">' + esc(st.shortName || st.id) + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+
+    const songs = radioSongs.slice().sort((a, b) =>
+      (a.artist || '').localeCompare(b.artist || '') || (a.title || '').localeCompare(b.title || ''));
+
+    let shown = 0;
+    songs.forEach((song) => {
+      if (filter) {
+        const hay = ((song.artist || '') + ' ' + (song.title || '') + ' ' + (song.album || '')).toLowerCase();
+        if (hay.indexOf(filter) === -1) return;
+      }
+      if (onlyChanged) {
+        let has = false;
+        for (const st of cols) {
+          if (stationToggleable(st) && radioDirty.has(st.id + '|' + song.id)) { has = true; break; }
+        }
+        if (!has) return;
+      }
+      shown++;
+      html += '<tr><td class="stick s0">' + esc(song.artist) + '</td>' +
+        '<td class="stick s1">' + esc(song.title) + '</td>' +
+        '<td class="alb" title="' + esc(song.album) + '">' + esc(song.album) + '</td>';
+      cols.forEach((st) => {
+        if (stationToggleable(st)) {
+          const on = songIdsOf(st).indexOf(song.id) !== -1;
+          const chg = radioDirty.has(st.id + '|' + song.id);
+          html += '<td class="cellwrap"><span class="cell-toggle' + (on ? ' on' : '') + (chg ? ' chg' : '') +
+            '" data-st="' + esc(st.id) + '" data-song="' + esc(song.id) + '"></span></td>';
+        } else {
+          const on = computedMember(st, song, chartIds);
+          html += '<td class="cellwrap"><span class="cell-auto' + (on ? ' on' : '') + '" title="automatic"></span></td>';
+        }
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    if (!shown) html = '<div style="padding:20px;color:var(--muted)">No songs match.</div>';
+    $('radioWrap').innerHTML = html;
+    updateRadioCount();
+  }
+
+  function updateRadioCount() {
+    const n = radioDirty.size;
+    $('radioStats').textContent = radioSongs.length + ' songs · ' + radioStations.length +
+      ' stations · ' + n + ' unsaved change' + (n === 1 ? '' : 's');
+    $('radioSaveBtn').disabled = n === 0;
+  }
+
+  function onRadioCellClick(e) {
+    const cell = e.target.closest('.cell-toggle');
+    if (!cell) return;
+    const stId = cell.dataset.st, songId = cell.dataset.song;
+    const st = radioStations.find((x) => x.id === stId);
+    if (!st) return;
+    if (!Array.isArray(st.songs)) st.songs = [];
+    const idx = songIdsOf(st).indexOf(songId);
+    if (idx === -1) {
+      st.songs.push(st.id === 'the-hits' ? { songId: songId, introClips: [] } : songId);
+    } else {
+      st.songs = st.songs.filter((en) => ((en && typeof en === 'object') ? en.songId : en) !== songId);
+    }
+    const key = stId + '|' + songId;
+    const wasMember = radioOrigMembership[stId] && radioOrigMembership[stId].has(songId);
+    const nowMember = songIdsOf(st).indexOf(songId) !== -1;
+    if (Boolean(wasMember) === nowMember) radioDirty.delete(key); else radioDirty.add(key);
+    cell.classList.toggle('on', nowMember);
+    cell.classList.toggle('chg', radioDirty.has(key));
+    updateRadioCount();
+  }
+
+  window.saveRadio = async function () {
+    if (radioDirty.size === 0) return toast('No changes to save');
+    const btn = $('radioSaveBtn');
+    btn.disabled = true;
+    $('radioMsg').textContent = 'Saving…';
+    try {
+      const body = {
+        message: 'HTR Studio: radio assignments (' + radioDirty.size + ' change' + (radioDirty.size === 1 ? '' : 's') + ')',
+        content: b64encode(JSON.stringify({ stations: radioStations }, null, 2)),
+        sha: radioSha
+      };
+      const out = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/radio-stations.json', { method: 'PUT', body: body });
+      radioSha = out.content.sha;
+      radioDirty = new Set();
+      snapshotMembership();
+      renderRadio();
+      $('radioMsg').textContent = 'Saved.';
+      $('radioAfter').classList.remove('hidden');
+      toast('Radio assignments saved');
+    } catch (e) {
+      $('radioMsg').textContent = '';
+      if (String(e.message).indexOf('does not match') !== -1 || String(e.message).indexOf('409') !== -1) {
+        toast('Someone/something else changed the file. Hit Reload, then redo — your unsaved toggles will be lost.', true);
+      } else {
+        toast('Save failed: ' + e.message, true);
+      }
+    } finally {
+      btn.disabled = radioDirty.size === 0;
+    }
+  };
+
+  window.radioPublishDry = async function () {
+    try {
+      await dispatch('publish-radio.yml', { dry_run: 'true' });
+      toast('Publish HTR Radio (dry run) started — check Recent runs.');
+      $('radioAfter').classList.add('hidden');
+      showTab('dashboard');
+      startPolling();
+    } catch (e) {
+      toast('Dispatch failed: ' + e.message, true);
+    }
+  };
+
   // ---------- boot ----------
   $('unlockBtn').onclick = unlock;
   $('patInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') unlock(); });
+
+  // radio dashboard listeners
+  $('radioWrap').addEventListener('click', onRadioCellClick);
+  let radioFilterTimer = null;
+  $('radioFilter').addEventListener('input', () => {
+    clearTimeout(radioFilterTimer);
+    radioFilterTimer = setTimeout(renderRadio, 150);
+  });
+  $('radioOnlyChanged').addEventListener('change', renderRadio);
 
   const saved = localStorage.getItem(PAT_KEY);
   if (saved) {
