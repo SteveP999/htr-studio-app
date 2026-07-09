@@ -145,6 +145,7 @@
   <nav>
     <button id="tab-dashboard" class="active" onclick="window.showTab('dashboard')">Dashboard</button>
     <button id="tab-artists" onclick="window.showTab('artists')">Artists</button>
+    <button id="tab-newartist" onclick="window.showTab('newartist')">New Artist</button>
     <button id="tab-addsong" onclick="window.showTab('addsong')">Add Song</button>
     <button id="tab-extras" onclick="window.showTab('extras')">Song Extras</button>
     <button id="tab-radio" onclick="window.showTab('radio')">Radio</button>
@@ -430,6 +431,54 @@
       </div>
     </section>
 
+    <!-- ============ NEW ARTIST ============ -->
+    <section id="view-newartist" class="hidden">
+      <div class="card editor" style="max-width:720px">
+        <h3>New Artist</h3>
+        <div class="sub">Creates the artist, a new GitHub repo + site, uploads the images, and
+        publishes. Add songs afterward with the Add Song tab. You'll finish with one manual
+        step at Namecheap (shown at the end).</div>
+        <label>Artist name</label>
+        <input id="naName" type="text" oninput="window.naPreview()">
+        <div class="sub" id="naPreviewLine"></div>
+        <label>Genre (sets the site's theme automatically)</label>
+        <input id="naGenre" type="text" placeholder="e.g. Texas Country / Red Dirt">
+        <label>Tagline</label>
+        <input id="naTagline" type="text">
+        <div class="toggles">
+          <label class="chk"><input type="checkbox" id="naActive" checked> Active (show on homepage roster)</label>
+          <label class="chk"><input type="checkbox" id="naRadio" checked> Include on HTR Radio</label>
+        </div>
+
+        <label style="margin-top:22px;color:var(--warn)">— Images (PNG) —</label>
+        <div class="sub">Logo is required; the rest are recommended. Anything missing can be added later.</div>
+        <label>Logo (transparent PNG)</label>
+        <input type="file" id="na-file-logo" accept="image/png">
+        <label>Roster photo</label>
+        <input type="file" id="na-file-roster-photo" accept="image/png">
+        <label>Hero photo</label>
+        <input type="file" id="na-file-hero-photo" accept="image/png">
+        <label>Discography background</label>
+        <input type="file" id="na-file-discography-bg" accept="image/png">
+        <label>Video background</label>
+        <input type="file" id="na-file-video-bg" accept="image/png">
+        <label>Promo photo 1</label>
+        <input type="file" id="na-file-photo-1" accept="image/png">
+        <label>Promo photo 2</label>
+        <input type="file" id="na-file-photo-2" accept="image/png">
+        <label>Promo photo 3</label>
+        <input type="file" id="na-file-photo-3" accept="image/png">
+
+        <div class="save-bar">
+          <button class="btn btn-red" id="naCreateBtn" onclick="window.createArtist()">Create artist + publish</button>
+        </div>
+        <pre id="naLog" style="white-space:pre-wrap;font-size:13px;color:var(--muted);margin-top:12px"></pre>
+        <div class="after-save hidden" id="naAfter">
+          <p id="naDone"></p>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -535,7 +584,7 @@
 
   // ---------- tabs ----------
   window.showTab = function (name) {
-    ['dashboard', 'artists', 'addsong', 'extras', 'radio', 'top20', 'lyrics'].forEach((t) => {
+    ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'radio', 'top20', 'lyrics'].forEach((t) => {
       $('view-' + t).classList.toggle('hidden', t !== name);
       $('tab-' + t).classList.toggle('active', t === name);
     });
@@ -1600,6 +1649,123 @@
     a.href = URL.createObjectURL(blob);
     a.download = songId + '-timestamps.txt';
     a.click();
+  };
+
+  // ---------- new artist ----------
+  const NA_ASSETS = [
+    ['logo', 'images/logos/', '-logo.png', false],
+    ['roster-photo', 'images/artist/', '-roster-photo.png', true],
+    ['hero-photo', 'images/artist/', '-hero-photo.png', true],
+    ['discography-bg', 'images/artist/', '-discography-bg.png', true],
+    ['video-bg', 'images/artist/', '-video-bg.png', true],
+    ['photo-1', 'images/artist/', '-photo-1.png', true],
+    ['photo-2', 'images/artist/', '-photo-2.png', true],
+    ['photo-3', 'images/artist/', '-photo-3.png', true]
+  ];
+  const LABEL_REPO_NAME = 'hello-texas-records';
+
+  window.naPreview = function () {
+    const id = slugify($('naName').value.trim());
+    $('naPreviewLine').textContent = id
+      ? ('id: ' + id + '   ·   site: https://' + id + '.hellotexasrecords.com   ·   repo: ' + OWNER + '/' + id)
+      : '';
+  };
+
+  function naLog(msg) { $('naLog').textContent += msg + '\n'; }
+
+  window.createArtist = async function () {
+    const name = $('naName').value.trim();
+    const genre = $('naGenre').value.trim();
+    const tagline = $('naTagline').value.trim();
+    if (!name) return toast('Artist name required', true);
+    if (!genre) return toast('Genre required (it sets the theme)', true);
+    if (!$('na-file-logo').files[0]) return toast('Logo image is required', true);
+    const id = slugify(name);
+    const repo = OWNER + '/' + id;
+    const siteUrl = 'https://' + id + '.hellotexasrecords.com';
+    const active = $('naActive').checked, radio = $('naRadio').checked;
+    const btn = $('naCreateBtn');
+    btn.disabled = true;
+    $('naLog').textContent = '';
+    $('naAfter').classList.add('hidden');
+    try {
+      naLog('Creating repo ' + repo + ' …');
+      try {
+        await gh('/user/repos', { method: 'POST', body: { name: id, private: false, auto_init: true, description: 'HTR artist site — ' + name } });
+        naLog('  repo created.');
+      } catch (e) {
+        if (String(e.message).toLowerCase().indexOf('already exists') !== -1) naLog('  repo already exists — continuing.');
+        else throw e;
+      }
+      await new Promise((r) => setTimeout(r, 1500)); // let auto-init settle
+
+      for (const [key, dir, suffix, roster] of NA_ASSETS) {
+        const f = $('na-file-' + key).files[0];
+        if (!f) { naLog('  (skip ' + key + ' — none provided)'); continue; }
+        const b64 = await fileToBase64(f);
+        naLog('  uploading ' + key + ' …');
+        await putFile(repo, dir + id + suffix, b64, 'HTR: ' + key + ' for ' + id);
+        if (roster) {
+          await putFile(OWNER + '/' + LABEL_REPO_NAME, 'Roster Photos/' + id + '/' + id + '-' + key + '.png', b64, 'HTR roster: ' + id + ' ' + key);
+        }
+      }
+
+      naLog('Writing CNAME + .nojekyll …');
+      await putFile(repo, 'CNAME', b64encode(id + '.hellotexasrecords.com\n'), 'HTR: CNAME');
+      await putFile(repo, '.nojekyll', b64encode(''), 'HTR: nojekyll');
+
+      naLog('Adding the artist to master data …');
+      const af = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/artists.json');
+      const list = JSON.parse(b64decode(af.content));
+      if (!list.some((a) => a.id === id)) {
+        list.push({
+          id: id, name: name, githubRepo: repo, siteUrl: siteUrl, genre: genre, tagline: tagline,
+          status: active ? 'active' : 'developing', active: active,
+          includeOnLabelHome: active, includeOnRadio: radio, latestTitle: '',
+          logo: 'images/logos/' + id + '-logo.png',
+          heroImage: 'Roster Photos/' + id + '/' + id + '-roster-photo.png',
+          dataFiles: { songs: true, radio: true, latest: true },
+          heroLogoScale: 1, heroLogoMaxHeight: 420, heroLogoOffsetY: 0, heroLogoMobileScale: 1,
+          imageCandidates: [
+            'Roster Photos/' + id + '/' + id + '-roster-photo.png',
+            'Roster Photos/' + id + '-roster-photo.png', 'htr-logo.png'
+          ]
+        });
+        await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/artists.json', {
+          method: 'PUT',
+          body: { message: 'HTR Studio: add artist ' + id, content: b64encode(JSON.stringify(list, null, 2)), sha: af.sha }
+        });
+        naLog('  artist added to artists.json.');
+      } else {
+        naLog('  artist already in artists.json — continuing.');
+      }
+
+      naLog('Enabling GitHub Pages …');
+      try {
+        await gh('/repos/' + repo + '/pages', { method: 'POST', body: { source: { branch: 'main', path: '/' } } });
+        naLog('  Pages enabled.');
+      } catch (e) {
+        if (String(e.message).toLowerCase().indexOf('already') !== -1) naLog('  Pages already enabled.');
+        else naLog('  Pages note: ' + e.message + ' (enable in the repo Settings → Pages if the site is blank).');
+      }
+
+      naLog('Building the site + refreshing homepage …');
+      await dispatch('build-artist.yml', { artist_id: id, dry_run: 'false' });
+      await dispatch('publish-homepage.yml', { dry_run: 'false' });
+      naLog('  build + homepage dispatched — watch Recent runs on the Dashboard.');
+
+      $('naDone').innerHTML = 'Artist created. <b>Last step (manual):</b> in Namecheap DNS for ' +
+        'hellotexasrecords.com, add a CNAME record — Host: <b>' + id + '</b> → Value: ' +
+        '<b>stevep999.github.io</b>. Once DNS + Pages propagate, ' + siteUrl + ' is live.';
+      $('naAfter').classList.remove('hidden');
+      toast('Artist created — see the Namecheap step below');
+      await loadArtists();
+    } catch (e) {
+      naLog('ERROR: ' + e.message);
+      toast('Create failed: ' + e.message, true);
+    } finally {
+      btn.disabled = false;
+    }
   };
 
   // ---------- boot ----------
