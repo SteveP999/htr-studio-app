@@ -295,6 +295,17 @@
           <span id="exOrderMsg" style="color:var(--muted);font-size:14px"></span>
         </div>
 
+        <label style="margin-top:26px;color:var(--warn)">— Replace Cover —</label>
+        <div class="sub">Swap the artwork for the selected song. Uploads a new PNG over the
+        existing cover in the artist repo (same filename) and rebuilds the site. The website
+        image can take a few minutes to refresh (GitHub image cache).</div>
+        <label>New cover (PNG)</label>
+        <input type="file" id="exCoverFile" accept="image/png">
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.exReplaceCover()">Replace cover + rebuild</button>
+          <span id="exCoverMsg" style="color:var(--muted);font-size:14px"></span>
+        </div>
+
         <div class="after-save hidden" id="exAfter">
           <p>Saved. Publish when ready:</p>
           <button class="btn btn-blue" onclick="window.exPublish()">Rebuild artist site + homepage (LIVE)</button>
@@ -1186,6 +1197,31 @@
     } catch (e) {
       $('exMoveMsg').textContent = '';
       toast('Move failed: ' + e.message, true);
+    }
+  };
+
+  window.exReplaceCover = async function () {
+    const songId = $('exSong').value;
+    const song = exSongs.find((s) => s.id === songId);
+    const file = $('exCoverFile').files[0];
+    if (!song) return toast('Pick a song', true);
+    if (!file) return toast('Choose a PNG cover', true);
+    const cover = song.coverImage || '';
+    const m = cover.match(/raw\.githubusercontent\.com\/([^/]+\/[^/]+)\/[^/]+\/(.+)$/);
+    if (!m) return toast('This song has no repo cover URL to replace', true);
+    const repo = m[1], path = m[2];
+    if (!confirm('Replace the cover for "' + song.title + '"? (' + path + ')')) return;
+    $('exCoverMsg').textContent = 'Uploading new cover…';
+    try {
+      const b64 = await fileToBase64(file);
+      await putFile(repo, path, b64, 'HTR Studio: replace cover for ' + songId);
+      await dispatch('build-artist.yml', { artist_id: song.artistId, dry_run: 'false' });
+      $('exCoverMsg').textContent = 'Replaced — site rebuilding.';
+      $('exCoverFile').value = '';
+      toast('Cover replaced; site rebuilding (image cache may take a few minutes)');
+    } catch (e) {
+      $('exCoverMsg').textContent = '';
+      toast('Replace failed: ' + e.message, true);
     }
   };
 
