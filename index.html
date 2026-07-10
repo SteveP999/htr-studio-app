@@ -306,6 +306,18 @@
           <span id="exCoverMsg" style="color:var(--muted);font-size:14px"></span>
         </div>
 
+        <label style="margin-top:26px;color:var(--warn)">— Album Cover —</label>
+        <div class="sub">Upload the shared cover for an album (once per album — e.g. a brand-new
+        album). Uploads to the artist repo and rebuilds the site.</div>
+        <label>Album</label>
+        <select id="exAlbumCoverSel"></select>
+        <label>Album cover (PNG)</label>
+        <input type="file" id="exAlbumCoverFile" accept="image/png">
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.exUploadAlbumCover()">Upload album cover + rebuild</button>
+          <span id="exAlbumCoverMsg" style="color:var(--muted);font-size:14px"></span>
+        </div>
+
         <div class="after-save hidden" id="exAfter">
           <p>Saved. Publish when ready:</p>
           <button class="btn btn-blue" onclick="window.exPublish()">Rebuild artist site + homepage (LIVE)</button>
@@ -330,6 +342,8 @@
         <input id="asAudio" type="text" placeholder="https://www.dropbox.com/scl/fi/...">
         <label>Song cover PNG (uploads to the artist repo)</label>
         <input id="asCover" type="file" accept="image/png">
+        <label>Album cover PNG (only for a NEW album — skip for Singles or if it already exists)</label>
+        <input id="asAlbumCover" type="file" accept="image/png">
         <div class="toggles">
           <label class="chk"><input type="checkbox" id="asLatest" checked> Latest / featured</label>
           <label class="chk"><input type="checkbox" id="asRadio" checked> Include on HTR Radio</label>
@@ -857,6 +871,14 @@
         await putFile(repoFull, 'images/covers/' + coverName, b64, 'HTR Studio: cover for ' + title);
       }
 
+      // 1b. Upload album cover if provided (new album)
+      const albumCoverFile = $('asAlbumCover').files[0];
+      if (albumCoverFile && album.toLowerCase() !== 'singles') {
+        $('asMsg').textContent = 'Uploading album cover...';
+        const ab64 = await fileToBase64(albumCoverFile);
+        await putFile(repoFull, 'images/covers/' + artistId + '-' + albumSlug + '-ALBUM-cover.png', ab64, 'HTR Studio: album cover for ' + album);
+      }
+
       // 2. Load master songs + artists fresh
       $('asMsg').textContent = 'Updating master data...';
       const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
@@ -967,13 +989,18 @@
         o.value = a; o.textContent = a;
         asel.appendChild(o);
       });
-      // reorder dropdown: real albums only (Singles has no meaningful order)
+      // reorder + album-cover dropdowns: real albums only (Singles excluded)
+      const realAlbums = albums.filter((a) => a.toLowerCase() !== 'singles');
       const rsel = $('exReorderAlbum');
+      const acsel = $('exAlbumCoverSel');
       rsel.innerHTML = '';
-      albums.filter((a) => a.toLowerCase() !== 'singles').forEach((a) => {
+      acsel.innerHTML = '';
+      realAlbums.forEach((a) => {
         const o = document.createElement('option');
         o.value = a; o.textContent = a;
         rsel.appendChild(o);
+        const o2 = o.cloneNode(true);
+        acsel.appendChild(o2);
       });
       window.exRenderReorder();
     } catch (e) {
@@ -1197,6 +1224,30 @@
     } catch (e) {
       $('exMoveMsg').textContent = '';
       toast('Move failed: ' + e.message, true);
+    }
+  };
+
+  window.exUploadAlbumCover = async function () {
+    const artistId = $('exArtist').value;
+    const album = $('exAlbumCoverSel').value;
+    const file = $('exAlbumCoverFile').files[0];
+    if (!album) return toast('Pick an album', true);
+    if (!file) return toast('Choose a PNG', true);
+    const artist = artists.find((a) => a.id === artistId);
+    if (!artist || !artist.githubRepo) return toast('Artist repo not found', true);
+    const path = 'images/covers/' + artistId + '-' + slugify(album) + '-ALBUM-cover.png';
+    if (!confirm('Upload album cover for "' + album + '"?\n(' + path + ')')) return;
+    $('exAlbumCoverMsg').textContent = 'Uploading…';
+    try {
+      const b64 = await fileToBase64(file);
+      await putFile(artist.githubRepo, path, b64, 'HTR Studio: album cover for ' + album);
+      await dispatch('build-artist.yml', { artist_id: artistId, dry_run: 'false' });
+      $('exAlbumCoverMsg').textContent = 'Uploaded — site rebuilding.';
+      $('exAlbumCoverFile').value = '';
+      toast('Album cover uploaded; site rebuilding (image cache may take a few min)');
+    } catch (e) {
+      $('exAlbumCoverMsg').textContent = '';
+      toast('Failed: ' + e.message, true);
     }
   };
 
