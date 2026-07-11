@@ -519,6 +519,9 @@
 
         <label>Artist</label>
         <select id="vidArtist" onchange="window.vidArtistChange()"></select>
+        <label>Song <span style="color:var(--muted);font-weight:400">— pick from the catalog so exports auto-save to its Dropbox “Video Files” folder</span></label>
+        <select id="vidSong" onchange="window.vidSongChange()"></select>
+        <div class="sub" id="vidSongNote" style="margin-top:4px"></div>
         <label>Song title</label>
         <input id="vidTitle" type="text">
         <label>Genre</label>
@@ -1954,6 +1957,9 @@
   let vidScenes = [];
   let vidBibleData = null;
   let vidJobId = null;
+  let vidSongsAll = [];
+  let vidMp3Url = '';
+  let vidSongId = '';
   let vidPoll = null;
 
   window.loadVideo = function () {
@@ -1968,9 +1974,42 @@
     vidLoaded = true;
   };
 
-  window.vidArtistChange = function () {
+  window.vidArtistChange = async function () {
     const a = artists.find((x) => x.id === $('vidArtist').value);
     if (a && !$('vidGenre').value) $('vidGenre').value = a.genre || '';
+    // load this artist's catalog songs into the picker (mirrors the Lyrics tab)
+    const sel = $('vidSong');
+    sel.innerHTML = '<option value="">Loading…</option>';
+    try {
+      if (!vidSongsAll.length) {
+        const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+        vidSongsAll = JSON.parse(b64decode(sf.content));
+      }
+      const mine = vidSongsAll.filter((s) => s.artistId === $('vidArtist').value);
+      sel.innerHTML = '<option value="">— pick a song (optional) —</option>';
+      mine.forEach((s) => {
+        const o = document.createElement('option');
+        o.value = s.id; o.textContent = (s.album || '?') + ' — ' + s.title;
+        sel.appendChild(o);
+      });
+    } catch (e) {
+      sel.innerHTML = '<option value="">(could not load songs)</option>';
+    }
+  };
+
+  window.vidSongChange = function () {
+    const s = vidSongsAll.find((x) => x.id === $('vidSong').value);
+    if (!s) { vidMp3Url = ''; vidSongId = ''; return; }
+    vidSongId = s.id;
+    vidMp3Url = s.audioFile || s.audioSrc || s.audio || '';
+    $('vidTitle').value = s.title || $('vidTitle').value;
+    if (s.genre) $('vidGenre').value = s.genre;
+    const note = $('vidSongNote');
+    if (note) note.textContent = vidMp3Url
+      ? (vidMp3Url.indexOf('dropbox.com') !== -1
+          ? '✓ Exports will auto-save to this song’s Video Files folder in Dropbox.'
+          : 'This song’s audio link isn’t a Dropbox link — exports won’t auto-save (download them instead).')
+      : 'No audio link on this song — exports won’t auto-save.';
   };
 
   function mmssToSec(s) {
@@ -2097,6 +2136,8 @@
       title: title, artist: artist ? artist.name : '', genre: $('vidGenre').value.trim(),
       suno_prompt: $('vidSuno').value.trim(),
       producer_notes: $('vidNotes').value.trim(),
+      mp3_url: vidMp3Url,
+      song_id: vidSongId,
       scenes: vidScenes.map((s) => ({ timestamp: s.tsLabel, duration: s.dur, section: s.section, lyric: s.lyric }))
     };
     const jobId = slugify(artistId + '-' + title) + '-' + Date.now().toString(36);
