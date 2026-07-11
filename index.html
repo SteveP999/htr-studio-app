@@ -2115,6 +2115,11 @@
         bible.acts.map((a) => '<li><b>' + esc(a.name || '') + '</b>' + (a.sections ? ' <span style="color:var(--muted)">(' + esc(a.sections) + ')</span>' : '') + ' — ' + esc(a.beat || '') + '</li>').join('') +
         '</ul></div>';
     }
+    if (Array.isArray(bible.anchor_locations) && bible.anchor_locations.length) {
+      html += '<div class="card" style="padding:12px;margin-bottom:10px"><b>Anchor locations</b><ul style="margin:6px 0 0 18px">' +
+        bible.anchor_locations.map((a) => '<li><b>' + esc(a.name || '') + '</b> — ' + esc(a.look || '') + (a.wardrobe ? ' <span style="color:var(--muted)">[' + esc(a.wardrobe) + ']</span>' : '') + '</li>').join('') +
+        '</ul></div>';
+    }
     (bible.scenes || []).forEach((sc, i) => {
       html += '<div class="card" style="margin-top:10px;padding:14px">' +
         '<div class="sub" style="margin-bottom:8px"><b>#' + (sc.n || i + 1) + '</b> · ' + esc(sc.timestamp || '') +
