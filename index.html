@@ -534,7 +534,9 @@
         <div id="vidSceneWrap" class="radio-wrap" style="max-height:46vh;margin-top:8px"></div>
         <div class="sub" style="margin-top:8px">Trim to taste: ✕ deletes a scene, ⤵ merges it into the next. Rows under 6s are flagged.</div>
 
-        <div class="save-bar" style="margin-top:14px">
+        <label style="margin-top:14px">Producer notes (direction the AI must obey — story beats, the arc, the climax)</label>
+        <textarea id="vidNotes" rows="3" placeholder="e.g. Transformation good-girl → cutting-edge. Office lighting → explosive color. Her anger boils into an EXPLOSION at the bridge. 'I'll walk out and flip the bird' = she physically walks out of work."></textarea>
+        <div class="save-bar" style="margin-top:6px">
           <button class="btn btn-red" id="vidBibleBtn" onclick="window.vidGenerateBible()">Generate Creative Bible</button>
           <span id="vidBibleStatus" style="color:var(--muted);font-size:13px"></span>
         </div>
@@ -2057,6 +2059,7 @@
     const job = {
       title: title, artist: artist ? artist.name : '', genre: $('vidGenre').value.trim(),
       suno_prompt: $('vidSuno').value.trim(),
+      producer_notes: $('vidNotes').value.trim(),
       scenes: vidScenes.map((s) => ({ timestamp: s.tsLabel, duration: s.dur, section: s.section, lyric: s.lyric }))
     };
     const jobId = slugify(artistId + '-' + title) + '-' + Date.now().toString(36);
@@ -2107,6 +2110,11 @@
     $('vbMaster').value = bible.master_block || '';
     const wrap = $('vbScenes');
     let html = '';
+    if (Array.isArray(bible.acts) && bible.acts.length) {
+      html += '<div class="card" style="padding:12px;margin-bottom:10px"><b>Acts</b><ul style="margin:6px 0 0 18px">' +
+        bible.acts.map((a) => '<li><b>' + esc(a.name || '') + '</b>' + (a.sections ? ' <span style="color:var(--muted)">(' + esc(a.sections) + ')</span>' : '') + ' — ' + esc(a.beat || '') + '</li>').join('') +
+        '</ul></div>';
+    }
     (bible.scenes || []).forEach((sc, i) => {
       html += '<div class="card" style="margin-top:10px;padding:14px">' +
         '<div class="sub" style="margin-bottom:8px"><b>#' + (sc.n || i + 1) + '</b> · ' + esc(sc.timestamp || '') +
