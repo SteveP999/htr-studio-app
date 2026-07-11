@@ -151,6 +151,7 @@
     <button id="tab-radio" onclick="window.showTab('radio')">Radio</button>
     <button id="tab-top20" onclick="window.showTab('top20')">Top 20</button>
     <button id="tab-lyrics" onclick="window.showTab('lyrics')">Lyrics</button>
+    <button id="tab-video" onclick="window.showTab('video')">Video</button>
   </nav>
   <main>
 
@@ -504,6 +505,56 @@
       </div>
     </section>
 
+    <!-- ============ VIDEO ============ -->
+    <section id="view-video" class="hidden">
+      <div class="card editor" style="max-width:900px">
+        <h3>Video — Lyric Video Director</h3>
+        <div class="sub">Paste a song's timestamped lyrics, trim scenes to your 6–10s pacing, then let the
+        AI creative director build a unifying visual story + per-scene prompts you edit as Producer. Copy each
+        prompt into ChatGPT (free) or generate with gpt-image-1 (needs an OpenAI key).</div>
+
+        <label>Artist</label>
+        <select id="vidArtist" onchange="window.vidArtistChange()"></select>
+        <label>Song title</label>
+        <input id="vidTitle" type="text">
+        <label>Genre</label>
+        <input id="vidGenre" type="text">
+        <label>Suno style prompt (the sonic vibe to translate visually)</label>
+        <textarea id="vidSuno" rows="3" placeholder="Female alternative rock, mid-tempo, emotional and restrained…"></textarea>
+        <label>Timestamped lyrics (paste the sheet)</label>
+        <textarea id="vidTimes" rows="8" placeholder="0:22&#9;Here late again on a Friday night&#10;0:23&#9;They all head out, right on time&#10;…"></textarea>
+        <div class="save-bar">
+          <button class="btn btn-blue" onclick="window.vidLoadScenes()">Load scenes</button>
+          <span id="vidSceneStats" style="color:var(--muted);font-size:13px"></span>
+        </div>
+
+        <div id="vidSceneWrap" class="radio-wrap" style="max-height:46vh;margin-top:8px"></div>
+        <div class="sub" style="margin-top:8px">Trim to taste: ✕ deletes a scene, ⤵ merges it into the next. Rows under 6s are flagged.</div>
+
+        <div class="save-bar" style="margin-top:14px">
+          <button class="btn btn-red" id="vidBibleBtn" onclick="window.vidGenerateBible()">Generate Creative Bible</button>
+          <span id="vidBibleStatus" style="color:var(--muted);font-size:13px"></span>
+        </div>
+
+        <div id="vidBible" class="hidden" style="margin-top:16px">
+          <label>Logline</label>
+          <textarea id="vbLogline" rows="2"></textarea>
+          <label>Concept (world · protagonist · arc)</label>
+          <textarea id="vbConcept" rows="4"></textarea>
+          <label>Throughline (the one visual idea)</label>
+          <textarea id="vbThrough" rows="2"></textarea>
+          <label>Master art-direction block (prepended to every prompt)</label>
+          <textarea id="vbMaster" rows="5"></textarea>
+          <div class="save-bar">
+            <button class="btn btn-red" onclick="window.vidSaveBible()">Save bible</button>
+            <span id="vbSaveMsg" style="color:var(--muted);font-size:13px"></span>
+          </div>
+          <label style="margin-top:14px;color:var(--warn)">— Scenes (edit Setting / Lighting / Scene, then Copy) —</label>
+          <div id="vbScenes"></div>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -609,13 +660,14 @@
 
   // ---------- tabs ----------
   window.showTab = function (name) {
-    ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'radio', 'top20', 'lyrics'].forEach((t) => {
+    ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'radio', 'top20', 'lyrics', 'video'].forEach((t) => {
       $('view-' + t).classList.toggle('hidden', t !== name);
       $('tab-' + t).classList.toggle('active', t === name);
     });
     if (name === 'radio' && !radioLoaded) window.loadRadio();
     if (name === 'top20' && !t20Loaded) window.loadTop20();
     if (name === 'lyrics' && !lyrLoaded) window.loadLyrics();
+    if (name === 'video' && !vidLoaded) window.loadVideo();
   };
 
   function applyLyricsOnly() {
@@ -1853,6 +1905,211 @@
     } finally {
       btn.disabled = false;
     }
+  };
+
+  // ---------- video (lyric video director) ----------
+  let vidLoaded = false;
+  let vidScenes = [];
+  let vidBibleData = null;
+  let vidJobId = null;
+  let vidPoll = null;
+
+  window.loadVideo = function () {
+    const sel = $('vidArtist');
+    sel.innerHTML = '';
+    artists.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((a) => {
+      const o = document.createElement('option');
+      o.value = a.id; o.textContent = a.name;
+      sel.appendChild(o);
+    });
+    window.vidArtistChange();
+    vidLoaded = true;
+  };
+
+  window.vidArtistChange = function () {
+    const a = artists.find((x) => x.id === $('vidArtist').value);
+    if (a && !$('vidGenre').value) $('vidGenre').value = a.genre || '';
+  };
+
+  function mmssToSec(s) {
+    const m = String(s).match(/(\d+):(\d{2})/);
+    return m ? (+m[1] * 60 + +m[2]) : null;
+  }
+  function secToMMSS(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+
+  window.vidLoadScenes = function () {
+    const raw = $('vidTimes').value;
+    const rows = [];
+    let section = '';
+    raw.split('\n').forEach((line) => {
+      line = line.replace(/\r$/, '');
+      if (!line.trim()) return;
+      const tab = line.indexOf('\t') !== -1 ? line.indexOf('\t') : line.search(/\s{2,}|\s(?=\S)/);
+      let tsLabel, text;
+      const m = line.match(/^\s*(\d+:\d{2})\s*[\t ]+(.*)$/);
+      if (m) { tsLabel = m[1]; text = m[2].trim(); }
+      else { tsLabel = ''; text = line.trim(); }
+      const sec = mmssToSec(tsLabel);
+      const isSection = /^\[.*\]$/.test(text);
+      if (isSection) {
+        section = text.replace(/^\[|\]$/g, '').replace(/\s*-\s*instrumental$/i, '').trim();
+        rows.push({ tsLabel, seconds: sec, kind: 'section', section: section, lyric: '' });
+      } else {
+        rows.push({ tsLabel, seconds: sec, kind: 'lyric', section: section, lyric: text });
+      }
+    });
+    vidScenes = rows;
+    vidRenderScenes();
+  };
+
+  function vidRecalcDurations() {
+    for (let i = 0; i < vidScenes.length; i++) {
+      const a = vidScenes[i].seconds, b = (i + 1 < vidScenes.length) ? vidScenes[i + 1].seconds : null;
+      vidScenes[i].dur = (a != null && b != null) ? Math.max(0, b - a) : '';
+    }
+  }
+
+  function vidRenderScenes() {
+    vidRecalcDurations();
+    const wrap = $('vidSceneWrap');
+    if (!vidScenes.length) { wrap.innerHTML = '<div style="padding:14px;color:var(--muted)">No scenes — paste a sheet and Load.</div>'; $('vidSceneStats').textContent = ''; return; }
+    let html = '<table class="t20grid"><thead><tr><th>#</th><th>Time</th><th>Dur</th><th>Section</th><th>Lyric / Beat</th><th></th></tr></thead><tbody>';
+    vidScenes.forEach((s, i) => {
+      const dur = s.dur === '' ? '—' : s.dur + 's';
+      const shortFlag = (typeof s.dur === 'number' && s.dur < 6) ? ' style="color:var(--warn)"' : '';
+      const label = s.kind === 'section' ? ('<i>[' + esc(s.section) + ']</i>') : esc(s.lyric);
+      html += '<tr><td class="t20-pos">' + (i + 1) + '</td><td>' + esc(s.tsLabel) + '</td>' +
+        '<td' + shortFlag + '>' + dur + '</td><td style="color:var(--muted)">' + esc(s.section) + '</td>' +
+        '<td>' + label + '</td>' +
+        '<td class="t20-actions">' +
+        '<button onclick="window.vidMergeScene(' + i + ')"' + (i === vidScenes.length - 1 ? ' disabled' : '') + ' title="merge into next">⤵</button>' +
+        '<button onclick="window.vidDeleteScene(' + i + ')">✕</button>' +
+        '</td></tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+    const durs = vidScenes.map((s) => s.dur).filter((d) => typeof d === 'number');
+    const avg = durs.length ? (durs.reduce((a, b) => a + b, 0) / durs.length).toFixed(1) : '0';
+    $('vidSceneStats').textContent = vidScenes.length + ' scenes · avg ' + avg + 's/scene';
+  }
+
+  window.vidDeleteScene = function (i) { vidScenes.splice(i, 1); vidRenderScenes(); };
+  window.vidMergeScene = function (i) {
+    if (i + 1 >= vidScenes.length) return;
+    const a = vidScenes[i], b = vidScenes[i + 1];
+    a.lyric = [a.lyric, b.lyric].filter(Boolean).join(' / ');
+    if (!a.section && b.section) a.section = b.section;
+    vidScenes.splice(i + 1, 1);
+    vidRenderScenes();
+  };
+
+  window.vidGenerateBible = async function () {
+    if (!vidScenes.length) return toast('Load scenes first', true);
+    const title = $('vidTitle').value.trim();
+    if (!title) return toast('Song title required', true);
+    vidRecalcDurations();
+    const artistId = $('vidArtist').value;
+    const artist = artists.find((a) => a.id === artistId);
+    const job = {
+      title: title, artist: artist ? artist.name : '', genre: $('vidGenre').value.trim(),
+      suno_prompt: $('vidSuno').value.trim(),
+      scenes: vidScenes.map((s) => ({ timestamp: s.tsLabel, duration: s.dur, section: s.section, lyric: s.lyric }))
+    };
+    const jobId = slugify(artistId + '-' + title) + '-' + Date.now().toString(36);
+    vidJobId = jobId;
+    const btn = $('vidBibleBtn'); btn.disabled = true;
+    $('vidBibleStatus').textContent = 'Submitting…';
+    $('vidBible').classList.add('hidden');
+    try {
+      await lyrCommitFile('data/video-jobs/' + jobId + '.json', JSON.stringify(job, null, 2), 'Video job: ' + jobId);
+      await dispatch('video-bible.yml', { job_id: jobId });
+      $('vidBibleStatus').textContent = 'The director is working (cloud, ~1 min)… editable draft appears below.';
+      vidStartBiblePoll(jobId);
+    } catch (e) {
+      $('vidBibleStatus').textContent = '';
+      btn.disabled = false;
+      toast('Failed to start: ' + e.message, true);
+    }
+  };
+
+  function vidStartBiblePoll(jobId) {
+    if (vidPoll) clearInterval(vidPoll);
+    const path = 'data/video-bibles/' + jobId + '.json';
+    const until = Date.now() + 5 * 60 * 1000;
+    vidPoll = setInterval(async () => {
+      try {
+        const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + path + '?ref=main');
+        clearInterval(vidPoll); vidPoll = null;
+        vidRenderBible(JSON.parse(b64decode(f.content)));
+        $('vidBibleStatus').textContent = 'Draft ready — you’re the Producer now. Edit, then copy prompts.';
+        $('vidBibleBtn').disabled = false;
+      } catch (e) {
+        if (Date.now() > until) {
+          clearInterval(vidPoll); vidPoll = null;
+          $('vidBibleStatus').textContent = 'Timed out — check the run on the Dashboard (is the OPENAI_API_KEY secret set?).';
+          $('vidBibleBtn').disabled = false;
+        }
+      }
+    }, 12000);
+  }
+
+  function vidRenderBible(bible) {
+    vidBibleData = bible;
+    $('vbLogline').value = bible.logline || '';
+    $('vbConcept').value = bible.concept || '';
+    $('vbThrough').value = bible.throughline || '';
+    $('vbMaster').value = bible.master_block || '';
+    const wrap = $('vbScenes');
+    let html = '';
+    (bible.scenes || []).forEach((sc, i) => {
+      html += '<div class="card" style="margin-top:10px;padding:14px">' +
+        '<div class="sub" style="margin-bottom:8px"><b>#' + (sc.n || i + 1) + '</b> · ' + esc(sc.timestamp || '') +
+        ' · ' + esc(sc.section || '') + (sc.lyric ? ' · “' + esc(sc.lyric) + '”' : ' · (instrumental)') + '</div>' +
+        '<label>Setting</label><textarea id="vb-set-' + i + '" rows="2">' + esc(sc.setting || '') + '</textarea>' +
+        '<label>Lighting</label><textarea id="vb-lit-' + i + '" rows="2">' + esc(sc.lighting || '') + '</textarea>' +
+        '<label>Scene</label><textarea id="vb-scn-' + i + '" rows="2">' + esc(sc.scene || '') + '</textarea>' +
+        '<div class="save-bar">' +
+        '<button class="btn btn-blue" onclick="window.vidCopyPrompt(' + i + ',\'16:9\')">Copy 16:9</button>' +
+        '<button class="btn btn-ghost" onclick="window.vidCopyPrompt(' + i + ',\'9:16\')">Copy 9:16</button>' +
+        '<span id="vb-msg-' + i + '" style="color:var(--muted);font-size:13px"></span>' +
+        '</div></div>';
+    });
+    wrap.innerHTML = html;
+    $('vidBible').classList.remove('hidden');
+  }
+
+  window.vidCopyPrompt = function (i, aspect) {
+    const master = $('vbMaster').value.trim();
+    const parts = [master, $('vb-set-' + i).value.trim(), $('vb-lit-' + i).value.trim(), $('vb-scn-' + i).value.trim()]
+      .filter(Boolean);
+    const prompt = parts.join(' ') + ', cinematic, ' + aspect + ' aspect ratio.';
+    const ta = document.createElement('textarea');
+    ta.value = prompt; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); $('vb-msg-' + i).textContent = 'copied ' + aspect; } catch (e) { toast('copy failed', true); }
+    document.body.removeChild(ta);
+    setTimeout(() => { const m = $('vb-msg-' + i); if (m) m.textContent = ''; }, 2500);
+  };
+
+  window.vidSaveBible = async function () {
+    if (!vidBibleData || !vidJobId) return toast('Nothing to save yet', true);
+    vidBibleData.logline = $('vbLogline').value;
+    vidBibleData.concept = $('vbConcept').value;
+    vidBibleData.throughline = $('vbThrough').value;
+    vidBibleData.master_block = $('vbMaster').value;
+    (vidBibleData.scenes || []).forEach((sc, i) => {
+      if ($('vb-set-' + i)) {
+        sc.setting = $('vb-set-' + i).value;
+        sc.lighting = $('vb-lit-' + i).value;
+        sc.scene = $('vb-scn-' + i).value;
+        sc.full_prompt = [sc.setting, sc.lighting, sc.scene].filter(Boolean).join(' ');
+      }
+    });
+    $('vbSaveMsg').textContent = 'Saving…';
+    try {
+      await lyrCommitFile('data/video-bibles/' + vidJobId + '.json', JSON.stringify(vidBibleData, null, 2), 'Video bible edit: ' + vidJobId);
+      $('vbSaveMsg').textContent = 'Saved.';
+      toast('Bible saved');
+    } catch (e) { $('vbSaveMsg').textContent = ''; toast('Save failed: ' + e.message, true); }
   };
 
   // ---------- boot ----------
