@@ -452,7 +452,11 @@
           <div class="save-bar">
             <button class="btn btn-blue" onclick="window.lyrCopy()">Copy</button>
             <button class="btn btn-ghost" onclick="window.lyrDownload()">Download .txt</button>
+            <button class="btn btn-ghost" onclick="window.lyrDownloadSrt()">Export .srt (captions)</button>
           </div>
+          <div class="sub" style="margin-top:6px">.srt imports into Filmora/CapCut/Premiere as clean, correct
+          captions — no speech-to-text. In Filmora: delete any auto-captions, then File → Import → Import Media,
+          pick the .srt, drag it onto the timeline.</div>
         </div>
       </div>
     </section>
@@ -1793,6 +1797,39 @@
     a.href = URL.createObjectURL(blob);
     a.download = songId + '-timestamps.txt';
     a.click();
+  };
+  // Build a clean .srt from the "M:SS<tab>text" timestamps. Skips [section] markers.
+  // Cascading end-times guarantee captions never overlap (handles same-second collisions).
+  window.lyrDownloadSrt = function () {
+    const songId = $('lyrSong').value || 'lyrics';
+    const raw = $('lyrOut').value || '';
+    const lines = [];
+    raw.split(/\r?\n/).forEach((ln) => {
+      const m = ln.match(/^\s*(\d+):(\d{2})\s+(.+)$/);
+      if (!m) return;
+      const text = m[3].trim();
+      if (!text || /^\[.*\]$/.test(text)) return; // skip section / instrumental markers
+      lines.push({ sec: parseInt(m[1], 10) * 60 + parseInt(m[2], 10), text: text });
+    });
+    if (!lines.length) { toast('No timestamped lyrics to export yet', true); return; }
+    const pad = (n) => String(n).padStart(2, '0');
+    const tc = (s) => pad(Math.floor(s / 3600)) + ':' + pad(Math.floor((s % 3600) / 60)) + ':' + pad(s % 60) + ',000';
+    const cues = [];
+    let prevEnd = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const start = Math.max(lines[i].sec, prevEnd);
+      const nxt = (i + 1 < lines.length) ? lines[i + 1].sec : (lines[i].sec + 4);
+      const end = nxt > start ? nxt : start + 1;
+      cues.push({ start: start, end: end, text: lines[i].text });
+      prevEnd = end;
+    }
+    const srt = cues.map((c, i) => (i + 1) + '\n' + tc(c.start) + ' --> ' + tc(c.end) + '\n' + c.text + '\n').join('\n');
+    const blob = new Blob([srt], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = songId + '.srt';
+    a.click();
+    toast(cues.length + ' captions exported');
   };
 
   // ---------- new artist ----------
