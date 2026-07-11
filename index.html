@@ -2084,8 +2084,10 @@
       try {
         const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + path + '?ref=main');
         clearInterval(vidPoll); vidPoll = null;
-        vidRenderBible(JSON.parse(b64decode(f.content)));
-        $('vidBibleStatus').textContent = 'Draft ready — you’re the Producer now. Edit, then copy prompts.';
+        const bible = JSON.parse(b64decode(f.content));
+        vidRenderBible(bible);
+        const c = bible._meta ? (' · this bible cost $' + bible._meta.est_cost_usd + ' (' + bible._meta.model + ')') : '';
+        $('vidBibleStatus').textContent = 'Draft ready — you’re the Producer now.' + c;
         $('vidBibleBtn').disabled = false;
       } catch (e) {
         if (Date.now() > until) {
