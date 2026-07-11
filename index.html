@@ -523,8 +523,11 @@
         <textarea id="vidSuno" rows="3" placeholder="Female alternative rock, mid-tempo, emotional and restrained…"></textarea>
         <label>Timestamped lyrics (paste the sheet)</label>
         <textarea id="vidTimes" rows="8" placeholder="0:22&#9;Here late again on a Friday night&#10;0:23&#9;They all head out, right on time&#10;…"></textarea>
+        <label>Total song length (M:SS) — so scenes cover 0:00 to the very end</label>
+        <input id="vidLength" type="text" placeholder="3:21" style="max-width:160px">
         <div class="save-bar">
-          <button class="btn btn-blue" onclick="window.vidLoadScenes()">Load scenes</button>
+          <button class="btn btn-blue" onclick="window.vidLoadScenes()">Load scenes (raw)</button>
+          <button class="btn btn-red" onclick="window.vidAutoTrim()">Auto-trim (suggest pacing)</button>
           <span id="vidSceneStats" style="color:var(--muted);font-size:13px"></span>
         </div>
 
@@ -1937,29 +1940,70 @@
   }
   function secToMMSS(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
-  window.vidLoadScenes = function () {
-    const raw = $('vidTimes').value;
+  function vidParseRaw() {
     const rows = [];
     let section = '';
-    raw.split('\n').forEach((line) => {
+    $('vidTimes').value.split('\n').forEach((line) => {
       line = line.replace(/\r$/, '');
       if (!line.trim()) return;
-      const tab = line.indexOf('\t') !== -1 ? line.indexOf('\t') : line.search(/\s{2,}|\s(?=\S)/);
-      let tsLabel, text;
       const m = line.match(/^\s*(\d+:\d{2})\s*[\t ]+(.*)$/);
-      if (m) { tsLabel = m[1]; text = m[2].trim(); }
-      else { tsLabel = ''; text = line.trim(); }
+      const tsLabel = m ? m[1] : '';
+      const text = m ? m[2].trim() : line.trim();
       const sec = mmssToSec(tsLabel);
-      const isSection = /^\[.*\]$/.test(text);
-      if (isSection) {
+      if (/^\[.*\]$/.test(text)) {
         section = text.replace(/^\[|\]$/g, '').replace(/\s*-\s*instrumental$/i, '').trim();
         rows.push({ tsLabel, seconds: sec, kind: 'section', section: section, lyric: '' });
       } else {
         rows.push({ tsLabel, seconds: sec, kind: 'lyric', section: section, lyric: text });
       }
     });
-    vidScenes = rows;
+    return rows;
+  }
+
+  window.vidLoadScenes = function () { vidScenes = vidParseRaw(); vidRenderScenes(); };
+
+  window.vidAutoTrim = function () {
+    const rows = vidParseRaw();
+    if (!rows.length) return toast('Paste a sheet first', true);
+    const total = mmssToSec($('vidLength').value) ||
+      (rows[rows.length - 1].seconds != null ? rows[rows.length - 1].seconds + 6 : 0);
+    const MIN = 5, MAX = 12, INSTR = 9;   // pacing knobs
+    const nextSec = (j) => (j + 1 < rows.length && rows[j + 1].seconds != null) ? rows[j + 1].seconds : total;
+    const out = [];
+    let i = 0;
+    while (i < rows.length) {
+      const r = rows[i];
+      if (r.seconds == null) { i++; continue; }
+      if (r.kind === 'section') {
+        // instrumental block: split long ones into multiple shots
+        const dur = Math.max(0, nextSec(i) - r.seconds);
+        const n = Math.max(1, Math.round(dur / INSTR));
+        for (let k = 0; k < n; k++) {
+          const sc = r.seconds + k * (dur / n);
+          out.push({ tsLabel: secToMMSS(sc), seconds: sc, kind: 'section', section: r.section, lyric: k === 0 ? '' : '(instrumental)' });
+        }
+        i++;
+      } else {
+        // merge lyric lines: ~2 per shot, more if still under MIN, never across a section, never over MAX
+        const startSec = r.seconds, section = r.section;
+        const lyrics = [r.lyric];
+        i++;
+        while (i < rows.length && rows[i].kind === 'lyric' && rows[i].section === section && rows[i].seconds != null) {
+          const shotDur = nextSec(i) - startSec;
+          if (shotDur > MAX) break;
+          if (lyrics.length < 2 || shotDur < MIN) { lyrics.push(rows[i].lyric); i++; }
+          else break;
+        }
+        out.push({ tsLabel: secToMMSS(startSec), seconds: startSec, kind: 'lyric', section: section, lyric: lyrics.join(' / ') });
+      }
+    }
+    // ensure we open at 0:00
+    if (out.length && out[0].seconds > 2) {
+      out.unshift({ tsLabel: '0:00', seconds: 0, kind: 'section', section: out[0].section || 'Intro', lyric: '' });
+    }
+    vidScenes = out;
     vidRenderScenes();
+    toast('Auto-trimmed — fine-tune with ⤵ / ✕');
   };
 
   function vidRecalcDurations() {
