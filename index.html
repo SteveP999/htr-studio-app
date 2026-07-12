@@ -1701,7 +1701,10 @@
   let lyrPoll = null;
 
   window.loadLyrics = async function () {
-    if (lyrLoaded) return;
+    if (lyrLoaded && $('lyrArtist').options.length) return;
+    if (!artists.length) {
+      try { await loadArtists(); } catch (e) { toast('Could not load artists: ' + e.message, true); return; }
+    }
     const asel = $('lyrArtist');
     asel.innerHTML = '';
     artists.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((a) => {
@@ -1710,7 +1713,7 @@
       asel.appendChild(o);
     });
     await window.lyrLoadSongs();
-    lyrLoaded = true;
+    lyrLoaded = artists.length > 0;
   };
 
   window.lyrLoadSongs = async function () {
@@ -2194,7 +2197,11 @@
   let vidSongId = '';
   let vidPoll = null;
 
-  window.loadVideo = function () {
+  window.loadVideo = async function () {
+    if (vidLoaded && $('vidArtist').options.length) return;
+    if (!artists.length) {
+      try { await loadArtists(); } catch (e) { toast('Could not load artists: ' + e.message, true); return; }
+    }
     const sel = $('vidArtist');
     sel.innerHTML = '';
     artists.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((a) => {
@@ -2203,7 +2210,7 @@
       sel.appendChild(o);
     });
     window.vidArtistChange();
-    vidLoaded = true;
+    vidLoaded = artists.length > 0;
   };
 
   window.vidArtistChange = async function () {
