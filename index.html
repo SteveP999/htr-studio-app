@@ -345,6 +345,10 @@
         <input id="asCover" type="file" accept="image/png">
         <label>Album cover PNG (only for a NEW album — skip for Singles or if it already exists)</label>
         <input id="asAlbumCover" type="file" accept="image/png">
+        <label>Suno style prompt (stored with the song — used by video + lyric generators)</label>
+        <textarea id="asSuno" rows="2" placeholder="Female alternative rock, mid-tempo 96 BPM, emotional and restrained…"></textarea>
+        <label>Lyrics — Suno lyric sheet (stored with the song; feeds the Timestamp Editor)</label>
+        <textarea id="asLyrics" rows="8" placeholder="[Verse 1]&#10;First line&#10;…"></textarea>
         <div class="toggles">
           <label class="chk"><input type="checkbox" id="asLatest" checked> Latest / featured</label>
           <label class="chk"><input type="checkbox" id="asRadio" checked> Include on HTR Radio</label>
@@ -430,11 +434,13 @@
           <label>Artist</label>
           <select id="lyrArtist" onchange="window.lyrLoadSongs()"></select>
           <label>Song</label>
-          <select id="lyrSong"></select>
+          <select id="lyrSong" onchange="window.lyrSongChange()"></select>
           <div class="save-bar">
             <button class="btn btn-blue" onclick="window.edLoadExisting()">Edit existing timestamps</button>
-            <span class="sub">Opens the editor with the song's saved timestamps (if any).</span>
+            <span class="sub" id="lyrStored">Opens the editor with the song's saved timestamps (if any).</span>
           </div>
+          <label>Suno style prompt (stored with the song)</label>
+          <textarea id="lyrSunoPrompt" rows="2" placeholder="Stored with the song — used by video + lyric generators"></textarea>
         </div>
         <div id="lyrUpload" class="hidden">
           <label>MP3 file (any version — e.g. an alternate mix)</label>
@@ -447,8 +453,9 @@
         <label>Lyrics</label>
         <textarea id="lyrText" rows="12" placeholder="[Verse 1]&#10;First line of the verse&#10;Second line&#10;[Chorus]&#10;..."></textarea>
         <div class="save-bar">
-          <button class="btn btn-red" id="lyrGenBtn" onclick="window.lyrGenerate()">Generate timestamps</button>
           <button class="btn btn-blue" onclick="window.edFromLyrics()">Time manually in editor</button>
+          <button class="btn btn-ghost" onclick="window.lyrSaveSheet()">Save lyrics + Suno to catalog</button>
+          <button class="btn btn-red" id="lyrGenBtn" onclick="window.lyrGenerate()">Generate timestamps (cloud aligner)</button>
           <span id="lyrStatus" style="color:var(--muted);font-size:14px"></span>
         </div>
         <div class="sub">"Time manually" skips the cloud aligner: your pasted lyrics open in the editor
@@ -1010,8 +1017,14 @@
         coverImage: coverUrl, albumCover: albumCoverUrl,
         audioFile: audio, audioSrc: audio, youtubeUrl: '', videos: [],
         featured: latest, explicit: $('asExplicit').checked,
-        includeOnRadio: radio, includeOnHomepage: latest, tags: [], isLatest: latest
+        includeOnRadio: radio, includeOnHomepage: latest, tags: [], isLatest: latest,
+        sunoPrompt: $('asSuno').value.trim()
       };
+      const asLyricsText = $('asLyrics').value.trim();
+      if (asLyricsText) {
+        $('asMsg').textContent = 'Saving lyric sheet...';
+        await lyrCommitFile('data/lyrics/' + songId + '-sheet.txt', asLyricsText + '\n', 'Lyric sheet: ' + songId);
+      }
 
       if (latest) {
         songs.forEach((s) => {
@@ -1737,9 +1750,57 @@
         o.value = s.id; o.textContent = (s.album || '?') + ' — ' + s.title;
         sel.appendChild(o);
       });
+      window.lyrSongChange();
     } catch (e) {
       toast('Could not load songs: ' + e.message, true);
     }
+  };
+
+  // when a song is picked: load its stored Suno prompt + lyric sheet
+  window.lyrSongChange = async function () {
+    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+    if (!song) return;
+    $('lyrSunoPrompt').value = song.sunoPrompt || '';
+    let stored = [];
+    try {
+      const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-sheet.txt?ref=main');
+      $('lyrText').value = b64decode(f.content).trim();
+      stored.push('lyric sheet');
+    } catch (e) { /* no sheet yet */ }
+    try {
+      await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
+      stored.push('timestamps');
+    } catch (e) { /* none */ }
+    $('lyrStored').textContent = stored.length
+      ? ('Stored for this song: ' + stored.join(' + ') + '.')
+      : 'Nothing stored yet — paste lyrics below and Save to catalog.';
+  };
+
+  // store the lyric sheet + Suno prompt with the song
+  window.lyrSaveSheet = async function () {
+    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+    if (!song) return toast('Pick a catalog song first', true);
+    const lyrics = $('lyrText').value.trim();
+    const suno = $('lyrSunoPrompt').value.trim();
+    if (!lyrics && !suno) return toast('Nothing to save — paste lyrics and/or a Suno prompt', true);
+    $('lyrStatus').textContent = 'Saving…';
+    try {
+      if (lyrics) await lyrCommitFile('data/lyrics/' + song.id + '-sheet.txt', lyrics + '\n', 'Lyric sheet: ' + song.id);
+      const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      const songs = JSON.parse(b64decode(sf.content));
+      const target = songs.find((s) => s.id === song.id);
+      if (target && (target.sunoPrompt || '') !== suno) {
+        target.sunoPrompt = suno;
+        await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', {
+          method: 'PUT',
+          body: { message: 'Suno prompt: ' + song.id, content: b64encode(JSON.stringify(songs, null, 2)), sha: sf.sha }
+        });
+        song.sunoPrompt = suno;
+      }
+      $('lyrStatus').textContent = '';
+      window.lyrSongChange();
+      toast('Saved to catalog');
+    } catch (e) { $('lyrStatus').textContent = ''; toast('Save failed: ' + e.message, true); }
   };
 
   async function lyrCommitFile(path, content, message) {
@@ -2305,6 +2366,7 @@
     vidMp3Url = s.audioFile || s.audioSrc || s.audio || '';
     $('vidTitle').value = s.title || $('vidTitle').value;
     if (s.genre) $('vidGenre').value = s.genre;
+    if (s.sunoPrompt && !$('vidSuno').value.trim()) $('vidSuno').value = s.sunoPrompt;
     const note = $('vidSongNote');
     if (note) note.textContent = vidMp3Url
       ? (vidMp3Url.indexOf('dropbox.com') !== -1
