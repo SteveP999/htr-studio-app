@@ -441,6 +441,24 @@
           </div>
           <label>Suno style prompt (stored with the song)</label>
           <textarea id="lyrSunoPrompt" rows="2" placeholder="Stored with the song — used by video + lyric generators"></textarea>
+          <div style="display:flex;gap:14px;align-items:flex-start;margin-top:12px;flex-wrap:wrap">
+            <div style="text-align:center"><img id="lyrCoverImg" style="width:110px;height:110px;object-fit:cover;border-radius:8px;border:1px solid #333"><div class="sub">song cover</div></div>
+            <div style="text-align:center"><img id="lyrAlbumImg" style="width:110px;height:110px;object-fit:cover;border-radius:8px;border:1px solid #333"><div class="sub">album cover</div></div>
+            <div style="flex:1;min-width:280px">
+              <label>Dropbox MP3 link</label>
+              <input type="text" id="lyrAudio" placeholder="https://www.dropbox.com/scl/fi/...">
+              <label>Album name</label>
+              <input type="text" id="lyrAlbumName" placeholder="Singles">
+              <label>Replace song cover (PNG)</label>
+              <input type="file" id="lyrCoverFile" accept="image/png">
+              <label>Replace album cover (PNG)</label>
+              <input type="file" id="lyrAlbumCoverFile" accept="image/png">
+              <div class="save-bar">
+                <button class="btn btn-blue" onclick="window.lyrSaveInfo()">Save song info</button>
+                <span class="sub">Updates master data (+ uploads covers to the artist repo). Rebuild the artist site to publish.</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div id="lyrUpload" class="hidden">
           <label>MP3 file (any version — e.g. an alternate mix)</label>
@@ -510,7 +528,12 @@
         bridge → final). They're stored with the song. Rendering runs in the cloud — the finished
         <b>16:9 + 9:16 MP4s</b> land in the song's Video Files folder in Dropbox after a few minutes.
         Needs saved timestamps (use the Timestamp Editor above first).</div>
-        <div id="lvThumbs" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
+        <div id="lvThumbs" style="margin:10px 0"></div>
+        <label>These backgrounds are for</label>
+        <select id="lvFmt">
+          <option value="16x9">16:9 — YouTube</option>
+          <option value="9x16">9:16 — Shorts / Reels</option>
+        </select>
         <label>Add backgrounds (PNG/JPG — appended after existing, in filename order)</label>
         <input type="file" id="lvFiles" accept="image/png,image/jpeg" multiple>
         <div class="save-bar">
@@ -1777,6 +1800,11 @@
     const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
     if (!song) return;
     $('lyrSunoPrompt').value = song.sunoPrompt || '';
+    $('lyrAudio').value = audioOf(song);
+    $('lyrAlbumName').value = song.album || '';
+    $('lyrCoverImg').src = song.coverImage || '';
+    $('lyrAlbumImg').src = song.albumCover || '';
+    $('lyrCoverFile').value = ''; $('lyrAlbumCoverFile').value = '';
     let stored = [];
     try {
       const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-sheet.txt?ref=main');
@@ -1817,6 +1845,55 @@
       $('lyrStatus').textContent = '';
       window.lyrSongChange();
       toast('Saved to catalog');
+    } catch (e) { $('lyrStatus').textContent = ''; toast('Save failed: ' + e.message, true); }
+  };
+
+  // edit stored info on an EXISTING song: mp3 link, album, covers
+  window.lyrSaveInfo = async function () {
+    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+    if (!song) return toast('Pick a catalog song first', true);
+    const artist = artists.find((a) => a.id === song.artistId);
+    if (!artist) return toast('Artist not found for this song', true);
+    const repoFull = artist.githubRepo;
+    const audioIn = $('lyrAudio').value.trim();
+    const album = $('lyrAlbumName').value.trim() || song.album || 'Singles';
+    if (audioIn && audioIn.indexOf('/scl/fi/') === -1 && audioIn.indexOf('dropbox.com') !== -1) {
+      return toast('That is not a Dropbox FILE link (/scl/fi/...)', true);
+    }
+    $('lyrStatus').textContent = 'Saving song info…';
+    try {
+      const songSlug = slugify(song.title);
+      const albumSlug = slugify(album);
+      let coverUrl = '', albumCoverUrl = '';
+      if ($('lyrCoverFile').files[0]) {
+        const b64 = await fileToBase64($('lyrCoverFile').files[0]);
+        const name = song.artistId + '-' + songSlug + '-cover.png';
+        await putFile(repoFull, 'images/covers/' + name, b64, 'HTR Studio: cover for ' + song.title);
+        coverUrl = 'https://raw.githubusercontent.com/' + repoFull + '/main/images/covers/' + name;
+      }
+      if ($('lyrAlbumCoverFile').files[0]) {
+        const b64 = await fileToBase64($('lyrAlbumCoverFile').files[0]);
+        const name = song.artistId + '-' + albumSlug + '-ALBUM-cover.png';
+        await putFile(repoFull, 'images/covers/' + name, b64, 'HTR Studio: album cover for ' + album);
+        albumCoverUrl = 'https://raw.githubusercontent.com/' + repoFull + '/main/images/covers/' + name;
+      }
+      const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      const songs = JSON.parse(b64decode(sf.content));
+      const t = songs.find((s) => s.id === song.id);
+      if (!t) throw new Error('song missing from master data');
+      if (audioIn) { const a = normalizeDropbox(audioIn); t.audioFile = a; t.audioSrc = a; }
+      t.album = album;
+      if (coverUrl) t.coverImage = coverUrl;
+      if (albumCoverUrl) t.albumCover = albumCoverUrl;
+      t.sunoPrompt = $('lyrSunoPrompt').value.trim() || t.sunoPrompt || '';
+      await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', {
+        method: 'PUT',
+        body: { message: 'Song info: ' + song.id, content: b64encode(JSON.stringify(songs, null, 2)), sha: sf.sha }
+      });
+      Object.assign(song, t);
+      $('lyrStatus').textContent = '';
+      window.lyrSongChange();
+      toast('Song info saved');
     } catch (e) { $('lyrStatus').textContent = ''; toast('Save failed: ' + e.message, true); }
   };
 
@@ -2243,26 +2320,52 @@
   // ---------- lyric video backgrounds + cloud render ----------
   let lvItems = [];
 
+  async function lvList(path) {
+    try {
+      const files = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + path + '?ref=main');
+      return (Array.isArray(files) ? files : []).filter((f) => /\.(png|jpe?g)$/i.test(f.name))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } catch (e) { return []; }
+  }
+
   window.lvRefresh = async function () {
     const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
     const box = $('lvThumbs');
     if (!song) { box.innerHTML = ''; return; }
     $('lvSongName').textContent = '— ' + song.title;
     box.innerHTML = '<span class="sub">Loading…</span>';
-    try {
-      const files = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/video-assets/' + song.id + '?ref=main');
-      lvItems = (Array.isArray(files) ? files : []).filter((f) => /\.(png|jpe?g)$/i.test(f.name))
-        .sort((a, b) => a.name.localeCompare(b.name));
-    } catch (e) { lvItems = []; }
-    box.innerHTML = lvItems.length ? '' : '<span class="sub">No backgrounds stored yet.</span>';
-    lvItems.forEach((f, i) => {
-      const d = document.createElement('div');
-      d.style.cssText = 'position:relative;width:150px';
-      d.innerHTML = '<img src="' + f.download_url + '" style="width:150px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #333">'
-        + '<div class="sub" style="text-align:center">' + (i + 1) + ' · ' + f.name + '</div>'
-        + '<button class="btn btn-ghost" style="position:absolute;top:2px;right:2px;padding:0 6px" title="delete" onclick="window.lvDelete(' + i + ')">✕</button>';
-      box.appendChild(d);
+    const base = 'data/video-assets/' + song.id;
+    const groups = [
+      { label: '16:9 — YouTube', fmt: '16x9', items: await lvList(base + '/16x9'), tw: 150, th: 84 },
+      { label: '9:16 — Shorts / Reels', fmt: '9x16', items: await lvList(base + '/9x16'), tw: 84, th: 150 },
+      { label: 'Both formats (auto-cropped)', fmt: '', items: await lvList(base), tw: 150, th: 84 }
+    ];
+    lvItems = [];
+    box.innerHTML = '';
+    let any = false;
+    groups.forEach((g) => {
+      if (!g.items.length) return;
+      any = true;
+      const h = document.createElement('div');
+      h.className = 'sub';
+      h.style.cssText = 'margin:8px 0 4px;font-weight:bold;color:#e0a952';
+      h.textContent = g.label + ' (' + g.items.length + ')';
+      box.appendChild(h);
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap';
+      g.items.forEach((f) => {
+        const gi = lvItems.length;
+        lvItems.push(Object.assign({ fmt: g.fmt }, f));
+        const d = document.createElement('div');
+        d.style.cssText = 'position:relative;width:' + g.tw + 'px';
+        d.innerHTML = '<img src="' + f.download_url + '" style="width:' + g.tw + 'px;height:' + g.th + 'px;object-fit:cover;border-radius:6px;border:1px solid #333">'
+          + '<div class="sub" style="text-align:center;font-size:11px">' + f.name + '</div>'
+          + '<button class="btn btn-ghost" style="position:absolute;top:2px;right:2px;padding:0 6px" title="delete" onclick="window.lvDelete(' + gi + ')">✕</button>';
+        row.appendChild(d);
+      });
+      box.appendChild(row);
     });
+    if (!any) box.innerHTML = '<span class="sub">No backgrounds stored yet.</span>';
   };
 
   window.lvUpload = async function () {
@@ -2271,7 +2374,8 @@
     const files = Array.from($('lvFiles').files);
     if (!files.length) return toast('Choose image files first', true);
     files.sort((a, b) => a.name.localeCompare(b.name));
-    let idx = lvItems.length;
+    const fmt = $('lvFmt').value;
+    let idx = lvItems.filter((x) => x.fmt === fmt).length;
     $('lvStatus').textContent = 'Uploading…';
     try {
       for (const f of files) {
@@ -2279,12 +2383,12 @@
         const ext = /jpe?g$/i.test(f.name) ? '.jpg' : '.png';
         const name = 'bg' + String(idx).padStart(2, '0') + ext;
         const b64 = await fileToBase64(f);
-        await putFile(OWNER + '/' + REPO, 'data/video-assets/' + song.id + '/' + name, b64,
-          'Lyric video bg: ' + song.id + ' ' + name);
-        $('lvStatus').textContent = 'Uploaded ' + name;
+        await putFile(OWNER + '/' + REPO, 'data/video-assets/' + song.id + '/' + fmt + '/' + name, b64,
+          'Lyric video bg (' + fmt + '): ' + song.id + ' ' + name);
+        $('lvStatus').textContent = 'Uploaded ' + fmt + '/' + name;
       }
       $('lvFiles').value = '';
-      $('lvStatus').textContent = files.length + ' uploaded.';
+      $('lvStatus').textContent = files.length + ' uploaded to ' + fmt + '.';
       window.lvRefresh();
     } catch (e) { $('lvStatus').textContent = ''; toast('Upload failed: ' + e.message, true); }
   };
