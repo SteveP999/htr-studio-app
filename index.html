@@ -536,6 +536,19 @@
         </select>
         <label>Add backgrounds (PNG/JPG — appended after existing, in filename order)</label>
         <input type="file" id="lvFiles" accept="image/png,image/jpeg" multiple>
+        <div style="margin-top:14px">
+          <label style="color:var(--warn)">Background cues (optional — exact control)</label>
+          <div class="sub">Each cue = the moment a background starts. Images are picked by their
+          number, so the same image can appear more than once (start AND end on the cover).
+          Numbers refer to each format's own set. Without cues, backgrounds follow song sections
+          automatically.</div>
+          <div id="lvCueRows"></div>
+          <div class="save-bar">
+            <button class="btn btn-ghost" onclick="window.lvCueAdd()">+ Add cue</button>
+            <button class="btn btn-blue" onclick="window.lvCueSave()">Save cues</button>
+            <span id="lvCueStatus" class="sub"></span>
+          </div>
+        </div>
         <div class="save-bar">
           <button class="btn btn-blue" onclick="window.lvUpload()">Upload backgrounds</button>
           <button class="btn btn-red" onclick="window.lvRender()">Render lyric video (cloud)</button>
@@ -2353,19 +2366,74 @@
       box.appendChild(h);
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap';
-      g.items.forEach((f) => {
+      g.items.forEach((f, k) => {
         const gi = lvItems.length;
         lvItems.push(Object.assign({ fmt: g.fmt }, f));
         const d = document.createElement('div');
         d.style.cssText = 'position:relative;width:' + g.tw + 'px';
         d.innerHTML = '<img src="' + f.download_url + '" style="width:' + g.tw + 'px;height:' + g.th + 'px;object-fit:cover;border-radius:6px;border:1px solid #333">'
-          + '<div class="sub" style="text-align:center;font-size:11px">' + f.name + '</div>'
+          + '<div class="sub" style="text-align:center;font-size:11px"><b>#' + (k + 1) + '</b> · ' + f.name + '</div>'
           + '<button class="btn btn-ghost" style="position:absolute;top:2px;right:2px;padding:0 6px" title="delete" onclick="window.lvDelete(' + gi + ')">✕</button>';
         row.appendChild(d);
       });
       box.appendChild(row);
     });
     if (!any) box.innerHTML = '<span class="sub">No backgrounds stored yet.</span>';
+    // cue reference set: prefer the 16:9 group, then shared, then 9:16
+    lvCueImgs = (groups[0].items.length ? groups[0].items
+                : (groups[2].items.length ? groups[2].items : groups[1].items));
+    lvCues = [];
+    try {
+      const cf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/video-assets/' + song.id + '/cues.txt?ref=main');
+      b64decode(cf.content).split(/\r?\n/).forEach((ln) => {
+        const m = ln.match(/^\s*(\d+:\d{2}(?:\.\d+)?)\s+(\d+)\s*$/);
+        if (m) lvCues.push({ t: m[1], idx: parseInt(m[2], 10) });
+      });
+    } catch (e) { /* no cues yet */ }
+    lvCueRender();
+  };
+
+  let lvCueImgs = [];
+  let lvCues = [];
+
+  function lvCueRender() {
+    const box = $('lvCueRows');
+    box.innerHTML = lvCues.length ? '' : '<div class="sub">No cues — backgrounds follow song sections automatically.</div>';
+    lvCues.forEach((c, i) => {
+      const opts = lvCueImgs.map((f, k) =>
+        '<option value="' + (k + 1) + '"' + (c.idx === k + 1 ? ' selected' : '') + '>#' + (k + 1) + ' · ' + f.name + '</option>').join('');
+      const d = document.createElement('div');
+      d.style.cssText = 'display:flex;gap:8px;align-items:center;margin:4px 0';
+      d.innerHTML = '<input value="' + c.t + '" style="width:70px;font-family:monospace;text-align:right" onchange="window.lvCues_t(' + i + ',this.value)">'
+        + '<select style="flex:1" onchange="window.lvCues_i(' + i + ',this.value)">' + opts + '</select>'
+        + '<button class="btn btn-ghost" style="padding:2px 8px" onclick="window.lvCueDel(' + i + ')">✕</button>';
+      box.appendChild(d);
+    });
+  }
+  window.lvCues_t = function (i, v) { lvCues[i].t = v.trim(); };
+  window.lvCues_i = function (i, v) { lvCues[i].idx = parseInt(v, 10); };
+  window.lvCueDel = function (i) { lvCues.splice(i, 1); lvCueRender(); };
+  window.lvCueAdd = function () {
+    if (!lvCueImgs.length) return toast('Upload backgrounds first', true);
+    lvCues.push({ t: lvCues.length ? '' : '0:00', idx: 1 });
+    lvCueRender();
+  };
+  window.lvCueSave = async function () {
+    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+    if (!song) return toast('Pick a catalog song first', true);
+    for (const c of lvCues) {
+      if (!/^\d+:\d{2}(\.\d+)?$/.test(c.t)) return toast('Bad cue time: "' + c.t + '" (use M:SS or M:SS.5)', true);
+    }
+    const body = lvCues.slice().sort((a, b) => {
+      const s = (x) => { const m = x.t.split(':'); return (+m[0]) * 60 + parseFloat(m[1]); };
+      return s(a) - s(b);
+    }).map((c) => c.t + '\t' + c.idx).join('\n') + '\n';
+    $('lvCueStatus').textContent = 'Saving…';
+    try {
+      await lyrCommitFile('data/video-assets/' + song.id + '/cues.txt', body, 'Background cues: ' + song.id);
+      $('lvCueStatus').textContent = 'Saved — renders now follow these cues.';
+      toast('Cues saved');
+    } catch (e) { $('lvCueStatus').textContent = ''; toast('Save failed: ' + e.message, true); }
   };
 
   window.lvUpload = async function () {
