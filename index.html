@@ -480,6 +480,7 @@
           <button class="btn btn-ghost" id="edRateBtn" onclick="window.edRate()">1.0×</button>
           <span id="edClock" style="font-family:monospace;font-size:20px;min-width:90px">0:00.0</span>
           <button class="btn btn-red" onclick="window.edStamp()">Stamp selected (Enter)</button>
+          <button class="btn btn-ghost" onclick="window.edUndo()">&#8630; Undo (Ctrl+Z)</button>
         </div>
         <div id="edRows" style="max-height:440px;overflow:auto;border:1px solid #333;border-radius:8px;padding:4px"></div>
         <div class="save-bar" style="flex-wrap:wrap">
@@ -487,6 +488,7 @@
           <button class="btn btn-blue" onclick="window.edExportSrt()">Export .srt (exact)</button>
           <button class="btn btn-ghost" onclick="window.edDownloadTxt()">Download .txt</button>
           <button class="btn btn-ghost" onclick="window.edAddLine()">+ Add line</button>
+          <button class="btn btn-ghost" onclick="window.edAddSection()">+ Add section</button>
           <span id="edStatus" class="sub"></span>
         </div>
       </div>
@@ -1871,6 +1873,18 @@
 
   // ---------- timestamp editor ----------
   let edLines = [], edSel = -1, edSongId = '', edCanSave = false;
+  let edHistory = [];
+  function edPush() {
+    edHistory.push(JSON.stringify(edLines));
+    if (edHistory.length > 200) edHistory.shift();
+  }
+  window.edUndo = function () {
+    if (!edHistory.length) return toast('Nothing to undo', true);
+    edLines = JSON.parse(edHistory.pop());
+    if (edSel >= edLines.length) edSel = edLines.length - 1;
+    edRender();
+    toast('Undone');
+  };
 
   function edParseTs(text) {
     const out = [];
@@ -1903,6 +1917,7 @@
 
   window.edOpen = function (text, audioSrc, songId, canSave, name) {
     edLines = edParseTs(text);
+    edHistory = [];
     edSongId = songId || ''; edCanSave = !!canSave; edSel = -1;
     $('edSongName').textContent = name ? ('— ' + name) : '';
     $('edSaveBtn').style.display = canSave ? '' : 'none';
@@ -1966,31 +1981,44 @@
   }
   window.edSetTime = function (i, v) {
     const m = String(v).match(/^\s*(\d+):(\d{2}(?:\.\d+)?)\s*$/);
-    if (m) edLines[i].t = parseInt(m[1], 10) * 60 + parseFloat(m[2]);
+    if (m) { edPush(); edLines[i].t = parseInt(m[1], 10) * 60 + parseFloat(m[2]); }
     edRender();
   };
-  window.edNudge = function (i, d) { edLines[i].t = Math.max(0, Math.round((edLines[i].t + d) * 10) / 10); edRender(); };
+  window.edNudge = function (i, d) { edPush(); edLines[i].t = Math.max(0, Math.round((edLines[i].t + d) * 10) / 10); edRender(); };
   window.edJump = function (i) { const au = $('edAudio'); au.currentTime = Math.max(0, edLines[i].t - 0.3); au.play(); edSel = i; edRender(); };
   window.edCombine = function (i) {
     const j = edLines.findIndex((x, k) => k > i && !x.marker);
     if (j < 0) return;
+    edPush();
     edLines[i].text += ' / ' + edLines[j].text;
     edLines.splice(j, 1); edRender();
   };
-  window.edRemove = function (i) { edLines.splice(i, 1); if (edSel >= edLines.length) edSel = -1; edRender(); };
+  window.edRemove = function (i) { edPush(); edLines.splice(i, 1); if (edSel >= edLines.length) edSel = -1; edRender(); };
   window.edEditText = function (i) {
     const v = prompt('Edit line', edLines[i].text);
-    if (v !== null && v.trim()) { edLines[i].text = v.trim(); edLines[i].marker = /^\[.*\]$/.test(v.trim()); edRender(); }
+    if (v !== null && v.trim()) { edPush(); edLines[i].text = v.trim(); edLines[i].marker = /^\[.*\]$/.test(v.trim()); edRender(); }
   };
   window.edAddLine = function () {
+    edPush();
     const t = $('edAudio').currentTime || 0;
     const at = edSel >= 0 ? edSel + 1 : edLines.length;
     edLines.splice(at, 0, { t: Math.round(t * 10) / 10, text: 'New line', marker: false });
     edSel = at; edRender();
   };
+  window.edAddSection = function () {
+    const name = prompt('Section name (e.g. Musical Break, Bridge, Chorus 2)', 'Musical Break');
+    if (name === null || !name.trim()) return;
+    edPush();
+    const t = Math.round(($('edAudio').currentTime || 0) * 10) / 10;
+    let at = edLines.findIndex((l) => l.t > t);
+    if (at < 0) at = edLines.length;
+    edLines.splice(at, 0, { t: t, text: '[' + name.trim().replace(/^\[|\]$/g, '') + ']', marker: true });
+    edSel = at; edRender();
+  };
   window.edStamp = function () {
     if (edSel < 0) edSel = edLines.findIndex((l) => !l.marker);
     if (edSel < 0) return;
+    edPush();
     edLines[edSel].t = Math.round($('edAudio').currentTime * 10) / 10;
     let n = edSel + 1;
     while (n < edLines.length && edLines[n].marker) n++;
@@ -2011,6 +2039,7 @@
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.code === 'Space') { e.preventDefault(); const au = $('edAudio'); au.paused ? au.play() : au.pause(); }
     if (e.code === 'Enter') { e.preventDefault(); window.edStamp(); }
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); window.edUndo(); }
   });
   setInterval(function () {
     const au = $('edAudio');
