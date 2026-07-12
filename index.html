@@ -503,6 +503,22 @@
           <span id="edStatus" class="sub"></span>
         </div>
       </div>
+
+      <div class="card editor" style="max-width:900px;margin-top:18px">
+        <h3>Lyric Video — backgrounds &amp; render <span id="lvSongName" style="color:var(--muted);font-weight:normal;font-size:15px"></span></h3>
+        <div class="sub">Upload 4–8 backgrounds (playback order: intro → verse 1 block → verse 2 →
+        bridge → final). They're stored with the song. Rendering runs in the cloud — the finished
+        <b>16:9 + 9:16 MP4s</b> land in the song's Video Files folder in Dropbox after a few minutes.
+        Needs saved timestamps (use the Timestamp Editor above first).</div>
+        <div id="lvThumbs" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
+        <label>Add backgrounds (PNG/JPG — appended after existing, in filename order)</label>
+        <input type="file" id="lvFiles" accept="image/png,image/jpeg" multiple>
+        <div class="save-bar">
+          <button class="btn btn-blue" onclick="window.lvUpload()">Upload backgrounds</button>
+          <button class="btn btn-red" onclick="window.lvRender()">Render lyric video (cloud)</button>
+          <span id="lvStatus" class="sub"></span>
+        </div>
+      </div>
     </section>
 
     <!-- ============ NEW ARTIST ============ -->
@@ -1774,6 +1790,7 @@
     $('lyrStored').textContent = stored.length
       ? ('Stored for this song: ' + stored.join(' + ') + '.')
       : 'Nothing stored yet — paste lyrics below and Save to catalog.';
+    window.lvRefresh();
   };
 
   // store the lyric sheet + Suno prompt with the song
@@ -2221,6 +2238,80 @@
     a.download = (edSongId || 'lyrics') + '.srt';
     a.click();
     toast(cues.length + ' exact captions exported');
+  };
+
+  // ---------- lyric video backgrounds + cloud render ----------
+  let lvItems = [];
+
+  window.lvRefresh = async function () {
+    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+    const box = $('lvThumbs');
+    if (!song) { box.innerHTML = ''; return; }
+    $('lvSongName').textContent = '— ' + song.title;
+    box.innerHTML = '<span class="sub">Loading…</span>';
+    try {
+      const files = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/video-assets/' + song.id + '?ref=main');
+      lvItems = (Array.isArray(files) ? files : []).filter((f) => /\.(png|jpe?g)$/i.test(f.name))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } catch (e) { lvItems = []; }
+    box.innerHTML = lvItems.length ? '' : '<span class="sub">No backgrounds stored yet.</span>';
+    lvItems.forEach((f, i) => {
+      const d = document.createElement('div');
+      d.style.cssText = 'position:relative;width:150px';
+      d.innerHTML = '<img src="' + f.download_url + '" style="width:150px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #333">'
+        + '<div class="sub" style="text-align:center">' + (i + 1) + ' · ' + f.name + '</div>'
+        + '<button class="btn btn-ghost" style="position:absolute;top:2px;right:2px;padding:0 6px" title="delete" onclick="window.lvDelete(' + i + ')">✕</button>';
+      box.appendChild(d);
+    });
+  };
+
+  window.lvUpload = async function () {
+    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+    if (!song) return toast('Pick a catalog song first', true);
+    const files = Array.from($('lvFiles').files);
+    if (!files.length) return toast('Choose image files first', true);
+    files.sort((a, b) => a.name.localeCompare(b.name));
+    let idx = lvItems.length;
+    $('lvStatus').textContent = 'Uploading…';
+    try {
+      for (const f of files) {
+        idx++;
+        const ext = /jpe?g$/i.test(f.name) ? '.jpg' : '.png';
+        const name = 'bg' + String(idx).padStart(2, '0') + ext;
+        const b64 = await fileToBase64(f);
+        await putFile(OWNER + '/' + REPO, 'data/video-assets/' + song.id + '/' + name, b64,
+          'Lyric video bg: ' + song.id + ' ' + name);
+        $('lvStatus').textContent = 'Uploaded ' + name;
+      }
+      $('lvFiles').value = '';
+      $('lvStatus').textContent = files.length + ' uploaded.';
+      window.lvRefresh();
+    } catch (e) { $('lvStatus').textContent = ''; toast('Upload failed: ' + e.message, true); }
+  };
+
+  window.lvDelete = async function (i) {
+    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+    const f = lvItems[i];
+    if (!song || !f) return;
+    if (!confirm('Delete ' + f.name + '?')) return;
+    try {
+      await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + f.path, {
+        method: 'DELETE',
+        body: { message: 'Remove lyric video bg: ' + f.name, sha: f.sha }
+      });
+      window.lvRefresh();
+    } catch (e) { toast('Delete failed: ' + e.message, true); }
+  };
+
+  window.lvRender = async function () {
+    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+    if (!song) return toast('Pick a catalog song first', true);
+    if (!lvItems.length) return toast('Upload at least one background first', true);
+    try {
+      await dispatch('lyric-video.yml', { song_id: song.id });
+      $('lvStatus').textContent = 'Rendering in the cloud — the MP4s land in the song’s Video Files folder in Dropbox in a few minutes. (Progress: Dashboard → Recent runs.)';
+      toast('Render started');
+    } catch (e) { toast('Could not start render: ' + e.message, true); }
   };
 
   // ---------- new artist ----------
