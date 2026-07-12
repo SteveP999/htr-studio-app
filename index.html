@@ -2243,12 +2243,14 @@
     edSel = at; edRender();
   };
   window.edStamp = function () {
-    if (edSel < 0) edSel = edLines.findIndex((l) => !l.marker);
+    if (edSel < 0) edSel = edLines.findIndex((l) => l.text.toLowerCase() !== '[start]' && l.text.toLowerCase() !== '[end]');
     if (edSel < 0) return;
     edPush();
     edLines[edSel].t = Math.round($('edAudio').currentTime * 10) / 10;
+    // advance to the next line — markers included, so sections get stamped
+    // in the same flow (skip only the [Start]/[End] anchors)
     let n = edSel + 1;
-    while (n < edLines.length && edLines[n].marker) n++;
+    while (n < edLines.length && /^\[(start|end)\]$/i.test(edLines[n].text)) n++;
     edSel = n < edLines.length ? n : edSel;
     edRender();
     const row = $('edRows').querySelector('[data-i="' + edSel + '"]');
