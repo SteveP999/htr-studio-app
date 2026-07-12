@@ -1954,10 +1954,20 @@
     }
   };
 
-  // when a song is picked: load its stored Suno prompt + lyric sheet
+  // when a song is picked: load its stored Suno prompt + lyric sheet.
+  // EVERYTHING from the previous song is cleared first so nothing stale
+  // can be accidentally saved onto the wrong song.
   window.lyrSongChange = async function () {
     const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
     if (!song) return;
+    // clear previous song's state
+    $('lyrText').value = '';
+    $('lyrResult').classList.add('hidden');
+    $('lyrOut').value = '';
+    $('lyrEditor').classList.add('hidden');
+    try { $('edAudio').pause(); } catch (e) { }
+    edLines = []; edSongId = ''; edHistory = [];
+    $('lyrStatus').textContent = '';
     $('lyrSunoPrompt').value = song.sunoPrompt || '';
     $('lyrAudio').value = audioOf(song);
     $('lyrAlbumName').value = song.album || '';
