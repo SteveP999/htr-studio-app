@@ -143,20 +143,16 @@
     <button class="btn btn-ghost" onclick="window.lockApp()">Lock</button>
   </header>
   <nav>
-    <button id="tab-dashboard" class="active" onclick="window.showTab('dashboard')">Dashboard</button>
-    <button id="tab-artists" onclick="window.showTab('artists')">Artists</button>
-    <button id="tab-newartist" onclick="window.showTab('newartist')">New Artist</button>
-    <button id="tab-addsong" onclick="window.showTab('addsong')">Add Song</button>
-    <button id="tab-extras" onclick="window.showTab('extras')">Song Extras</button>
-    <button id="tab-radio" onclick="window.showTab('radio')">Radio</button>
-    <button id="tab-top20" onclick="window.showTab('top20')">Top 20</button>
-    <button id="tab-lyrics" onclick="window.showTab('lyrics')">Lyrics</button>
-    <button id="tab-video" onclick="window.showTab('video')">Video</button>
+    <button id="grp-artists" class="active" onclick="window.showGroup('artists')">Artists</button>
+    <button id="grp-media" onclick="window.showGroup('media')">Songs &amp; Media</button>
+    <button id="grp-radio" onclick="window.showGroup('radio')">Radio</button>
+    <button id="grp-admin" onclick="window.showGroup('admin')">Admin</button>
   </nav>
+  <nav id="subnav" style="border-top:none;padding-top:0"></nav>
   <main>
 
     <!-- ============ DASHBOARD ============ -->
-    <section id="view-dashboard">
+    <section id="view-dashboard" class="hidden">
       <div class="grid">
         <div class="card">
           <h3>Build Artist Site</h3>
@@ -200,7 +196,7 @@
     </section>
 
     <!-- ============ ARTISTS ============ -->
-    <section id="view-artists" class="hidden">
+    <section id="view-artists">
       <div class="artists-layout">
         <div class="artist-list" id="artistList"></div>
         <div>
@@ -226,6 +222,7 @@
                 <button class="btn btn-blue" onclick="window.publishAfterSave()">Rebuild this artist's site + homepage (LIVE)</button>
               </div>
             </div>
+            <div id="edMusic" style="margin-top:18px"></div>
           </div>
         </div>
       </div>
@@ -751,6 +748,7 @@
       if (LYRICS_ONLY) applyLyricsOnly();
       await loadArtists();
       await loadRuns();
+      if (!LYRICS_ONLY) window.showTab('artists');
     } catch (e) {
       token = null;
       $('lockMsg').textContent = 'Token rejected: ' + e.message;
@@ -766,12 +764,42 @@
     $('patInput').value = '';
   };
 
-  // ---------- tabs ----------
+  // ---------- tabs (grouped nav) ----------
+  const NAV_GROUPS = {
+    artists: [['artists', 'Roster'], ['newartist', 'New Artist'], ['addsong', 'Add Song'], ['extras', 'Song Extras']],
+    media: [['lyrics', 'Song Workshop'], ['video', 'Music Video']],
+    radio: [['radio', 'Stations'], ['top20', 'Top 20']],
+    admin: [['dashboard', 'Dashboard & Runs']]
+  };
+  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'radio', 'top20', 'lyrics', 'video'];
+  let curGroup = 'artists';
+
+  function groupOf(view) {
+    for (const g in NAV_GROUPS) if (NAV_GROUPS[g].some((v) => v[0] === view)) return g;
+    return 'artists';
+  }
+
+  window.showGroup = function (g, sub) {
+    window.showTab(sub || NAV_GROUPS[g][0][0]);
+  };
+
   window.showTab = function (name) {
-    ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'radio', 'top20', 'lyrics', 'video'].forEach((t) => {
-      $('view-' + t).classList.toggle('hidden', t !== name);
-      $('tab-' + t).classList.toggle('active', t === name);
+    curGroup = groupOf(name);
+    Object.keys(NAV_GROUPS).forEach((g) => {
+      const b = $('grp-' + g); if (b) b.classList.toggle('active', g === curGroup);
     });
+    const sn = $('subnav');
+    const tabs = NAV_GROUPS[curGroup];
+    sn.innerHTML = '';
+    sn.style.display = tabs.length > 1 ? '' : 'none';
+    tabs.forEach(([v, label]) => {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.className = v === name ? 'active' : '';
+      b.onclick = function () { window.showTab(v); };
+      sn.appendChild(b);
+    });
+    ALL_VIEWS.forEach((t) => $('view-' + t).classList.toggle('hidden', t !== name));
     if (name === 'radio' && !radioLoaded) window.loadRadio();
     if (name === 'top20' && !t20Loaded) window.loadTop20();
     if (name === 'lyrics' && !lyrLoaded) window.loadLyrics();
@@ -779,8 +807,8 @@
   };
 
   function applyLyricsOnly() {
-    ['dashboard', 'artists', 'addsong', 'extras', 'radio', 'top20'].forEach((t) => {
-      const b = $('tab-' + t); if (b) b.classList.add('hidden');
+    ['artists', 'radio', 'admin'].forEach((g) => {
+      const b = $('grp-' + g); if (b) b.classList.add('hidden');
     });
     // co-writers experiment with Suno / uploaded files, not the label's catalog
     const opt = $('lyrMode').querySelector('option[value="catalog"]');
@@ -809,21 +837,71 @@
       $('exArtist').appendChild(o2);
     });
     window.exLoadSongs();
-    const list = $('artistList');
-    list.innerHTML = '';
     artists.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((a) => {
       const opt = document.createElement('option');
       opt.value = a.id;
       opt.textContent = a.name;
       sel.appendChild(opt);
+    });
+    renderRoster();
+  }
 
+  // roster list: artists.json array order = homepage order; drag to reorder
+  let rosterDirty = false;
+
+  function renderRoster() {
+    const list = $('artistList');
+    list.innerHTML = '';
+    const top = document.createElement('div');
+    top.style.cssText = 'display:flex;gap:6px;margin-bottom:6px';
+    top.innerHTML = '<button class="btn btn-blue" style="flex:1" onclick="window.showTab(\'newartist\')">+ New artist</button>'
+      + (rosterDirty ? '<button class="btn btn-red" style="flex:1" onclick="window.saveRosterOrder()">Save order</button>' : '');
+    list.appendChild(top);
+    const hint = document.createElement('div');
+    hint.className = 'sub';
+    hint.style.marginBottom = '6px';
+    hint.textContent = 'Drag to reorder — list order = homepage order. ● live · H homepage · R radio';
+    list.appendChild(hint);
+    artists.forEach((a, i) => {
       const btn = document.createElement('button');
-      btn.textContent = a.name + (a.active === false ? '  (inactive)' : '');
+      btn.draggable = true;
+      const badges = (a.active === false
+          ? ' <span style="color:#e05252;font-size:11px">●off</span>'
+          : ' <span style="color:#5bbf6a;font-size:11px">●</span>')
+        + (a.includeOnLabelHome !== false ? ' <span style="color:#e0a952;font-size:11px">H</span>' : '')
+        + (a.includeOnRadio !== false ? ' <span style="color:#5aa7e0;font-size:11px">R</span>' : '');
+      btn.innerHTML = (i + 1) + '. ' + a.name + badges;
       btn.className = a.active === false ? 'inactive' : '';
+      if (a.id === selectedId) btn.classList.add('sel');
       btn.onclick = () => selectArtist(a.id, btn);
+      btn.ondragstart = (e) => { e.dataTransfer.setData('text/plain', String(i)); };
+      btn.ondragover = (e) => { e.preventDefault(); };
+      btn.ondrop = (e) => {
+        e.preventDefault();
+        const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        if (isNaN(from) || from === i) return;
+        const moved = artists.splice(from, 1)[0];
+        artists.splice(i, 0, moved);
+        rosterDirty = true;
+        renderRoster();
+      };
       list.appendChild(btn);
     });
   }
+
+  window.saveRosterOrder = async function () {
+    try {
+      const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/artists.json');
+      const out = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/artists.json', {
+        method: 'PUT',
+        body: { message: 'HTR Studio: roster order', content: b64encode(JSON.stringify(artists, null, 2)), sha: f.sha }
+      });
+      artistsSha = out.content.sha;
+      rosterDirty = false;
+      renderRoster();
+      toast('Roster order saved — rebuild the homepage to publish it');
+    } catch (e) { toast('Order save failed: ' + e.message, true); }
+  };
 
   function selectArtist(id, btnEl) {
     selectedId = id;
@@ -841,7 +919,75 @@
     $('edRadio').checked = a.includeOnRadio !== false;
     $('afterSave').classList.add('hidden');
     $('saveMsg').textContent = '';
+    renderMusic(a);
   }
+
+  // ---------- artist MUSIC section (albums + songs, jump to workshop) ----------
+  let msCache = null;
+
+  async function renderMusic(a) {
+    const box = $('edMusic');
+    box.innerHTML = '<div class="sub">Loading music…</div>';
+    try {
+      if (!msCache) {
+        const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+        msCache = JSON.parse(b64decode(sf.content));
+      }
+      const mine = msCache.filter((s) => s.artistId === a.id);
+      const albums = {};
+      mine.forEach((s) => {
+        const k = s.album || 'Singles';
+        (albums[k] = albums[k] || []).push(s);
+      });
+      box.innerHTML = '<label style="color:var(--warn)">— Music (' + mine.length + ' songs) —</label>'
+        + '<div class="save-bar" style="margin-top:4px">'
+        + '<button class="btn btn-blue" onclick="window.artAddSong()">+ Add song</button>'
+        + '<button class="btn btn-ghost" onclick="window.artRefreshMusic()">↻ Refresh</button></div>';
+      Object.keys(albums).forEach((alb) => {
+        const songs = albums[alb];
+        const head = document.createElement('div');
+        head.style.cssText = 'display:flex;align-items:center;gap:10px;margin:12px 0 4px';
+        head.innerHTML = '<img src="' + (songs[0].albumCover || songs[0].coverImage || '') + '" style="width:46px;height:46px;object-fit:cover;border-radius:6px;border:1px solid #333" onerror="this.style.display=\'none\'">'
+          + '<b>' + alb + '</b>&nbsp;<span class="sub">(' + songs.length + ')</span>';
+        box.appendChild(head);
+        songs.forEach((s) => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:3px 0 3px 56px';
+          row.innerHTML = '<img src="' + (s.coverImage || '') + '" style="width:28px;height:28px;object-fit:cover;border-radius:4px" onerror="this.style.display=\'none\'">'
+            + '<span style="flex:1">' + s.title + '</span>'
+            + '<button class="btn btn-ghost" style="padding:2px 8px" title="lyrics, timestamps, videos" onclick="window.artOpenWorkshop(\'' + s.artistId + '\',\'' + s.id + '\')">Workshop →</button>'
+            + '<button class="btn btn-ghost" style="padding:2px 8px" title="streaming links, move album, covers" onclick="window.artOpenExtras(\'' + s.artistId + '\',\'' + s.id + '\')">Extras →</button>';
+          box.appendChild(row);
+        });
+      });
+    } catch (e) {
+      box.innerHTML = '<div class="sub">Could not load music: ' + e.message + '</div>';
+    }
+  }
+
+  window.artRefreshMusic = function () {
+    msCache = null;
+    const a = artists.find((x) => x.id === selectedId);
+    if (a) renderMusic(a);
+  };
+  window.artAddSong = function () {
+    window.showTab('addsong');
+    if (selectedId) $('asArtist').value = selectedId;
+  };
+  window.artOpenWorkshop = async function (artistId, songId) {
+    window.showTab('lyrics');
+    if (!lyrLoaded) await window.loadLyrics();
+    $('lyrArtist').value = artistId;
+    await window.lyrLoadSongs();
+    $('lyrSong').value = songId;
+    window.lyrSongChange();
+  };
+  window.artOpenExtras = async function (artistId, songId) {
+    window.showTab('extras');
+    $('exArtist').value = artistId;
+    await window.exLoadSongs();
+    $('exSong').value = songId;
+  };
 
   window.saveArtist = async function () {
     if (!selectedId) return;
