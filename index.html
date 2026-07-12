@@ -2482,6 +2482,11 @@
     if (!song) return toast('Pick a catalog song first', true);
     if (!lvItems.length) return toast('Upload at least one background first', true);
     try {
+      await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
+    } catch (e) {
+      return toast('No saved timestamps for this song — stamp them in the Timestamp Editor and Save to catalog first', true);
+    }
+    try {
       await dispatch('lyric-video.yml', { song_id: song.id });
       $('lvStatus').textContent = 'Rendering in the cloud — the MP4s land in the song’s Video Files folder in Dropbox in a few minutes. (Progress: Dashboard → Recent runs.)';
       toast('Render started');
