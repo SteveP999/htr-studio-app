@@ -549,9 +549,13 @@
         </div>
         <div class="save-bar">
           <button class="btn btn-blue" onclick="window.lvUpload()">Upload backgrounds</button>
-          <button class="btn btn-red" onclick="window.lvRender()">Render lyric video (cloud)</button>
+          <button class="btn btn-red" onclick="window.lvRenderLocal()">⚡ Render on THIS PC (fast 16:9 test)</button>
+          <button class="btn btn-red" onclick="window.lvRender()">Render in cloud (final, both → Dropbox)</button>
           <span id="lvStatus" class="sub"></span>
         </div>
+        <div class="sub">THIS PC = ~2 min, output opens in a folder (needs the one-time
+        _setup\install-local-render-button.bat on that computer). Cloud = ~15 min, both formats
+        auto-saved to the song's Dropbox folder.</div>
       </div>
     </section>
 
@@ -2656,6 +2660,15 @@
       });
       window.lvRefresh();
     } catch (e) { toast('Delete failed: ' + e.message, true); }
+  };
+
+  window.lvRenderLocal = function () {
+    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+    if (!song) return toast('Pick a catalog song first', true);
+    if (!lvItems.length) return toast('Upload at least one background first', true);
+    if (lvCuesDirty) return toast('You have UNSAVED cue changes — hit Save cues first (renders read the saved file)', true);
+    $('lvStatus').textContent = 'Launching local render — a terminal window opens on this PC (~2 min)…';
+    window.location.href = 'htr-render://' + song.id + '/';
   };
 
   window.lvRender = async function () {
