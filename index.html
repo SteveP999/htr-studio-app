@@ -520,7 +520,8 @@
       </div>
 
       <div class="card editor" style="max-width:900px;margin-top:18px">
-        <h3>Lyric Video — backgrounds &amp; render <span id="lvSongName" style="color:var(--muted);font-weight:normal;font-size:15px"></span></h3>
+        <h3>Lyric Video — backgrounds &amp; render <span id="lvSongName" style="color:var(--muted);font-weight:normal;font-size:15px"></span>
+          <button class="btn btn-ghost" style="float:right;padding:2px 10px" title="thumbnails expire after a while on a private repo — refresh reloads them" onclick="window.lvRefresh()">↻ Refresh</button></h3>
         <div class="sub">Upload 4–8 backgrounds (playback order: intro → verse 1 block → verse 2 →
         bridge → final). They're stored with the song. Rendering runs in the cloud — the finished
         <b>16:9 + 9:16 MP4s</b> land in the song's Video Files folder in Dropbox after a few minutes.
@@ -2553,6 +2554,12 @@
 
   let lvCueImgs = [];
   let lvCues = [];
+  let lvCuesDirty = false;
+
+  function lvSec(t) {
+    const m = String(t).match(/^(\d+):(\d{2}(?:\.\d+)?)$/);
+    return m ? (+m[1]) * 60 + parseFloat(m[2]) : null;
+  }
 
   function lvCueRender() {
     const box = $('lvCueRows');
@@ -2560,20 +2567,36 @@
     lvCues.forEach((c, i) => {
       const opts = lvCueImgs.map((f, k) =>
         '<option value="' + (k + 1) + '"' + (c.idx === k + 1 ? ' selected' : '') + '>#' + (k + 1) + ' · ' + f.name + '</option>').join('');
+      const img = lvCueImgs[c.idx - 1];
+      // how long this background stays on screen (until the next cue)
+      let dur = '';
+      const s0 = lvSec(c.t), s1 = (i + 1 < lvCues.length) ? lvSec(lvCues[i + 1].t) : null;
+      if (s0 !== null) dur = s1 !== null
+        ? '<span class="sub" style="min-width:86px">→ ' + lvCues[i + 1].t + ' (' + (s1 - s0).toFixed(1) + 's)</span>'
+        : '<span class="sub" style="min-width:86px">→ song end</span>';
       const d = document.createElement('div');
       d.style.cssText = 'display:flex;gap:8px;align-items:center;margin:4px 0';
       d.innerHTML = '<input value="' + c.t + '" style="width:70px;font-family:monospace;text-align:right" onchange="window.lvCues_t(' + i + ',this.value)">'
+        + (img ? '<img src="' + img.download_url + '" style="width:46px;height:26px;object-fit:cover;border-radius:4px;border:1px solid #333">' : '')
         + '<select style="flex:1" onchange="window.lvCues_i(' + i + ',this.value)">' + opts + '</select>'
+        + dur
         + '<button class="btn btn-ghost" style="padding:2px 8px" onclick="window.lvCueDel(' + i + ')">✕</button>';
       box.appendChild(d);
     });
+    if (lvCuesDirty) {
+      const w = document.createElement('div');
+      w.style.cssText = 'color:#e05252;font-size:13px;margin-top:4px';
+      w.textContent = '⚠ Unsaved cue changes — hit Save cues or the render will use the OLD cues.';
+      box.appendChild(w);
+    }
   }
-  window.lvCues_t = function (i, v) { lvCues[i].t = v.trim(); };
-  window.lvCues_i = function (i, v) { lvCues[i].idx = parseInt(v, 10); };
-  window.lvCueDel = function (i) { lvCues.splice(i, 1); lvCueRender(); };
+  window.lvCues_t = function (i, v) { lvCues[i].t = v.trim(); lvCuesDirty = true; lvCueRender(); };
+  window.lvCues_i = function (i, v) { lvCues[i].idx = parseInt(v, 10); lvCuesDirty = true; lvCueRender(); };
+  window.lvCueDel = function (i) { lvCues.splice(i, 1); lvCuesDirty = true; lvCueRender(); };
   window.lvCueAdd = function () {
     if (!lvCueImgs.length) return toast('Upload backgrounds first', true);
     lvCues.push({ t: lvCues.length ? '' : '0:00', idx: 1 });
+    lvCuesDirty = true;
     lvCueRender();
   };
   window.lvCueSave = async function () {
@@ -2589,6 +2612,8 @@
     $('lvCueStatus').textContent = 'Saving…';
     try {
       await lyrCommitFile('data/video-assets/' + song.id + '/cues.txt', body, 'Background cues: ' + song.id);
+      lvCuesDirty = false;
+      lvCueRender();
       $('lvCueStatus').textContent = 'Saved — renders now follow these cues.';
       toast('Cues saved');
     } catch (e) { $('lvCueStatus').textContent = ''; toast('Save failed: ' + e.message, true); }
@@ -2637,6 +2662,7 @@
     const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
     if (!song) return toast('Pick a catalog song first', true);
     if (!lvItems.length) return toast('Upload at least one background first', true);
+    if (lvCuesDirty) return toast('You have UNSAVED cue changes — hit Save cues first (renders read the saved file)', true);
     try {
       await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
     } catch (e) {
@@ -3079,6 +3105,13 @@
     radioFilterTimer = setTimeout(renderRadio, 150);
   });
   $('radioOnlyChanged').addEventListener('change', renderRadio);
+
+  // private-repo image links expire — refresh thumbnails when returning to the tab
+  window.addEventListener('focus', function () {
+    if (!$('view-lyrics').classList.contains('hidden') && !lvCuesDirty) {
+      try { window.lvRefresh(); } catch (e) { }
+    }
+  });
 
   const saved = localStorage.getItem(PAT_KEY);
   if (saved) {
