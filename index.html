@@ -2667,8 +2667,11 @@
     if (!song) return toast('Pick a catalog song first', true);
     if (!lvItems.length) return toast('Upload at least one background first', true);
     if (lvCuesDirty) return toast('You have UNSAVED cue changes — hit Save cues first (renders read the saved file)', true);
-    $('lvStatus').textContent = 'Launching local render — a terminal window opens on this PC (~2 min)…';
-    window.location.href = 'htr-render://' + song.id + '/';
+    const url = 'htr-render://' + song.id + '/';
+    $('lvStatus').innerHTML = 'Launching local render — a terminal window opens on this PC (~2 min)… '
+      + 'Nothing happened? <a href="' + url + '" style="color:var(--warn)">Click here to launch it</a> '
+      + '(and allow "HTR Local Render" if the browser asks).';
+    window.location.href = url;
   };
 
   window.lvRender = async function () {
