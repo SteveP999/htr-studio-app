@@ -431,6 +431,10 @@
           <select id="lyrArtist" onchange="window.lyrLoadSongs()"></select>
           <label>Song</label>
           <select id="lyrSong"></select>
+          <div class="save-bar">
+            <button class="btn btn-blue" onclick="window.edLoadExisting()">Edit existing timestamps</button>
+            <span class="sub">Opens the editor with the song's saved timestamps (if any).</span>
+          </div>
         </div>
         <div id="lyrUpload" class="hidden">
           <label>MP3 file (any version — e.g. an alternate mix)</label>
@@ -450,6 +454,7 @@
           <label>Timestamps</label>
           <textarea id="lyrOut" rows="12" readonly></textarea>
           <div class="save-bar">
+            <button class="btn btn-red" onclick="window.edFromResult()">Edit timestamps (sync to audio)</button>
             <button class="btn btn-blue" onclick="window.lyrCopy()">Copy</button>
             <button class="btn btn-ghost" onclick="window.lyrDownload()">Download .txt</button>
             <button class="btn btn-ghost" onclick="window.lyrDownloadSrt()">Export .srt (captions)</button>
@@ -457,6 +462,32 @@
           <div class="sub" style="margin-top:6px">.srt imports into Filmora/CapCut/Premiere as clean, correct
           captions — no speech-to-text. In Filmora: delete any auto-captions, then File → Import → Import Media,
           pick the .srt, drag it onto the timeline.</div>
+        </div>
+      </div>
+
+      <div class="card editor hidden" id="lyrEditor" style="max-width:900px;margin-top:18px">
+        <h3>Timestamp Editor <span id="edSongName" style="color:var(--muted);font-weight:normal;font-size:15px"></span></h3>
+        <div class="sub">Play the song, click a line to select it, and hit <b>Stamp</b> (or press
+        <b>Enter</b>) the instant it's sung — the line takes the current playback time and selection
+        moves to the next line. <b>Space</b> = play/pause. Times are precise to a tenth of a second.
+        Section markers are separators (never captions) and show how long each section runs.</div>
+        <audio id="edAudio" controls preload="metadata" style="width:100%"></audio>
+        <div class="save-bar" style="align-items:center;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="window.edSeek(-5)">−5s</button>
+          <button class="btn btn-ghost" onclick="window.edSeek(-1)">−1s</button>
+          <button class="btn btn-ghost" onclick="window.edSeek(1)">+1s</button>
+          <button class="btn btn-ghost" onclick="window.edSeek(5)">+5s</button>
+          <button class="btn btn-ghost" id="edRateBtn" onclick="window.edRate()">1.0×</button>
+          <span id="edClock" style="font-family:monospace;font-size:20px;min-width:90px">0:00.0</span>
+          <button class="btn btn-red" onclick="window.edStamp()">Stamp selected (Enter)</button>
+        </div>
+        <div id="edRows" style="max-height:440px;overflow:auto;border:1px solid #333;border-radius:8px;padding:4px"></div>
+        <div class="save-bar" style="flex-wrap:wrap">
+          <button class="btn btn-red" id="edSaveBtn" onclick="window.edSave()">Save to catalog</button>
+          <button class="btn btn-blue" onclick="window.edExportSrt()">Export .srt (exact)</button>
+          <button class="btn btn-ghost" onclick="window.edDownloadTxt()">Download .txt</button>
+          <button class="btn btn-ghost" onclick="window.edAddLine()">+ Add line</button>
+          <span id="edStatus" class="sub"></span>
         </div>
       </div>
     </section>
@@ -1808,15 +1839,15 @@
     const raw = $('lyrOut').value || '';
     const lines = [];
     raw.split(/\r?\n/).forEach((ln) => {
-      const m = ln.match(/^\s*(\d+):(\d{2})\s+(.+)$/);
+      const m = ln.match(/^\s*(\d+):(\d{2}(?:\.\d+)?)\s+(.+)$/);
       if (!m) return;
       const text = m[3].trim();
       if (!text || /^\[.*\]$/.test(text)) return; // skip section / instrumental markers
-      lines.push({ sec: parseInt(m[1], 10) * 60 + parseInt(m[2], 10), text: text });
+      lines.push({ sec: parseInt(m[1], 10) * 60 + parseFloat(m[2]), text: text });
     });
     if (!lines.length) { toast('No timestamped lyrics to export yet', true); return; }
     const pad = (n) => String(n).padStart(2, '0');
-    const tc = (s) => pad(Math.floor(s / 3600)) + ':' + pad(Math.floor((s % 3600) / 60)) + ':' + pad(s % 60) + ',000';
+    const tc = (s) => pad(Math.floor(s / 3600)) + ':' + pad(Math.floor((s % 3600) / 60)) + ':' + pad(Math.floor(s % 60)) + ',' + String(Math.round((s % 1) * 1000)).padStart(3, '0');
     const cues = [];
     let prevEnd = 0;
     for (let i = 0; i < lines.length; i++) {
@@ -1833,6 +1864,207 @@
     a.download = songId + '.srt';
     a.click();
     toast(cues.length + ' captions exported');
+  };
+
+  // ---------- timestamp editor ----------
+  let edLines = [], edSel = -1, edSongId = '', edCanSave = false;
+
+  function edParseTs(text) {
+    const out = [];
+    text.split(/\r?\n/).forEach((ln) => {
+      const m = ln.match(/^\s*(\d+):(\d{2}(?:\.\d+)?)\s+(.+)$/);
+      if (!m) return;
+      const t = parseInt(m[1], 10) * 60 + parseFloat(m[2]);
+      const txt = m[3].trim();
+      if (txt) out.push({ t: t, text: txt, marker: /^\[.*\]$/.test(txt) });
+    });
+    return out;
+  }
+  function edFmt(t) {
+    const m = Math.floor(t / 60), s = t - m * 60;
+    const whole = Math.abs(s - Math.round(s)) < 0.05;
+    return m + ':' + (whole ? String(Math.round(s)).padStart(2, '0')
+      : (s < 10 ? '0' : '') + s.toFixed(1));
+  }
+  function edSerialize() {
+    return edLines.map((l) => edFmt(l.t) + '\t' + l.text).join('\n') + '\n';
+  }
+  function edEnsureAnchors() {
+    if (!edLines.length || edLines[0].text.toLowerCase() !== '[start]')
+      edLines.unshift({ t: 0, text: '[Start]', marker: true });
+    const dur = $('edAudio').duration;
+    const hasEnd = edLines.some((l) => l.text.toLowerCase() === '[end]');
+    if (!hasEnd && dur && isFinite(dur))
+      edLines.push({ t: Math.round(dur * 10) / 10, text: '[End]', marker: true });
+  }
+
+  window.edOpen = function (text, audioSrc, songId, canSave, name) {
+    edLines = edParseTs(text);
+    edSongId = songId || ''; edCanSave = !!canSave; edSel = -1;
+    $('edSongName').textContent = name ? ('— ' + name) : '';
+    $('edSaveBtn').style.display = canSave ? '' : 'none';
+    const au = $('edAudio');
+    au.src = audioSrc || '';
+    au.onloadedmetadata = function () { edEnsureAnchors(); edRender(); };
+    edEnsureAnchors();
+    $('lyrEditor').classList.remove('hidden');
+    edRender();
+    $('lyrEditor').scrollIntoView({ behavior: 'smooth' });
+  };
+
+  window.edFromResult = function () {
+    const mode = $('lyrMode').value;
+    let src = '', canSave = false, name = '';
+    if (mode === 'upload' && $('lyrFile').files[0]) src = URL.createObjectURL($('lyrFile').files[0]);
+    else {
+      const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+      if (song) { src = audioOf(song); canSave = true; name = song.title; }
+    }
+    window.edOpen($('lyrOut').value, src, $('lyrSong').value, canSave, name);
+  };
+
+  window.edLoadExisting = async function () {
+    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+    if (!song) return toast('Pick a song first', true);
+    try {
+      const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
+      window.edOpen(b64decode(f.content), audioOf(song), song.id, true, song.title);
+    } catch (e) {
+      toast('No saved timestamps for this song yet — generate them first', true);
+    }
+  };
+
+  function edRender() {
+    const box = $('edRows');
+    box.innerHTML = '';
+    edLines.forEach((l, i) => {
+      const row = document.createElement('div');
+      row.dataset.i = i;
+      row.style.cssText = 'display:flex;gap:8px;align-items:center;padding:5px 8px;border-radius:6px;cursor:pointer'
+        + (i === edSel ? ';outline:2px solid #e05252' : '')
+        + (l.marker ? ';background:#20242c;margin:6px 0;font-weight:bold' : '');
+      row.onclick = function (e) { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') { edSel = i; edRender(); } };
+      let dur = '';
+      if (l.marker) {
+        let next = edLines.slice(i + 1).find((x) => x.marker);
+        if (next) dur = '<span style="color:#8a8f98;font-weight:normal;margin-left:auto">' + (next.t - l.t).toFixed(1) + 's section</span>';
+      }
+      row.innerHTML =
+        '<input value="' + edFmt(l.t) + '" style="width:64px;font-family:monospace;text-align:right" onchange="window.edSetTime(' + i + ',this.value)">'
+        + '<button class="btn btn-ghost" style="padding:2px 8px" title="jump audio here" onclick="window.edJump(' + i + ')">&#9658;</button>'
+        + '<button class="btn btn-ghost" style="padding:2px 6px" onclick="window.edNudge(' + i + ',-0.5)">−.5</button>'
+        + '<button class="btn btn-ghost" style="padding:2px 6px" onclick="window.edNudge(' + i + ',0.5)">+.5</button>'
+        + '<span style="flex:1;color:' + (l.marker ? '#e0a952' : '#e8e8e8') + '" ondblclick="window.edEditText(' + i + ')">' + l.text.replace(/</g, '&lt;') + '</span>'
+        + (l.marker ? '' : '<button class="btn btn-ghost" style="padding:2px 6px" title="merge with next line" onclick="window.edCombine(' + i + ')">⇩ merge</button>')
+        + '<button class="btn btn-ghost" style="padding:2px 6px" title="remove" onclick="window.edRemove(' + i + ')">✕</button>'
+        + (l.marker ? dur : '');
+      box.appendChild(row);
+    });
+  }
+  window.edSetTime = function (i, v) {
+    const m = String(v).match(/^\s*(\d+):(\d{2}(?:\.\d+)?)\s*$/);
+    if (m) edLines[i].t = parseInt(m[1], 10) * 60 + parseFloat(m[2]);
+    edRender();
+  };
+  window.edNudge = function (i, d) { edLines[i].t = Math.max(0, Math.round((edLines[i].t + d) * 10) / 10); edRender(); };
+  window.edJump = function (i) { const au = $('edAudio'); au.currentTime = Math.max(0, edLines[i].t - 0.3); au.play(); edSel = i; edRender(); };
+  window.edCombine = function (i) {
+    const j = edLines.findIndex((x, k) => k > i && !x.marker);
+    if (j < 0) return;
+    edLines[i].text += ' / ' + edLines[j].text;
+    edLines.splice(j, 1); edRender();
+  };
+  window.edRemove = function (i) { edLines.splice(i, 1); if (edSel >= edLines.length) edSel = -1; edRender(); };
+  window.edEditText = function (i) {
+    const v = prompt('Edit line', edLines[i].text);
+    if (v !== null && v.trim()) { edLines[i].text = v.trim(); edLines[i].marker = /^\[.*\]$/.test(v.trim()); edRender(); }
+  };
+  window.edAddLine = function () {
+    const t = $('edAudio').currentTime || 0;
+    const at = edSel >= 0 ? edSel + 1 : edLines.length;
+    edLines.splice(at, 0, { t: Math.round(t * 10) / 10, text: 'New line', marker: false });
+    edSel = at; edRender();
+  };
+  window.edStamp = function () {
+    if (edSel < 0) edSel = edLines.findIndex((l) => !l.marker);
+    if (edSel < 0) return;
+    edLines[edSel].t = Math.round($('edAudio').currentTime * 10) / 10;
+    let n = edSel + 1;
+    while (n < edLines.length && edLines[n].marker) n++;
+    edSel = n < edLines.length ? n : edSel;
+    edRender();
+    const row = $('edRows').querySelector('[data-i="' + edSel + '"]');
+    if (row) row.scrollIntoView({ block: 'center' });
+  };
+  window.edSeek = function (d) { const au = $('edAudio'); au.currentTime = Math.max(0, au.currentTime + d); };
+  window.edRate = function () {
+    const au = $('edAudio');
+    au.playbackRate = au.playbackRate === 1 ? 0.75 : 1;
+    $('edRateBtn').textContent = au.playbackRate.toFixed(2).replace(/0+$/, '') + '×';
+  };
+
+  document.addEventListener('keydown', function (e) {
+    if ($('lyrEditor').classList.contains('hidden')) return;
+    if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    if (e.code === 'Space') { e.preventDefault(); const au = $('edAudio'); au.paused ? au.play() : au.pause(); }
+    if (e.code === 'Enter') { e.preventDefault(); window.edStamp(); }
+  });
+  setInterval(function () {
+    const au = $('edAudio');
+    if (!au || $('lyrEditor').classList.contains('hidden')) return;
+    $('edClock').textContent = edFmt(au.currentTime || 0);
+    if (!au.paused) {
+      const t = au.currentTime;
+      let cur = -1;
+      edLines.forEach((l, i) => { if (!l.marker && l.t <= t) cur = i; });
+      document.querySelectorAll('#edRows > div').forEach((r) => {
+        r.style.background = (+r.dataset.i === cur) ? '#33272a'
+          : (edLines[+r.dataset.i] && edLines[+r.dataset.i].marker ? '#20242c' : '');
+      });
+    }
+  }, 200);
+
+  window.edSave = async function () {
+    if (!edCanSave || !edSongId) return toast('Catalog songs only', true);
+    edLines.sort((a, b) => a.t - b.t);
+    edRender();
+    $('edStatus').textContent = 'Saving…';
+    try {
+      await lyrCommitFile('data/lyrics/' + edSongId + '-timestamps.txt', edSerialize(),
+        'Timestamps edited: ' + edSongId);
+      $('edStatus').textContent = 'Saved to catalog.';
+      toast('Timestamps saved');
+    } catch (e) { $('edStatus').textContent = ''; toast('Save failed: ' + e.message, true); }
+  };
+  window.edDownloadTxt = function () {
+    const blob = new Blob([edSerialize()], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (edSongId || 'lyrics') + '-timestamps.txt';
+    a.click();
+  };
+  window.edExportSrt = function () {
+    const lines = edLines.filter((l) => !l.marker).sort((a, b) => a.t - b.t);
+    if (!lines.length) return toast('Nothing to export', true);
+    const endMark = edLines.find((l) => l.text.toLowerCase() === '[end]');
+    const pad = (n, w) => String(n).padStart(w || 2, '0');
+    const tc = (s) => pad(Math.floor(s / 3600)) + ':' + pad(Math.floor((s % 3600) / 60)) + ':'
+      + pad(Math.floor(s % 60)) + ',' + pad(Math.round((s % 1) * 1000), 3);
+    const cues = [];
+    let prevEnd = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const start = Math.max(lines[i].t, prevEnd);
+      let nxt = (i + 1 < lines.length) ? lines[i + 1].t : (endMark ? endMark.t : lines[i].t + 4);
+      const end = nxt > start ? nxt : start + 1;
+      cues.push({ s: start, e: end, x: lines[i].text });
+      prevEnd = end;
+    }
+    const srt = cues.map((c, i) => (i + 1) + '\n' + tc(c.s) + ' --> ' + tc(c.e) + '\n' + c.x + '\n').join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([srt], { type: 'text/plain' }));
+    a.download = (edSongId || 'lyrics') + '.srt';
+    a.click();
+    toast(cues.length + ' exact captions exported');
   };
 
   // ---------- new artist ----------
