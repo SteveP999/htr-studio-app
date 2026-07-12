@@ -2061,12 +2061,22 @@
         let next = edLines.slice(i + 1).find((x) => x.marker);
         if (next) dur = '<span style="color:#8a8f98;font-weight:normal;margin-left:auto">' + (next.t - l.t).toFixed(1) + 's section</span>';
       }
+      let lineDur = '';
+      if (!l.marker) {
+        const nx = edLines.slice(i + 1).find((x) => x.t > l.t);
+        if (nx) {
+          const d = nx.t - l.t;
+          const col = d < 2 ? '#e05252' : (d < 3 ? '#e0a952' : '#8a8f98');
+          lineDur = '<span style="color:' + col + ';font-family:monospace;min-width:46px;text-align:right">' + d.toFixed(1) + 's</span>';
+        }
+      }
       row.innerHTML =
         '<input value="' + edFmt(l.t) + '" style="width:64px;font-family:monospace;text-align:right" onchange="window.edSetTime(' + i + ',this.value)">'
         + '<button class="btn btn-ghost" style="padding:2px 8px" title="jump audio here" onclick="window.edJump(' + i + ')">&#9658;</button>'
         + '<button class="btn btn-ghost" style="padding:2px 6px" onclick="window.edNudge(' + i + ',-0.5)">−.5</button>'
         + '<button class="btn btn-ghost" style="padding:2px 6px" onclick="window.edNudge(' + i + ',0.5)">+.5</button>'
         + '<span style="flex:1;color:' + (l.marker ? '#e0a952' : '#e8e8e8') + '" ondblclick="window.edEditText(' + i + ')">' + l.text.replace(/</g, '&lt;') + '</span>'
+        + lineDur
         + (l.marker ? '' : '<button class="btn btn-ghost" style="padding:2px 6px" title="merge with next line" onclick="window.edCombine(' + i + ')">⇩ merge</button>')
         + '<button class="btn btn-ghost" style="padding:2px 6px" title="remove" onclick="window.edRemove(' + i + ')">✕</button>'
         + (l.marker ? dur : '');
@@ -2170,9 +2180,10 @@
     a.click();
   };
   window.edExportSrt = function () {
-    const lines = edLines.filter((l) => !l.marker).sort((a, b) => a.t - b.t);
+    const all = edLines.slice().sort((a, b) => a.t - b.t);
+    const lines = all.filter((l) => !l.marker);
     if (!lines.length) return toast('Nothing to export', true);
-    const endMark = edLines.find((l) => l.text.toLowerCase() === '[end]');
+    const endMark = all.find((l) => l.text.toLowerCase() === '[end]');
     const pad = (n, w) => String(n).padStart(w || 2, '0');
     const tc = (s) => pad(Math.floor(s / 3600)) + ':' + pad(Math.floor((s % 3600) / 60)) + ':'
       + pad(Math.floor(s % 60)) + ',' + pad(Math.round((s % 1) * 1000), 3);
@@ -2180,7 +2191,10 @@
     let prevEnd = 0;
     for (let i = 0; i < lines.length; i++) {
       const start = Math.max(lines[i].t, prevEnd);
-      let nxt = (i + 1 < lines.length) ? lines[i + 1].t : (endMark ? endMark.t : lines[i].t + 4);
+      // caption ends at the NEXT event — lyric OR section marker (so captions
+      // never linger through a musical interlude / solo)
+      const nxtEv = all.find((x) => x.t > start && x !== lines[i]);
+      let nxt = nxtEv ? nxtEv.t : (endMark ? endMark.t : lines[i].t + 4);
       const end = nxt > start ? nxt : start + 1;
       cues.push({ s: start, e: end, x: lines[i].text });
       prevEnd = end;
