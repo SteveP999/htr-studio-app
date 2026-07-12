@@ -2077,7 +2077,7 @@
         + '<button class="btn btn-ghost" style="padding:2px 6px" onclick="window.edNudge(' + i + ',0.5)">+.5</button>'
         + '<span style="flex:1;color:' + (l.marker ? '#e0a952' : '#e8e8e8') + '" ondblclick="window.edEditText(' + i + ')">' + l.text.replace(/</g, '&lt;') + '</span>'
         + lineDur
-        + (l.marker ? '' : '<button class="btn btn-ghost" style="padding:2px 6px" title="merge with next line" onclick="window.edCombine(' + i + ')">⇩ merge</button>')
+        + (l.marker ? '<button class="btn btn-ghost" style="padding:2px 6px" title="insert another section marker at the midpoint (more photo slots for music videos)" onclick="window.edSplitSection(' + i + ')">÷ split</button>' : '<button class="btn btn-ghost" style="padding:2px 6px" title="merge with next line" onclick="window.edCombine(' + i + ')">⇩ merge</button>')
         + '<button class="btn btn-ghost" style="padding:2px 6px" title="remove" onclick="window.edRemove(' + i + ')">✕</button>'
         + (l.marker ? dur : '');
       box.appendChild(row);
@@ -2109,6 +2109,22 @@
     edLines.splice(at, 0, { t: Math.round(t * 10) / 10, text: 'New line', marker: false });
     edSel = at; edRender();
   };
+  window.edSplitSection = function (i) {
+    // insert a sibling marker halfway between this marker and the next event,
+    // giving music videos another photo slot inside a long interlude
+    const l = edLines[i];
+    const nx = edLines.slice(i + 1).find((x) => x.t > l.t);
+    const end = nx ? nx.t : ($('edAudio').duration || l.t + 16);
+    if (end - l.t < 4) return toast('Section too short to split', true);
+    edPush();
+    const mid = Math.round(((l.t + end) / 2) * 10) / 10;
+    const base = l.text.replace(/^\[|\]$/g, '').replace(/\s+\d+$/, '');
+    let at = edLines.findIndex((x) => x.t > mid);
+    if (at < 0) at = edLines.length;
+    edLines.splice(at, 0, { t: mid, text: '[' + base + ' 2]', marker: true });
+    edRender();
+  };
+
   window.edAddSection = function () {
     const name = prompt('Section name (e.g. Musical Break, Bridge, Chorus 2)', 'Musical Break');
     if (name === null || !name.trim()) return;
