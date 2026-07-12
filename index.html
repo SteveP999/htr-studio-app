@@ -448,8 +448,12 @@
         <textarea id="lyrText" rows="12" placeholder="[Verse 1]&#10;First line of the verse&#10;Second line&#10;[Chorus]&#10;..."></textarea>
         <div class="save-bar">
           <button class="btn btn-red" id="lyrGenBtn" onclick="window.lyrGenerate()">Generate timestamps</button>
+          <button class="btn btn-blue" onclick="window.edFromLyrics()">Time manually in editor</button>
           <span id="lyrStatus" style="color:var(--muted);font-size:14px"></span>
         </div>
+        <div class="sub">"Time manually" skips the cloud aligner: your pasted lyrics open in the editor
+        exactly as written (brackets become section markers), and you stamp each line against the audio —
+        the most exact option, and the words are always right.</div>
         <div id="lyrResult" class="hidden">
           <label>Timestamps</label>
           <textarea id="lyrOut" rows="12" readonly></textarea>
@@ -1892,11 +1896,40 @@
       const m = ln.match(/^\s*(\d+):(\d{2}(?:\.\d+)?)\s+(.+)$/);
       if (!m) return;
       const t = parseInt(m[1], 10) * 60 + parseFloat(m[2]);
-      const txt = m[3].trim();
+      let txt = m[3].trim();
+      // strip stale timestamps that leaked into the text ("0:27  0:42 I can feel...")
+      while (/^\d+:\d{2}(?:\.\d+)?(\s+|$)/.test(txt)) txt = txt.replace(/^\d+:\d{2}(?:\.\d+)?\s*/, '');
       if (txt) out.push({ t: t, text: txt, marker: /^\[.*\]$/.test(txt) });
     });
     return out;
   }
+
+  // Open the editor straight from a pasted lyric sheet (Suno format) — no aligner.
+  // Lines get placeholder times in order; you stamp the real times against the audio.
+  window.edFromLyrics = function () {
+    const raw = $('lyrText').value.trim();
+    if (!raw) return toast('Paste the lyrics first', true);
+    const mode = $('lyrMode').value;
+    let src = '', canSave = false, name = '', songId = '';
+    if (mode === 'upload' && $('lyrFile').files[0]) src = URL.createObjectURL($('lyrFile').files[0]);
+    else {
+      const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
+      if (!song) return toast('Pick a song (or switch Source to upload)', true);
+      src = audioOf(song); canSave = true; name = song.title; songId = song.id;
+    }
+    const lines = [];
+    raw.split(/\r?\n/).forEach((ln) => {
+      let t = ln.trim();
+      while (/^\d+:\d{2}(?:\.\d+)?(\s+|$)/.test(t)) t = t.replace(/^\d+:\d{2}(?:\.\d+)?\s*/, '');
+      if (!t) return;
+      lines.push(t);
+    });
+    if (!lines.length) return toast('No lyric lines found', true);
+    // placeholder times keep the sheet order until you stamp the real ones
+    const text = lines.map((l, i) => '0:' + String((i * 0.1).toFixed(1)).padStart(4, '0') + '\t' + l).join('\n');
+    window.edOpen(text, src, songId, canSave, name);
+    toast('Stamp each line as it’s sung — times are placeholders until you do');
+  };
   function edFmt(t) {
     const m = Math.floor(t / 60), s = t - m * 60;
     const whole = Math.abs(s - Math.round(s)) < 0.05;
