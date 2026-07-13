@@ -231,7 +231,7 @@
         <label>Artist</label>
         <select id="exArtist" onchange="window.exLoadSongs()"></select>
         <label>Song</label>
-        <select id="exSong"></select>
+        <select id="exSong" onchange="window.exSelectSong()"></select>
 
         <label style="margin-top:26px;color:var(--warn)">— Add Video —</label>
         <label>YouTube URL</label>
@@ -988,6 +988,7 @@
     $('exArtist').value = artistId;
     await window.exLoadSongs();
     $('exSong').value = songId;
+    window.exSelectSong();
   };
 
   window.saveArtist = async function () {
@@ -1315,9 +1316,25 @@
         acsel.appendChild(o2);
       });
       window.exRenderReorder();
+      window.exSelectSong();
     } catch (e) {
       toast('Could not load songs: ' + e.message, true);
     }
+  };
+
+  // Reload the form for whichever song is selected — streaming links come from
+  // that song's own data; one-shot "add" fields are cleared so nothing carries over.
+  window.exSelectSong = function () {
+    const s = exSongs.find((x) => x.id === $('exSong').value);
+    const st = (s && s.streaming) || {};
+    $('exSpotify').value = st.spotify || '';
+    $('exApple').value = st.apple || '';
+    $('exYtm').value = st.youtubeMusic || '';
+    $('exVideoUrl').value = '';
+    $('exVideoTitle').value = '';
+    $('exNewAudio').value = '';
+    $('exWholeAlbum').checked = false;
+    $('exMsg').textContent = '';
   };
 
   async function exUpdateSongs(mutate, message) {
