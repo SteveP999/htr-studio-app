@@ -2519,10 +2519,13 @@
     } catch (e) { return []; }
   }
 
+  let lvRefreshSeq = 0;
+
   window.lvRefresh = async function () {
     const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
     const box = $('lvThumbs');
     if (!song) { box.innerHTML = ''; return; }
+    const seq = ++lvRefreshSeq;   // only the latest refresh may touch the page
     $('lvSongName').textContent = '— ' + song.title;
     box.innerHTML = '<span class="sub">Loading…</span>';
     const base = 'data/video-assets/' + song.id;
@@ -2531,6 +2534,7 @@
       { label: '9:16 — Shorts / Reels', fmt: '9x16', items: await lvList(base + '/9x16'), tw: 84, th: 150 },
       { label: 'Both formats (auto-cropped)', fmt: '', items: await lvList(base), tw: 150, th: 84 }
     ];
+    if (seq !== lvRefreshSeq) return;   // a newer refresh took over
     lvItems = [];
     box.innerHTML = '';
     let any = false;
@@ -2560,14 +2564,17 @@
     // cue reference set: prefer the 16:9 group, then shared, then 9:16
     lvCueImgs = (groups[0].items.length ? groups[0].items
                 : (groups[2].items.length ? groups[2].items : groups[1].items));
-    lvCues = [];
+    const cuesLoaded = [];
     try {
       const cf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/video-assets/' + song.id + '/cues.txt?ref=main');
       b64decode(cf.content).split(/\r?\n/).forEach((ln) => {
         const m = ln.match(/^\s*(\d+:\d{2}(?:\.\d+)?)\s+(\d+)\s*$/);
-        if (m) lvCues.push({ t: m[1], idx: parseInt(m[2], 10) });
+        if (m) cuesLoaded.push({ t: m[1], idx: parseInt(m[2], 10) });
       });
     } catch (e) { /* no cues yet */ }
+    if (seq !== lvRefreshSeq) return;
+    if (lvCuesDirty) return;   // never clobber unsaved edits with a background refresh
+    lvCues = cuesLoaded;
     lvCueRender();
   };
 
