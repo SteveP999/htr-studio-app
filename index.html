@@ -162,29 +162,20 @@
           <h3>Build Artist Site</h3>
           <div class="sub">Rebuilds one artist's site from master data and publishes it.</div>
           <select id="buildArtistSel"></select>
-          <div class="row">
-            <label class="chk"><input type="checkbox" id="dryArtist" checked> Dry run (practice, publish nothing)</label>
-          </div>
           <div class="row"><button class="btn btn-blue" onclick="window.runArtistBuild()">Run</button></div>
         </div>
         <div class="card">
           <h3>Publish Homepage</h3>
           <div class="sub">Rebuilds hellotexasrecords.com homepage data (roster, latest releases).</div>
-          <div class="row">
-            <label class="chk"><input type="checkbox" id="dryHome" checked> Dry run</label>
-          </div>
-          <div class="row"><button class="btn btn-blue" onclick="window.runWorkflow('publish-homepage.yml', {}, 'dryHome', 'Publish Homepage')">Run</button></div>
+          <div class="row"><button class="btn btn-blue" onclick="window.runWorkflow('publish-homepage.yml', {}, 'Publish Homepage')">Run</button></div>
         </div>
         <div class="card">
           <h3>Publish HTR Radio</h3>
           <div class="sub">Rebuilds all radio station data and updates the radio site + homepage player.</div>
-          <div class="row">
-            <label class="chk"><input type="checkbox" id="dryRadio" checked> Dry run</label>
-          </div>
-          <div class="row"><button class="btn btn-blue" onclick="window.runWorkflow('publish-radio.yml', {}, 'dryRadio', 'Publish HTR Radio')">Run</button></div>
+          <div class="row"><button class="btn btn-blue" onclick="window.runWorkflow('publish-radio.yml', {}, 'Publish HTR Radio')">Run</button></div>
         </div>
       </div>
-      <div class="dry-note">Dry run = the build happens in the cloud and shows what would change, but nothing goes live. Uncheck it only when you mean it.</div>
+      <div class="dry-note">These buttons publish LIVE immediately. You'll get a confirm prompt before anything goes out.</div>
 
       <div class="runs">
         <div class="runs-head">
@@ -384,8 +375,8 @@
         <div style="padding:20px;color:var(--muted)">Loading…</div>
       </div>
       <div class="after-save hidden" id="radioAfter">
-        <p>Saved to master data. Preview it in the cloud (nothing goes live):</p>
-        <button class="btn btn-blue" onclick="window.radioPublishDry()">Publish HTR Radio — dry run</button>
+        <p>Saved to master data. Publish it to the live radio site + homepage player:</p>
+        <button class="btn btn-blue" onclick="window.radioPublish()">Publish HTR Radio</button>
       </div>
       <div class="dry-note">Gold cell = song is ON that station — click to toggle. Faded columns
       (Open Road, Top&nbsp;20) are automatic and can't be toggled here (Top 20 has its own tab). Save
@@ -410,8 +401,8 @@
         <div style="padding:20px;color:var(--muted)">Loading…</div>
       </div>
       <div class="after-save hidden" id="t20After">
-        <p>Saved to chart.json. Preview it in the cloud (nothing goes live):</p>
-        <button class="btn btn-blue" onclick="window.radioPublishDry()">Publish HTR Radio — dry run</button>
+        <p>Saved to chart.json. Publish it to rebuild the Top 20 station on the live radio:</p>
+        <button class="btn btn-blue" onclick="window.radioPublish()">Publish HTR Radio</button>
       </div>
       <div class="dry-note">Rank is set by order — top row is #1. Use ↑ ↓ to reorder, ✕ to remove,
       the dropdown to add. Save writes chart.json; the Top 20 station rebuilds on the next radio publish.</div>
@@ -1058,13 +1049,12 @@
     });
   }
 
-  window.runWorkflow = async function (file, extraInputs, dryChkId, label) {
-    const dry = $(dryChkId).checked;
-    if (!dry && !confirm('This will publish LIVE: ' + label + '. Continue?')) return;
-    const inputs = Object.assign({}, extraInputs, { dry_run: dry ? 'true' : 'false' });
+  window.runWorkflow = async function (file, extraInputs, label) {
+    if (!confirm('This will publish LIVE: ' + label + '. Continue?')) return;
+    const inputs = Object.assign({}, extraInputs, { dry_run: 'false' });
     try {
       await dispatch(file, inputs);
-      toast(label + (dry ? ' (dry run)' : ' (LIVE)') + ' started.');
+      toast(label + ' (LIVE) started.');
       startPolling();
     } catch (e) {
       toast('Failed to start: ' + e.message, true);
@@ -1073,7 +1063,7 @@
 
   window.runArtistBuild = function () {
     const id = $('buildArtistSel').value;
-    window.runWorkflow('build-artist.yml', { artist_id: id }, 'dryArtist', 'Build ' + id);
+    window.runWorkflow('build-artist.yml', { artist_id: id }, 'Build ' + id);
   };
 
   window.loadRuns = async function () {
@@ -1793,11 +1783,13 @@
     }
   };
 
-  window.radioPublishDry = async function () {
+  window.radioPublish = async function () {
+    if (!confirm('This will publish HTR Radio LIVE. Continue?')) return;
     try {
-      await dispatch('publish-radio.yml', { dry_run: 'true' });
-      toast('Publish HTR Radio (dry run) started — check Recent runs.');
+      await dispatch('publish-radio.yml', { dry_run: 'false' });
+      toast('Publish HTR Radio (LIVE) started — check Recent runs.');
       $('radioAfter').classList.add('hidden');
+      $('t20After') && $('t20After').classList.add('hidden');
       showTab('dashboard');
       startPolling();
     } catch (e) {
