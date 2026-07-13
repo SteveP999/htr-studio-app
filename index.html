@@ -553,9 +553,10 @@
           <button class="btn btn-red" onclick="window.lvRender()">Render in cloud (final, both → Dropbox)</button>
           <span id="lvStatus" class="sub"></span>
         </div>
-        <div class="sub">THIS PC = ~2 min, output opens in a folder (needs the one-time
-        _setup\install-local-render-button.bat on that computer). Cloud = ~15 min, both formats
-        auto-saved to the song's Dropbox folder.</div>
+        <div class="sub">THIS PC = ~2 min, output opens in a folder — needs the <b>Render Agent</b>
+        running (double-click <b>start-render-agent.bat</b> in D:\HTR-Studio and leave the window
+        open while you work). Cloud = ~15 min, both formats auto-saved to the song's Dropbox folder,
+        no agent needed.</div>
       </div>
     </section>
 
@@ -2676,16 +2677,24 @@
     } catch (e) { toast('Delete failed: ' + e.message, true); }
   };
 
-  window.lvRenderLocal = function () {
+  window.lvRenderLocal = async function () {
     const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
     if (!song) return toast('Pick a catalog song first', true);
     if (!lvItems.length) return toast('Upload at least one background first', true);
     if (lvCuesDirty) return toast('You have UNSAVED cue changes — hit Save cues first (renders read the saved file)', true);
-    const url = 'htr-render://' + song.id + '/';
-    $('lvStatus').innerHTML = 'Launching local render — a terminal window opens on this PC (~2 min)… '
-      + 'Nothing happened? <a href="' + url + '" style="color:var(--warn)">Click here to launch it</a> '
-      + '(and allow "HTR Local Render" if the browser asks).';
-    window.location.href = url;
+    try {
+      await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
+    } catch (e) {
+      return toast('No saved timestamps for this song — stamp them in the Timestamp Editor and Save to catalog first', true);
+    }
+    try {
+      await lyrCommitFile('data/render-requests/' + song.id + '.json',
+        JSON.stringify({ song_id: song.id, formats: '16x9', requested: new Date().toISOString() }) + '\n',
+        'Render request: ' + song.id);
+      $('lvStatus').textContent = 'Queued for your PC — the Render Agent picks it up within ~10s and renders in ~2 min. '
+        + '(Agent not running? Double-click start-render-agent.bat in D:\\HTR-Studio and leave it open.)';
+      toast('Local render queued');
+    } catch (e) { toast('Could not queue: ' + e.message, true); }
   };
 
   window.lvRender = async function () {
