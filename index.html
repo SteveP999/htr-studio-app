@@ -2334,8 +2334,9 @@
         const nx = edLines.slice(i + 1).find((x) => x.t > l.t);
         if (nx) {
           const d = nx.t - l.t;
-          const col = d < 2 ? '#e05252' : (d < 3 ? '#e0a952' : '#8a8f98');
-          lineDur = '<span style="color:' + col + ';font-family:monospace;min-width:46px;text-align:right">' + d.toFixed(1) + 's</span>';
+          const col = d < 2 ? '#e05252' : (d < 3 ? '#e0a952' : (d > 8 ? '#e05252' : '#8a8f98'));
+          const hint = d > 8 ? ' title="this caption holds ' + d.toFixed(0) + 's — likely an interlude. Add a section where the singing stops to cut it."' : '';
+          lineDur = '<span' + hint + ' style="color:' + col + ';font-family:monospace;min-width:46px;text-align:right">' + d.toFixed(1) + 's' + (d > 8 ? ' ⚠' : '') + '</span>';
         }
       }
       row.innerHTML =
