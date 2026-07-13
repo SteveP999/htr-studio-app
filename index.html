@@ -2449,6 +2449,19 @@
 
   window.edSave = async function () {
     if (!edCanSave || !edSongId) return toast('Catalog songs only', true);
+    // unstamped section markers (placeholder times before the first lyric)
+    // would sort to the top as 0:00 junk — offer to sweep them
+    const firstLyric = edLines.filter((l) => !l.marker).sort((a, b) => a.t - b.t)[0];
+    if (firstLyric) {
+      const junk = edLines.filter((l) => l.marker
+        && !/^\[(start|end)\]$/i.test(l.text) && l.t < firstLyric.t);
+      if (junk.length && confirm(junk.length + ' section marker(s) were never stamped (their times are before the first lyric):\n\n'
+        + junk.map((j) => '  ' + edFmt(j.t) + '  ' + j.text).join('\n')
+        + '\n\nRemove them? (OK = remove, Cancel = keep them)')) {
+        edPush();
+        edLines = edLines.filter((l) => junk.indexOf(l) === -1);
+      }
+    }
     edLines.sort((a, b) => a.t - b.t);
     edRender();
     $('edStatus').textContent = 'Saving…';
