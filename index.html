@@ -661,6 +661,73 @@
       </div>
     </section>
 
+    <!-- ============ SONG POLLS ============ -->
+    <section id="view-polls" class="hidden">
+      <div class="card editor" style="max-width:720px">
+        <h3>Song Polls — Your Vote Shapes the Music</h3>
+        <div class="sub">Create a poll for a song with any number of versions. Fans vote at
+          <a href="https://hellotexasrecords.com/htr-vote.html" target="_blank" rel="noreferrer">the vote page</a>.
+          Load each version's audio from a Dropbox link.</div>
+
+        <div id="pollAuth" class="row" style="flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:8px">
+          <div style="flex:1;min-width:180px">
+            <label>HTR account email</label>
+            <input id="pollEmail" type="email" placeholder="you@example.com">
+          </div>
+          <div style="flex:1;min-width:150px">
+            <label>Password</label>
+            <input id="pollPw" type="password" placeholder="••••••••">
+          </div>
+          <button class="btn btn-blue" onclick="window.pollSignIn()">Sign in</button>
+          <span id="pollAuthMsg" style="color:var(--muted);font-size:13px"></span>
+        </div>
+        <div id="pollSignedIn" class="row hidden" style="align-items:center;gap:10px;margin-top:8px">
+          <span id="pollWho" style="color:var(--muted);font-size:13px"></span>
+          <span class="spacer"></span>
+          <button class="btn btn-ghost" onclick="window.pollSignOut()">Sign out</button>
+        </div>
+      </div>
+
+      <div id="pollBody" class="hidden">
+        <div class="card editor" style="max-width:720px;margin-top:16px">
+          <h3 id="pollFormTitle">New poll</h3>
+          <input type="hidden" id="pollEditId">
+          <label>Song title</label>
+          <input id="pollSong" type="text" placeholder="e.g. People Pleaser (Rest In Peace)">
+          <label>Artist</label>
+          <select id="pollArtist"></select>
+          <label>Question shown to fans</label>
+          <input id="pollQuestion" type="text" value="Which version should we release?">
+          <div class="row" style="gap:18px;flex-wrap:wrap">
+            <div style="flex:1;min-width:170px">
+              <label>Deadline (optional)</label>
+              <input id="pollDeadline" type="date">
+            </div>
+            <label class="chk" style="margin-top:26px"><input type="checkbox" id="pollActive" checked> Active (show on vote page)</label>
+          </div>
+
+          <label style="margin-top:22px;color:var(--warn)">— Versions —</label>
+          <div class="sub">Each version is a choice fans can play and vote for. Paste the Dropbox
+            file link (/scl/fi/...) for each.</div>
+          <div id="pollVersions"></div>
+          <div class="row"><button class="btn btn-ghost" onclick="window.pollAddVersion()">+ Add version</button></div>
+
+          <div class="save-bar">
+            <button class="btn btn-red" onclick="window.pollSave()">Save poll</button>
+            <button class="btn btn-ghost" onclick="window.pollNew()">Clear / New</button>
+            <span id="pollMsg" style="color:var(--muted);font-size:14px"></span>
+          </div>
+        </div>
+
+        <div class="card" style="max-width:720px;margin-top:16px">
+          <div class="radio-head"><h2 style="margin:0">Existing polls</h2><span class="spacer"></span>
+            <button class="btn btn-ghost" onclick="window.loadPolls(true)">Reload</button></div>
+          <div id="pollList" class="radio-wrap" style="max-height:none">
+            <div style="padding:16px;color:var(--muted)">Loading…</div></div>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -768,11 +835,11 @@
   // ---------- tabs (grouped nav) ----------
   const NAV_GROUPS = {
     artists: [['artists', 'Roster'], ['newartist', 'New Artist'], ['addsong', 'Add Song'], ['extras', 'Song Extras']],
-    media: [['lyrics', 'Song Workshop'], ['video', 'Music Video']],
+    media: [['lyrics', 'Song Workshop'], ['video', 'Music Video'], ['polls', 'Song Polls']],
     radio: [['radio', 'Stations'], ['top20', 'Top 20']],
     admin: [['dashboard', 'Dashboard & Runs']]
   };
-  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'radio', 'top20', 'lyrics', 'video'];
+  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'radio', 'top20', 'lyrics', 'video', 'polls'];
   let curGroup = 'artists';
 
   function groupOf(view) {
@@ -805,6 +872,7 @@
     if (name === 'top20' && !t20Loaded) window.loadTop20();
     if (name === 'lyrics' && !lyrLoaded) window.loadLyrics();
     if (name === 'video' && !vidLoaded) window.loadVideo();
+    if (name === 'polls' && !pollsLoaded) window.loadPolls();
   };
 
   function applyLyricsOnly() {
@@ -3172,12 +3240,232 @@
     }
   });
 
+  // ---------- song polls (Firebase / Firestore) ----------
+  let pollsLoaded = false, pollsCache = [], pollVersions = [], pollAuthWired = false, pollPreviewAudio = null;
+
+  function whenHTRPoll(cb, tries) {
+    tries = tries || 0;
+    if (window.HTRPoll) return cb();
+    if (tries > 60) { toast('Voting backend failed to load.', true); return; }
+    setTimeout(function () { whenHTRPoll(cb, tries + 1); }, 100);
+  }
+
+  window.loadPolls = function (force) {
+    pollsLoaded = true;
+    fillPollArtists();
+    if (!pollVersions.length) pollVersions = [{ label: '', audioUrl: '', desc: '' }, { label: '', audioUrl: '', desc: '' }];
+    renderPollVersions();
+    whenHTRPoll(function () {
+      if (!pollAuthWired) { pollAuthWired = true; window.HTRPoll.onChange = renderPollAuth; }
+      renderPollAuth(window.HTRPoll.user);
+    });
+  };
+
+  function fillPollArtists() {
+    const sel = $('pollArtist'); if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— pick artist —</option>';
+    (artists || []).slice().sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); })
+      .forEach(function (a) {
+        const o = document.createElement('option');
+        o.value = a.name; o.textContent = a.name; sel.appendChild(o);
+      });
+    if (cur) sel.value = cur;
+  }
+
+  function renderPollAuth(user) {
+    const authed = !!user;
+    $('pollAuth').classList.toggle('hidden', authed);
+    $('pollSignedIn').classList.toggle('hidden', !authed);
+    $('pollBody').classList.toggle('hidden', !authed);
+    if (authed) {
+      $('pollWho').textContent = 'Signed in as ' + (user.email || 'account');
+      refreshPollList();
+    }
+  }
+
+  window.pollSignIn = async function () {
+    const email = $('pollEmail').value.trim(), pw = $('pollPw').value;
+    if (!email || !pw) { $('pollAuthMsg').textContent = 'Email and password required.'; return; }
+    $('pollAuthMsg').textContent = 'Signing in…';
+    try {
+      await window.HTRPoll.signIn(email, pw);
+      $('pollAuthMsg').textContent = ''; $('pollPw').value = '';
+    } catch (e) {
+      $('pollAuthMsg').textContent = 'Sign in failed: ' + (e && e.code ? e.code.replace('auth/', '') : e.message);
+    }
+  };
+
+  window.pollSignOut = async function () { try { await window.HTRPoll.signOut(); } catch (e) {} };
+
+  async function refreshPollList() {
+    const box = $('pollList'); if (!box) return;
+    box.innerHTML = '<div style="padding:16px;color:var(--muted)">Loading…</div>';
+    try { pollsCache = await window.HTRPoll.listPolls(); renderPollList(); }
+    catch (e) { box.innerHTML = '<div style="padding:16px;color:var(--warn)">Could not load polls: ' + esc(e.message) + '</div>'; }
+  }
+
+  function renderPollList() {
+    const box = $('pollList');
+    if (!pollsCache.length) { box.innerHTML = '<div style="padding:16px;color:var(--muted)">No polls yet.</div>'; return; }
+    box.innerHTML = pollsCache.slice().sort(function (a, b) {
+      return (a.artist || '').localeCompare(b.artist || '') || (a._order || 0) - (b._order || 0);
+    }).map(function (p) {
+      const opts = Array.isArray(p.options) ? p.options.length : 0;
+      const badge = p.active ? '<span class="track-badge" style="background:#1DB954;color:#031">LIVE</span>' : '<span class="track-badge">off</span>';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)">'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="color:var(--cream)">' + esc(p.song || '(untitled)') + ' ' + badge + '</div>'
+        + '<div style="font-size:12px;color:var(--muted)">' + esc(p.artist || '—') + ' · ' + opts + ' version' + (opts !== 1 ? 's' : '') + '</div>'
+        + '</div>'
+        + '<button class="btn btn-ghost" onclick="window.pollEdit(\'' + p.id + '\')">Edit</button>'
+        + '<button class="btn btn-ghost" onclick="window.pollDelete(\'' + p.id + '\')">&#10005;</button>'
+        + '</div>';
+    }).join('');
+  }
+
+  window.pollAddVersion = function () { pollVersions.push({ label: '', audioUrl: '', desc: '' }); renderPollVersions(); };
+  window.pollVerSet = function (i, field, val) { if (pollVersions[i]) pollVersions[i][field] = val; };
+  window.pollVerDel = function (i) { pollVersions.splice(i, 1); if (!pollVersions.length) pollVersions.push({ label: '', audioUrl: '', desc: '' }); renderPollVersions(); };
+
+  window.pollVerPlay = function (i) {
+    const v = pollVersions[i]; if (!v || !v.audioUrl.trim()) { toast('Add a Dropbox link first', true); return; }
+    if (pollPreviewAudio) pollPreviewAudio.pause();
+    pollPreviewAudio = new Audio(normalizeDropbox(v.audioUrl.trim()));
+    pollPreviewAudio.removeAttribute('crossorigin');
+    pollPreviewAudio.play().catch(function () { toast('Could not play — check the link', true); });
+  };
+
+  function renderPollVersions() {
+    const box = $('pollVersions'); if (!box) return;
+    box.innerHTML = pollVersions.map(function (v, i) {
+      return '<div style="border:1px solid var(--line);border-radius:6px;padding:10px;margin-bottom:10px">'
+        + '<div class="row" style="align-items:center;gap:8px;margin-bottom:6px">'
+        + '<strong style="font-size:13px">Version ' + (i + 1) + '</strong>'
+        + '<button class="btn btn-ghost" style="padding:2px 8px" onclick="window.pollVerPlay(' + i + ')">&#9654; Preview</button>'
+        + '<span class="spacer"></span>'
+        + '<button class="btn btn-ghost" style="padding:2px 8px" onclick="window.pollVerDel(' + i + ')">&#10005;</button>'
+        + '</div>'
+        + '<input type="text" placeholder="Label (e.g. Rock mix / Version A)" value="' + esc(v.label || '') + '" oninput="window.pollVerSet(' + i + ',\'label\',this.value)">'
+        + '<input type="text" placeholder="Dropbox audio link (/scl/fi/...)" value="' + esc(v.audioUrl || '') + '" oninput="window.pollVerSet(' + i + ',\'audioUrl\',this.value)" style="margin-top:6px">'
+        + '<input type="text" placeholder="Optional note shown to fans" value="' + esc(v.desc || '') + '" oninput="window.pollVerSet(' + i + ',\'desc\',this.value)" style="margin-top:6px">'
+        + '</div>';
+    }).join('');
+  }
+
+  window.pollNew = function () {
+    $('pollEditId').value = '';
+    $('pollFormTitle').textContent = 'New poll';
+    $('pollSong').value = '';
+    $('pollArtist').value = '';
+    $('pollQuestion').value = 'Which version should we release?';
+    $('pollDeadline').value = '';
+    $('pollActive').checked = true;
+    pollVersions = [{ label: '', audioUrl: '', desc: '' }, { label: '', audioUrl: '', desc: '' }];
+    renderPollVersions();
+    $('pollMsg').textContent = '';
+  };
+
+  window.pollEdit = function (id) {
+    const p = pollsCache.find(function (x) { return x.id === id; }); if (!p) return;
+    $('pollEditId').value = id;
+    $('pollFormTitle').textContent = 'Edit poll';
+    $('pollSong').value = p.song || '';
+    fillPollArtists();
+    $('pollArtist').value = p.artist || '';
+    $('pollQuestion').value = p.question || '';
+    $('pollDeadline').value = p.deadline ? String(p.deadline).slice(0, 10) : '';
+    $('pollActive').checked = p.active !== false;
+    pollVersions = (Array.isArray(p.options) ? p.options : []).map(function (o) {
+      return { label: o.label || '', audioUrl: o.audioUrl || '', desc: o.desc || '' };
+    });
+    if (!pollVersions.length) pollVersions = [{ label: '', audioUrl: '', desc: '' }];
+    renderPollVersions();
+    $('pollMsg').textContent = '';
+    window.scrollTo(0, 0);
+  };
+
+  window.pollSave = async function () {
+    const song = $('pollSong').value.trim();
+    if (!song) { $('pollMsg').textContent = 'Song title required.'; return; }
+    const versions = pollVersions.map(function (v) {
+      return { label: (v.label || '').trim(), desc: (v.desc || '').trim(), audioUrl: v.audioUrl.trim() ? normalizeDropbox(v.audioUrl.trim()) : '' };
+    }).filter(function (v) { return v.label || v.audioUrl; });
+    if (versions.length < 2) { $('pollMsg').textContent = 'Add at least two versions to vote between.'; return; }
+    const id = $('pollEditId').value || null;
+    const existing = id ? pollsCache.find(function (x) { return x.id === id; }) : null;
+    const data = {
+      song: song,
+      artist: $('pollArtist').value || 'Hello Texas Records',
+      question: $('pollQuestion').value.trim() || 'Which version should we release?',
+      options: versions,
+      active: $('pollActive').checked,
+      deadline: $('pollDeadline').value || null,
+      _order: existing && existing._order != null ? existing._order : Date.now()
+    };
+    $('pollMsg').textContent = 'Saving…';
+    try {
+      await window.HTRPoll.savePoll(id, data);
+      $('pollMsg').textContent = 'Saved.';
+      toast('Poll saved');
+      window.pollNew();
+      await refreshPollList();
+    } catch (e) {
+      $('pollMsg').textContent = '';
+      toast('Save failed: ' + (e && e.code ? e.code : e.message), true);
+    }
+  };
+
+  window.pollDelete = async function (id) {
+    const p = pollsCache.find(function (x) { return x.id === id; });
+    if (!confirm('Delete the poll for "' + (p ? p.song : id) + '"? This removes it and its votes.')) return;
+    try {
+      await window.HTRPoll.deletePoll(id);
+      toast('Poll deleted');
+      await refreshPollList();
+    } catch (e) {
+      toast('Delete failed: ' + (e && e.code ? e.code : e.message), true);
+    }
+  };
+
   const saved = localStorage.getItem(PAT_KEY);
   if (saved) {
     $('patInput').value = saved;
     unlock();
   }
 })();
+</script>
+
+<!-- Firebase (Song Polls) — separate ES module; bridges to window.HTRPoll -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+const app = initializeApp({ apiKey: "AIzaSyDCEQYAA3uSJhEbBpxDT1c6xw3OfPvV4yA", authDomain: "htr-fans.firebaseapp.com", projectId: "htr-fans", storageBucket: "htr-fans.firebasestorage.app", messagingSenderId: "475143848447", appId: "1:475143848447:web:288a666aa5a4556d6627ca" });
+const auth = getAuth(app);
+const db = getFirestore(app);
+window.HTRPoll = {
+  user: null,
+  onChange: null,
+  signIn: (email, pw) => signInWithEmailAndPassword(auth, email, pw),
+  signOut: () => signOut(auth),
+  listPolls: async () => {
+    const snap = await getDocs(collection(db, 'songPolls'));
+    return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+  },
+  savePoll: async (id, data) => {
+    if (id) { await setDoc(doc(db, 'songPolls', id), data, { merge: true }); return id; }
+    const ref = await addDoc(collection(db, 'songPolls'), data); return ref.id;
+  },
+  deletePoll: async (id) => {
+    await deleteDoc(doc(db, 'songPolls', id));
+    try { await deleteDoc(doc(db, 'songPollVotes', id)); } catch (e) {}
+  }
+};
+onAuthStateChanged(auth, u => {
+  window.HTRPoll.user = u ? { uid: u.uid, email: u.email } : null;
+  if (typeof window.HTRPoll.onChange === 'function') window.HTRPoll.onChange(window.HTRPoll.user);
+});
 </script>
 </body>
 </html>
