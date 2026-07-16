@@ -669,16 +669,8 @@
           <a href="https://hellotexasrecords.com/htr-vote.html" target="_blank" rel="noreferrer">the vote page</a>.
           Load each version's audio from a Dropbox link.</div>
 
-        <div id="pollAuth" class="row" style="flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:8px">
-          <div style="flex:1;min-width:180px">
-            <label>HTR account email</label>
-            <input id="pollEmail" type="email" placeholder="you@example.com">
-          </div>
-          <div style="flex:1;min-width:150px">
-            <label>Password</label>
-            <input id="pollPw" type="password" placeholder="••••••••">
-          </div>
-          <button class="btn btn-blue" onclick="window.pollSignIn()">Sign in</button>
+        <div id="pollAuth" class="row" style="align-items:center;gap:10px;margin-top:8px">
+          <button class="btn btn-blue" onclick="window.pollSignIn()">Sign in with Google</button>
           <span id="pollAuthMsg" style="color:var(--muted);font-size:13px"></span>
         </div>
         <div id="pollSignedIn" class="row hidden" style="align-items:center;gap:10px;margin-top:8px">
@@ -3285,14 +3277,15 @@
   }
 
   window.pollSignIn = async function () {
-    const email = $('pollEmail').value.trim(), pw = $('pollPw').value;
-    if (!email || !pw) { $('pollAuthMsg').textContent = 'Email and password required.'; return; }
-    $('pollAuthMsg').textContent = 'Signing in…';
+    $('pollAuthMsg').textContent = 'Opening Google sign-in…';
     try {
-      await window.HTRPoll.signIn(email, pw);
-      $('pollAuthMsg').textContent = ''; $('pollPw').value = '';
+      await window.HTRPoll.signInGoogle();
+      $('pollAuthMsg').textContent = '';
     } catch (e) {
-      $('pollAuthMsg').textContent = 'Sign in failed: ' + (e && e.code ? e.code.replace('auth/', '') : e.message);
+      const code = e && e.code ? e.code.replace('auth/', '') : ((e && e.message) || 'error');
+      $('pollAuthMsg').textContent = code === 'unauthorized-domain'
+        ? 'This app domain is not authorized in Firebase yet — add stevep999.github.io under Authentication → Settings → Authorized domains.'
+        : (code === 'popup-blocked' ? 'Your browser blocked the popup — allow popups and try again.' : 'Sign in failed: ' + code);
     }
   };
 
@@ -3439,7 +3432,7 @@
 <!-- Firebase (Song Polls) — separate ES module; bridges to window.HTRPoll -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 const app = initializeApp({ apiKey: "AIzaSyDCEQYAA3uSJhEbBpxDT1c6xw3OfPvV4yA", authDomain: "htr-fans.firebaseapp.com", projectId: "htr-fans", storageBucket: "htr-fans.firebasestorage.app", messagingSenderId: "475143848447", appId: "1:475143848447:web:288a666aa5a4556d6627ca" });
 const auth = getAuth(app);
@@ -3447,7 +3440,7 @@ const db = getFirestore(app);
 window.HTRPoll = {
   user: null,
   onChange: null,
-  signIn: (email, pw) => signInWithEmailAndPassword(auth, email, pw),
+  signInGoogle: () => signInWithPopup(auth, new GoogleAuthProvider()),
   signOut: () => signOut(auth),
   listPolls: async () => {
     const snap = await getDocs(collection(db, 'songPolls'));
