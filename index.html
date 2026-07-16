@@ -684,10 +684,11 @@
         <div class="card editor" style="max-width:720px;margin-top:16px">
           <h3 id="pollFormTitle">New poll</h3>
           <input type="hidden" id="pollEditId">
-          <label>Song title</label>
-          <input id="pollSong" type="text" placeholder="e.g. People Pleaser (Rest In Peace)">
-          <label>Artist</label>
+          <label>Poll title / song</label>
+          <input id="pollSong" type="text" placeholder="e.g. People Pleaser (Rest In Peace) — or 'Next Single?'">
+          <label>Grouping on the vote page</label>
           <select id="pollArtist"></select>
+          <div class="sub" style="margin-top:2px">Pick one artist for a normal poll, or “Various Artists” when the versions are by different artists. Credit each version to its own artist below.</div>
           <label>Question shown to fans</label>
           <input id="pollQuestion" type="text" value="Which version should we release?">
           <div class="row" style="gap:18px;flex-wrap:wrap">
@@ -3253,10 +3254,19 @@
     });
   };
 
+  function pollArtistOptions(selName) {
+    let opts = '<option value="">— artist (optional) —</option>';
+    (artists || []).slice().sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); })
+      .forEach(function (a) {
+        opts += '<option value="' + esc(a.name) + '"' + (a.name === selName ? ' selected' : '') + '>' + esc(a.name) + '</option>';
+      });
+    return opts;
+  }
+
   function fillPollArtists() {
     const sel = $('pollArtist'); if (!sel) return;
     const cur = sel.value;
-    sel.innerHTML = '<option value="">— pick artist —</option>';
+    sel.innerHTML = '<option value="">— pick artist —</option><option value="Various Artists">Various Artists</option>';
     (artists || []).slice().sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); })
       .forEach(function (a) {
         const o = document.createElement('option');
@@ -3339,7 +3349,8 @@
         + '<span class="spacer"></span>'
         + '<button class="btn btn-ghost" style="padding:2px 8px" onclick="window.pollVerDel(' + i + ')">&#10005;</button>'
         + '</div>'
-        + '<input type="text" placeholder="Label (e.g. Rock mix / Version A)" value="' + esc(v.label || '') + '" oninput="window.pollVerSet(' + i + ',\'label\',this.value)">'
+        + '<input type="text" placeholder="Label (e.g. Rock mix / Version A / a song name)" value="' + esc(v.label || '') + '" oninput="window.pollVerSet(' + i + ',\'label\',this.value)">'
+        + '<select onchange="window.pollVerSet(' + i + ',\'artist\',this.value)" style="margin-top:6px">' + pollArtistOptions(v.artist || '') + '</select>'
         + '<input type="text" placeholder="Dropbox audio link (/scl/fi/...)" value="' + esc(v.audioUrl || '') + '" oninput="window.pollVerSet(' + i + ',\'audioUrl\',this.value)" style="margin-top:6px">'
         + '<input type="text" placeholder="Optional note shown to fans" value="' + esc(v.desc || '') + '" oninput="window.pollVerSet(' + i + ',\'desc\',this.value)" style="margin-top:6px">'
         + '</div>';
@@ -3370,7 +3381,7 @@
     $('pollDeadline').value = p.deadline ? String(p.deadline).slice(0, 10) : '';
     $('pollActive').checked = p.active !== false;
     pollVersions = (Array.isArray(p.options) ? p.options : []).map(function (o) {
-      return { label: o.label || '', audioUrl: o.audioUrl || '', desc: o.desc || '' };
+      return { label: o.label || '', audioUrl: o.audioUrl || '', desc: o.desc || '', artist: o.artist || '' };
     });
     if (!pollVersions.length) pollVersions = [{ label: '', audioUrl: '', desc: '' }];
     renderPollVersions();
@@ -3382,7 +3393,9 @@
     const song = $('pollSong').value.trim();
     if (!song) { $('pollMsg').textContent = 'Song title required.'; return; }
     const versions = pollVersions.map(function (v) {
-      return { label: (v.label || '').trim(), desc: (v.desc || '').trim(), audioUrl: v.audioUrl.trim() ? normalizeDropbox(v.audioUrl.trim()) : '' };
+      const o = { label: (v.label || '').trim(), desc: (v.desc || '').trim(), audioUrl: v.audioUrl.trim() ? normalizeDropbox(v.audioUrl.trim()) : '' };
+      if ((v.artist || '').trim()) o.artist = v.artist.trim();
+      return o;
     }).filter(function (v) { return v.label || v.audioUrl; });
     if (versions.length < 2) { $('pollMsg').textContent = 'Add at least two versions to vote between.'; return; }
     const id = $('pollEditId').value || null;
