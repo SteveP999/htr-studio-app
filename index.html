@@ -150,6 +150,7 @@
     <button id="grp-artists" class="active" onclick="window.showGroup('artists')">Artists</button>
     <button id="grp-media" onclick="window.showGroup('media')">Songs &amp; Media</button>
     <button id="grp-radio" onclick="window.showGroup('radio')">Radio</button>
+    <button id="grp-publishing" onclick="window.showGroup('publishing')">Publishing</button>
     <button id="grp-admin" onclick="window.showGroup('admin')">Admin</button>
   </nav>
   <nav id="subnav" style="border-top:none;padding-top:0"></nav>
@@ -721,6 +722,127 @@
       </div>
     </section>
 
+    <!-- ============ BMI CATALOG (Publishing) ============ -->
+    <section id="view-bmicat" class="hidden">
+      <div class="radio-head">
+        <h2 style="margin:0">BMI Catalog</h2>
+        <span id="bmiStats" class="rstats"></span>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost" onclick="window.loadBmi(true)">Reload</button>
+        <button id="bmiSaveBtn" class="btn btn-red" onclick="window.bmiSaveAll()" disabled>Save changes</button>
+      </div>
+
+      <div class="radio-toolbar">
+        <input id="bmiSearch" type="text" placeholder="Search title / registered name / work # / ISWC..." style="max-width:320px" oninput="window.bmiRender()">
+        <select id="bmiArtistF" style="width:auto" onchange="window.bmiRender()"><option value="">All artists</option></select>
+        <select id="bmiUnqF" style="width:auto" onchange="window.bmiRender()">
+          <option value="">All types</option>
+          <option value="X">X — Unique</option>
+          <option value="V">V — Version</option>
+          <option value="C">C — Copy</option>
+          <option value="D">D — In development</option>
+          <option value="R">R — Retired</option>
+          <option value="N">N — Research</option>
+        </select>
+        <select id="bmiIssueF" style="width:auto" onchange="window.bmiRender()">
+          <option value="">Everything</option>
+          <option value="noiswc">Missing ISWC</option>
+          <option value="unrec">Unreconciled Songview</option>
+          <option value="noreg">Not registered (no Work #)</option>
+          <option value="mismatch">Work # / BMI # mismatch</option>
+          <option value="noartist">No registered artist</option>
+        </select>
+        <span id="bmiFilterCount" class="rstats"></span>
+      </div>
+
+      <div class="radio-wrap" style="max-height:56vh">
+        <table class="rgrid" id="bmiTable">
+          <thead><tr>
+            <th class="stick s0">Song</th>
+            <th class="stick s1">Artist</th>
+            <th>U</th><th>Rad</th><th>Wr</th>
+            <th>Album</th><th>Trk</th>
+            <th>Work #</th><th>Reg Date</th><th>ISWC</th><th>BMI #</th>
+            <th>Songview</th><th>Time</th><th>Live</th><th>ISRC</th>
+            <th>Registered Name</th><th>Reg Artists</th>
+          </tr></thead>
+          <tbody id="bmiBody"></tbody>
+        </table>
+      </div>
+      <div class="sub" style="margin-top:8px;color:var(--muted)">
+        Unique: X=unique &middot; V=version &middot; C=copy on 2+ albums &middot; R=retired &middot; D=in development &middot; N=research.
+        Radio: R=on radio &middot; I=instrumental &middot; P=profane &middot; X=off (reason) &middot; D=development &middot; N=research.
+        Writer: P=Peters &middot; B=Bender &middot; 2=both &middot; O=Peters instrumental.
+        Click a row to edit it below.
+      </div>
+
+      <div id="bmiEditor" class="card editor hidden" style="margin-top:16px">
+        <h3 id="bmiEdTitle">Edit song</h3>
+        <input type="hidden" id="bmiEdIdx">
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px">
+          <div><label>Song name (mine)</label><input id="bmiEdSong"></div>
+          <div><label>Band / Artist</label><input id="bmiEdArtist"></div>
+          <div><label>Album</label><input id="bmiEdAlbum"></div>
+          <div><label>Track #</label><input id="bmiEdTrack"></div>
+          <div><label>Unique (X/V/C/R/D/N)</label><input id="bmiEdUnq"></div>
+          <div><label>Radio (R/I/P/X/D/N)</label><input id="bmiEdRadio"></div>
+          <div><label>Writer (P/B/2/O)</label><input id="bmiEdWriter"></div>
+          <div><label>BMI Work #</label><input id="bmiEdWork"></div>
+          <div><label>Reg date</label><input id="bmiEdRegDate"></div>
+          <div><label>ISWC</label><input id="bmiEdIswc"></div>
+          <div><label>BMI # (reconcile)</label><input id="bmiEdBmiNo"></div>
+          <div><label>Songview status</label><input id="bmiEdSv"></div>
+          <div><label>Track time</label><input id="bmiEdTime"></div>
+          <div><label>Streaming live date</label><input id="bmiEdLive"></div>
+          <div><label>Release ID</label><input id="bmiEdRel"></div>
+          <div><label>UPC</label><input id="bmiEdUpc"></div>
+          <div><label>ISRC</label><input id="bmiEdIsrc"></div>
+          <div><label>Registered name (BMI)</label><input id="bmiEdRegTitle"></div>
+          <div><label>Registered artists (comma-sep)</label><input id="bmiEdRegArtists"></div>
+        </div>
+        <div class="save-bar">
+          <button class="btn btn-blue" onclick="window.bmiEdApply()">Apply to row</button>
+          <button class="btn btn-ghost" onclick="window.bmiEdClose()">Close</button>
+          <button class="btn btn-ghost" style="color:var(--err)" onclick="window.bmiEdDelete()">Delete row</button>
+          <span style="color:var(--muted);font-size:13px">Applies locally — hit "Save changes" up top to write to the catalog.</span>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <button class="btn btn-ghost" onclick="window.bmiAddNew()">+ Add song</button>
+        <button class="btn btn-ghost" onclick="window.bmiExportCsv()">Export CSV (backup)</button>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3>Reconcile with BMI</h3>
+        <div class="sub">Drop in the <b>CatalogExport CSV</b> you download from bmi.com (Works Catalog &rarr; Export).
+          I match by BMI Work #, then show what changed — new ISWC numbers, Songview status flips,
+          registration dates — before anything is written. This replaces the manual re-keying.</div>
+        <div class="row" style="flex-wrap:wrap">
+          <input type="file" id="bmiCsvFile" accept=".csv,text/csv" style="width:auto" onchange="window.bmiCsvPick(event)">
+          <span style="color:var(--muted);font-size:13px">or paste the CSV text below</span>
+        </div>
+        <textarea id="bmiCsvPaste" rows="4" placeholder="TitleNumber,Title,WtrPubIndicator,..." style="margin-top:10px;font-size:12px"></textarea>
+        <div class="row">
+          <button class="btn btn-blue" onclick="window.bmiReview()">Review changes</button>
+          <span id="bmiRevMsg" style="color:var(--muted);font-size:14px"></span>
+        </div>
+        <div id="bmiRevPanel" class="hidden" style="margin-top:16px">
+          <div id="bmiRevSummary" class="sub"></div>
+          <div class="radio-wrap" style="max-height:40vh">
+            <table class="rgrid"><thead><tr>
+              <th>Apply</th><th>Song</th><th>Work #</th><th>Field</th><th>Current</th><th>&rarr; From BMI</th>
+            </tr></thead><tbody id="bmiRevBody"></tbody></table>
+          </div>
+          <div id="bmiRevUnmatched" style="margin-top:12px"></div>
+          <div class="save-bar">
+            <button class="btn btn-red" onclick="window.bmiApplyChanges()">Apply checked changes</button>
+            <button class="btn btn-ghost" onclick="$('bmiRevPanel').classList.add('hidden')">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -830,9 +952,10 @@
     artists: [['artists', 'Roster'], ['newartist', 'New Artist'], ['addsong', 'Add Song'], ['extras', 'Song Extras']],
     media: [['lyrics', 'Song Workshop'], ['video', 'Music Video'], ['polls', 'Song Polls']],
     radio: [['radio', 'Stations'], ['top20', 'Top 20']],
+    publishing: [['bmicat', 'BMI Catalog']],
     admin: [['dashboard', 'Dashboard & Runs']]
   };
-  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'radio', 'top20', 'lyrics', 'video', 'polls'];
+  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'radio', 'top20', 'lyrics', 'video', 'polls', 'bmicat'];
   let curGroup = 'artists';
 
   function groupOf(view) {
@@ -866,10 +989,11 @@
     if (name === 'lyrics' && !lyrLoaded) window.loadLyrics();
     if (name === 'video' && !vidLoaded) window.loadVideo();
     if (name === 'polls' && !pollsLoaded) window.loadPolls();
+    if (name === 'bmicat' && !bmiLoaded) window.loadBmi();
   };
 
   function applyLyricsOnly() {
-    ['artists', 'radio', 'admin'].forEach((g) => {
+    ['artists', 'radio', 'publishing', 'admin'].forEach((g) => {
       const b = $('grp-' + g); if (b) b.classList.add('hidden');
     });
     // co-writers experiment with Suno / uploaded files, not the label's catalog
@@ -3432,6 +3556,335 @@
     } catch (e) {
       toast('Delete failed: ' + (e && e.code ? e.code : e.message), true);
     }
+  };
+
+  // ========== BMI CATALOG (Publishing) ==========
+  const BMI_PATH = 'data/bmi-catalog.json';
+  let bmiLoaded = false;
+  let bmiData = null;
+  let bmiSha = null;
+  let bmiDirty = false;
+  let bmiChanges = [];
+
+  function bmiEsc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function bmiNormDate(s) {
+    s = String(s || '').trim().replace(/^[xX]\s*/, '');
+    const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (!m) return '';
+    let y = parseInt(m[3], 10); if (y < 100) y += 2000;
+    return parseInt(m[1], 10) + '/' + parseInt(m[2], 10) + '/' + y;
+  }
+
+  function bmiMarkDirty() {
+    bmiDirty = true;
+    $('bmiSaveBtn').disabled = false;
+  }
+
+  function bmiIssues(s) {
+    const iss = [];
+    if (!s.workNo) iss.push('noreg');
+    if (s.workNo && !s.iswc) iss.push('noiswc');
+    if (s.workNo && !/^reconciled$/i.test(s.songview || '')) iss.push('unrec');
+    if (s.workNo && s.bmiNo && s.workNo !== s.bmiNo) iss.push('mismatch');
+    if (s.workNo && (!s.regArtists || !s.regArtists.length)) iss.push('noartist');
+    return iss;
+  }
+
+  window.loadBmi = async function (force) {
+    if (bmiLoaded && !force) return;
+    $('bmiBody').innerHTML = '<tr><td colspan="17" style="color:var(--muted);padding:14px">Loading catalog...</td></tr>';
+    try {
+      const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + BMI_PATH);
+      bmiSha = f.sha;
+      bmiData = JSON.parse(b64decode(f.content));
+      if (!bmiData.songs) bmiData.songs = [];
+      bmiLoaded = true;
+      bmiDirty = false;
+      $('bmiSaveBtn').disabled = true;
+      const sel = $('bmiArtistF');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">All artists</option>';
+      Array.from(new Set(bmiData.songs.map(function (s) { return s.artist; }).filter(Boolean))).sort().forEach(function (a) {
+        const o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o);
+      });
+      sel.value = cur;
+      window.bmiRender();
+    } catch (e) {
+      toast('BMI catalog load failed: ' + e.message, true);
+      $('bmiBody').innerHTML = '<tr><td colspan="17" style="color:var(--err);padding:14px">' + bmiEsc(e.message) + '</td></tr>';
+    }
+  };
+
+  window.bmiRender = function () {
+    if (!bmiData) return;
+    const songs = bmiData.songs;
+    const q = ($('bmiSearch').value || '').toLowerCase();
+    const artF = $('bmiArtistF').value;
+    const unqF = $('bmiUnqF').value.toUpperCase();
+    const issF = $('bmiIssueF').value;
+
+    const total = songs.length;
+    const uniq = songs.filter(function (s) { return (s.unique || '').toUpperCase() === 'X'; }).length;
+    const onRadio = songs.filter(function (s) { return (s.radio || '').toUpperCase() === 'R'; }).length;
+    const reg = songs.filter(function (s) { return s.workNo; }).length;
+    const noIswc = songs.filter(function (s) { return bmiIssues(s).indexOf('noiswc') >= 0; }).length;
+    const unrec = songs.filter(function (s) { return bmiIssues(s).indexOf('unrec') >= 0; }).length;
+    $('bmiStats').textContent = total + ' rows · ' + uniq + ' unique · ' + onRadio + ' on radio · ' +
+      reg + ' registered · ' + noIswc + ' missing ISWC · ' + unrec + ' not reconciled';
+
+    const idxs = [];
+    songs.forEach(function (s, i) {
+      if (artF && s.artist !== artF) return;
+      if (unqF && (s.unique || '').toUpperCase() !== unqF) return;
+      if (issF && bmiIssues(s).indexOf(issF) < 0) return;
+      if (q) {
+        const hay = (s.title + ' ' + s.regTitle + ' ' + s.workNo + ' ' + s.iswc + ' ' + s.album + ' ' + (s.regArtists || []).join(' ')).toLowerCase();
+        if (hay.indexOf(q) < 0) return;
+      }
+      idxs.push(i);
+    });
+    idxs.sort(function (a, b) {
+      const t = songs[a].title.localeCompare(songs[b].title);
+      return t !== 0 ? t : songs[a].artist.localeCompare(songs[b].artist);
+    });
+    $('bmiFilterCount').textContent = 'showing ' + idxs.length;
+
+    const rows = idxs.map(function (i) {
+      const s = songs[i];
+      const iss = bmiIssues(s);
+      const svCls = /^reconciled$/i.test(s.songview || '') ? 'ok' : (s.songview ? 'bad' : 'other');
+      const iswcCell = s.iswc ? bmiEsc(s.iswc) : (s.workNo ? '<span style="color:var(--warn)">—</span>' : '');
+      const mism = iss.indexOf('mismatch') >= 0 ? ' style="color:var(--err)"' : '';
+      return '<tr onclick="window.bmiEdOpen(' + i + ')" style="cursor:pointer">' +
+        '<td class="stick s0">' + bmiEsc(s.title) + '</td>' +
+        '<td class="stick s1">' + bmiEsc(s.artist) + '</td>' +
+        '<td>' + bmiEsc(s.unique) + '</td><td>' + bmiEsc(s.radio) + '</td><td>' + bmiEsc(s.writer) + '</td>' +
+        '<td class="alb">' + bmiEsc(s.album) + '</td><td>' + bmiEsc(s.track) + '</td>' +
+        '<td>' + bmiEsc(s.workNo) + '</td><td>' + bmiEsc(s.regDate) + '</td>' +
+        '<td>' + iswcCell + '</td><td' + mism + '>' + bmiEsc(s.bmiNo) + '</td>' +
+        '<td>' + (s.songview ? '<span class="pill ' + svCls + '">' + bmiEsc(s.songview) + '</span>' : '') + '</td>' +
+        '<td>' + bmiEsc(s.time) + '</td><td>' + bmiEsc(s.liveDate) + '</td><td>' + bmiEsc(s.isrc) + '</td>' +
+        '<td>' + bmiEsc(s.regTitle) + '</td><td>' + bmiEsc((s.regArtists || []).join(', ')) + '</td>' +
+        '</tr>';
+    });
+    $('bmiBody').innerHTML = rows.join('') ||
+      '<tr><td colspan="17" style="color:var(--muted);padding:14px">No songs match.</td></tr>';
+  };
+
+  // ----- row editor -----
+  window.bmiEdOpen = function (i) {
+    const s = bmiData.songs[i];
+    if (!s) return;
+    $('bmiEdIdx').value = i;
+    $('bmiEdTitle').textContent = 'Edit: ' + s.title + (s.artist ? ' — ' + s.artist : '');
+    $('bmiEdSong').value = s.title || ''; $('bmiEdArtist').value = s.artist || '';
+    $('bmiEdAlbum').value = s.album || ''; $('bmiEdTrack').value = s.track || '';
+    $('bmiEdUnq').value = s.unique || ''; $('bmiEdRadio').value = s.radio || '';
+    $('bmiEdWriter').value = s.writer || ''; $('bmiEdWork').value = s.workNo || '';
+    $('bmiEdRegDate').value = s.regDate || ''; $('bmiEdIswc').value = s.iswc || '';
+    $('bmiEdBmiNo').value = s.bmiNo || ''; $('bmiEdSv').value = s.songview || '';
+    $('bmiEdTime').value = s.time || ''; $('bmiEdLive').value = s.liveDate || '';
+    $('bmiEdRel').value = s.releaseId || ''; $('bmiEdUpc').value = s.upc || '';
+    $('bmiEdIsrc').value = s.isrc || ''; $('bmiEdRegTitle').value = s.regTitle || '';
+    $('bmiEdRegArtists').value = (s.regArtists || []).join(', ');
+    $('bmiEditor').classList.remove('hidden');
+    $('bmiEditor').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  window.bmiEdApply = function () {
+    const i = parseInt($('bmiEdIdx').value, 10);
+    const s = bmiData.songs[i];
+    if (!s) return;
+    s.title = $('bmiEdSong').value.trim(); s.artist = $('bmiEdArtist').value.trim();
+    s.album = $('bmiEdAlbum').value.trim(); s.track = $('bmiEdTrack').value.trim();
+    s.unique = $('bmiEdUnq').value.trim(); s.radio = $('bmiEdRadio').value.trim();
+    s.writer = $('bmiEdWriter').value.trim(); s.workNo = $('bmiEdWork').value.trim();
+    s.regDate = $('bmiEdRegDate').value.trim(); s.iswc = $('bmiEdIswc').value.trim();
+    s.bmiNo = $('bmiEdBmiNo').value.trim(); s.songview = $('bmiEdSv').value.trim();
+    s.time = $('bmiEdTime').value.trim(); s.liveDate = $('bmiEdLive').value.trim();
+    s.releaseId = $('bmiEdRel').value.trim(); s.upc = $('bmiEdUpc').value.trim();
+    s.isrc = $('bmiEdIsrc').value.trim(); s.regTitle = $('bmiEdRegTitle').value.trim();
+    s.regArtists = $('bmiEdRegArtists').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    bmiMarkDirty();
+    window.bmiRender();
+    toast('Row updated — remember to Save changes');
+  };
+
+  window.bmiEdClose = function () { $('bmiEditor').classList.add('hidden'); };
+
+  window.bmiEdDelete = function () {
+    const i = parseInt($('bmiEdIdx').value, 10);
+    const s = bmiData.songs[i];
+    if (!s) return;
+    if (!confirm('Delete "' + s.title + '" (' + s.artist + ') from the catalog?')) return;
+    bmiData.songs.splice(i, 1);
+    bmiMarkDirty();
+    window.bmiEdClose();
+    window.bmiRender();
+  };
+
+  window.bmiAddNew = function () {
+    bmiData.songs.push({
+      id: 'bmi-' + Date.now(), unique: 'X', radio: 'N', writer: 'P', title: 'New Song',
+      artist: '', album: '', track: '', workNo: '', regDate: '', iswc: '', bmiNo: '',
+      regOrigin: '', songview: '', time: '', liveDate: '', releaseId: '', upc: '',
+      isrc: '', recon: 'x', regTitle: '', regArtists: []
+    });
+    bmiMarkDirty();
+    window.bmiRender();
+    window.bmiEdOpen(bmiData.songs.length - 1);
+  };
+
+  window.bmiSaveAll = async function () {
+    if (!bmiData) return;
+    $('bmiSaveBtn').disabled = true;
+    try {
+      bmiData.updated = new Date().toISOString().slice(0, 10);
+      const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + BMI_PATH);
+      const res = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + BMI_PATH, {
+        method: 'PUT',
+        body: { message: 'HTR Studio: BMI catalog update', content: b64encode(JSON.stringify(bmiData, null, 2)), sha: f.sha }
+      });
+      bmiSha = res && res.content ? res.content.sha : null;
+      bmiDirty = false;
+      toast('BMI catalog saved');
+    } catch (e) {
+      $('bmiSaveBtn').disabled = false;
+      toast('Save failed: ' + e.message, true);
+    }
+  };
+
+  window.bmiExportCsv = function () {
+    if (!bmiData) return;
+    const head = ['Unq', 'Radio', 'Writer', 'Song Name', 'Band/Artist', 'Album', 'Track', 'BMI Work #', 'Reg Date', 'ISWC', 'BMI#', 'Reg Origin', 'Songview', 'Time', 'Live', 'ReleaseID', 'UPC', 'ISRC', 'Recon', 'Registered Name', 'Reg Artist 1', 'Reg Artist 2', 'Reg Artist 3', 'Reg Artist 4'];
+    function cell(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+    const lines = [head.join(',')];
+    bmiData.songs.forEach(function (s) {
+      const ra = s.regArtists || [];
+      lines.push([s.unique, s.radio, s.writer, s.title, s.artist, s.album, s.track, s.workNo, s.regDate,
+        s.iswc, s.bmiNo, s.regOrigin, s.songview, s.time, s.liveDate, s.releaseId, s.upc, s.isrc, s.recon,
+        s.regTitle, ra[0] || '', ra[1] || '', ra[2] || '', ra[3] || ''].map(cell).join(','));
+    });
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bmi-catalog-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // ----- BMI CatalogExport reconcile -----
+  function bmiParseCsv(text) {
+    const rows = [];
+    let row = [], cell = '', inQ = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQ) {
+        if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else inQ = false; }
+        else cell += c;
+      } else if (c === '"') inQ = true;
+      else if (c === ',') { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(cell); cell = '';
+        if (row.length > 1 || row[0] !== '') rows.push(row);
+        row = [];
+      } else cell += c;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+
+  window.bmiCsvPick = function (ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const rd = new FileReader();
+    rd.onload = function () { $('bmiCsvPaste').value = rd.result; $('bmiRevMsg').textContent = file.name + ' loaded — hit Review changes.'; };
+    rd.readAsText(file);
+  };
+
+  window.bmiReview = function () {
+    if (!bmiData) { toast('Catalog not loaded yet', true); return; }
+    const text = $('bmiCsvPaste').value.trim();
+    if (!text) { $('bmiRevMsg').textContent = 'Pick the CatalogExport CSV file (or paste its contents) first.'; return; }
+    const rows = bmiParseCsv(text);
+    const head = rows[0].map(function (h) { return h.trim().toLowerCase(); });
+    const col = function (name) { return head.indexOf(name.toLowerCase()); };
+    const cT = col('TitleNumber'), cTitle = col('Title'), cWP = col('WtrPubIndicator'),
+      cPart = col('Participant'), cReg = col('RegistrationDate'), cIswc = col('ISWCNumber'), cSv = col('SongviewStatus');
+    if (cT < 0 || cTitle < 0) { $('bmiRevMsg').textContent = 'That does not look like a BMI CatalogExport CSV (no TitleNumber/Title columns).'; return; }
+
+    const works = {};
+    rows.slice(1).forEach(function (r) {
+      const wn = (r[cT] || '').trim();
+      if (!wn) return;
+      if (!works[wn]) works[wn] = { workNo: wn, title: (r[cTitle] || '').trim(), regDate: cReg >= 0 ? (r[cReg] || '').trim() : '', iswc: cIswc >= 0 ? (r[cIswc] || '').trim() : '', songview: cSv >= 0 ? (r[cSv] || '').trim() : '', writers: [] };
+      if (cWP >= 0 && (r[cWP] || '').trim() === 'W' && cPart >= 0) works[wn].writers.push((r[cPart] || '').trim());
+    });
+
+    bmiChanges = [];
+    const matchedWns = {};
+    bmiData.songs.forEach(function (s, i) {
+      const w = s.workNo && works[s.workNo];
+      if (!w) return;
+      matchedWns[s.workNo] = true;
+      if (w.iswc && (s.iswc || '').toUpperCase() !== w.iswc.toUpperCase())
+        bmiChanges.push({ idx: i, field: 'iswc', label: 'ISWC', from: s.iswc, to: w.iswc });
+      if (w.songview && (s.songview || '').toLowerCase() !== w.songview.toLowerCase())
+        bmiChanges.push({ idx: i, field: 'songview', label: 'Songview', from: s.songview, to: w.songview });
+      if (w.regDate && bmiNormDate(s.regDate) !== bmiNormDate(w.regDate))
+        bmiChanges.push({ idx: i, field: 'regDate', label: 'Reg date', from: s.regDate, to: bmiNormDate(w.regDate) });
+      if (w.title && (s.regTitle || '').toUpperCase() !== w.title.toUpperCase())
+        bmiChanges.push({ idx: i, field: 'regTitle', label: 'Registered name', from: s.regTitle, to: w.title });
+      if (!s.bmiNo)
+        bmiChanges.push({ idx: i, field: 'bmiNo', label: 'BMI # (fill)', from: s.bmiNo, to: s.workNo });
+    });
+
+    const inBmiOnly = Object.keys(works).filter(function (wn) { return !bmiData.songs.some(function (s) { return s.workNo === wn; }); });
+    const inCatOnly = bmiData.songs.filter(function (s) { return s.workNo && !works[s.workNo]; });
+
+    $('bmiRevSummary').innerHTML = '<b>' + bmiChanges.length + '</b> field update' + (bmiChanges.length === 1 ? '' : 's') + ' found across ' +
+      Object.keys(matchedWns).length + ' matched works. ' + inBmiOnly.length + ' BMI works not in your catalog; ' +
+      inCatOnly.length + ' catalog rows not in this export.';
+    $('bmiRevBody').innerHTML = bmiChanges.map(function (c, k) {
+      const s = bmiData.songs[c.idx];
+      return '<tr><td><input type="checkbox" checked data-bmichg="' + k + '" style="width:auto"></td>' +
+        '<td>' + bmiEsc(s.title) + ' <span style="color:var(--muted)">(' + bmiEsc(s.artist) + ')</span></td>' +
+        '<td>' + bmiEsc(s.workNo) + '</td><td>' + bmiEsc(c.label) + '</td>' +
+        '<td style="color:var(--muted)">' + (bmiEsc(c.from) || '<i>empty</i>') + '</td>' +
+        '<td style="color:var(--ok)">' + bmiEsc(c.to) + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="color:var(--muted);padding:12px">Everything matches — nothing to update.</td></tr>';
+
+    let extra = '';
+    if (inBmiOnly.length) {
+      extra += '<div class="sub" style="color:var(--warn)"><b>Registered with BMI but not in your catalog:</b> ' +
+        inBmiOnly.map(function (wn) { return bmiEsc(works[wn].title) + ' (#' + wn + ')'; }).join(' · ') + '</div>';
+    }
+    if (inCatOnly.length) {
+      extra += '<div class="sub" style="margin-top:6px"><b>In your catalog but not in this export:</b> ' +
+        inCatOnly.map(function (s) { return bmiEsc(s.title) + ' (#' + s.workNo + ')'; }).join(' · ') + '</div>';
+    }
+    $('bmiRevUnmatched').innerHTML = extra;
+    $('bmiRevPanel').classList.remove('hidden');
+    $('bmiRevMsg').textContent = '';
+  };
+
+  window.bmiApplyChanges = function () {
+    let applied = 0;
+    document.querySelectorAll('[data-bmichg]').forEach(function (cb) {
+      if (!cb.checked) return;
+      const c = bmiChanges[parseInt(cb.getAttribute('data-bmichg'), 10)];
+      if (!c) return;
+      bmiData.songs[c.idx][c.field] = c.to;
+      applied++;
+    });
+    if (applied) bmiMarkDirty();
+    $('bmiRevPanel').classList.add('hidden');
+    window.bmiRender();
+    toast(applied + ' change' + (applied === 1 ? '' : 's') + ' applied — hit Save changes to write to the catalog');
   };
 
   const saved = localStorage.getItem(PAT_KEY);
