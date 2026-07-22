@@ -243,6 +243,11 @@
           <button class="btn btn-red" onclick="window.exSaveVideo()">Add video to song</button>
         </div>
 
+        <label style="margin-top:22px;color:var(--warn)">— Current Videos (remove) —</label>
+        <div class="sub">Videos attached to the selected song. Remove clears it from the catalog;
+        publish the artist's site afterward to take it off the live page.</div>
+        <div id="exVideoList"><span style="color:var(--muted);font-size:14px">Pick a song to see its videos.</span></div>
+
         <label style="margin-top:26px;color:var(--warn)">— Replace Audio (new version of the song) —</label>
         <div class="sub">Tip: if you overwrite the MP3 in Dropbox keeping the same filename,
         the old link keeps working and you don't need this at all. Use this only when the
@@ -1520,6 +1525,7 @@
     $('exNewAudio').value = '';
     $('exWholeAlbum').checked = false;
     $('exMsg').textContent = '';
+    window.exRenderVideos();
   };
 
   async function exUpdateSongs(mutate, message) {
@@ -1555,6 +1561,77 @@
       $('exAfter').classList.remove('hidden');
       $('exVideoUrl').value = '';
       toast('Video saved');
+    } catch (e) {
+      $('exMsg').textContent = '';
+      toast('Failed: ' + e.message, true);
+    }
+  };
+
+  // Render the list of videos on the selected song, each with a Remove button.
+  window.exRenderVideos = function () {
+    const box = $('exVideoList');
+    if (!box) return;
+    const s = exSongs.find((x) => x.id === $('exSong').value);
+    const vids = (s && Array.isArray(s.videos)) ? s.videos : [];
+    if (!vids.length) {
+      box.innerHTML = '<span style="color:var(--muted);font-size:14px">No videos on this song.</span>';
+      return;
+    }
+    box.innerHTML = '';
+    vids.forEach((v, i) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;margin:6px 0;border:1px solid var(--line,#333);border-radius:8px';
+      const info = document.createElement('div');
+      info.style.cssText = 'flex:1;min-width:0';
+      const t = document.createElement('div');
+      t.textContent = v.title || 'Video';
+      t.style.cssText = 'font-weight:600';
+      const u = document.createElement('div');
+      u.textContent = v.youtube || v.url || '';
+      u.style.cssText = 'font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      info.appendChild(t); info.appendChild(u);
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-red';
+      btn.textContent = '\u2715 Remove';
+      btn.style.cssText = 'flex:0 0 auto';
+      btn.onclick = function () { window.exRemoveVideo(i); };
+      row.appendChild(info); row.appendChild(btn);
+      box.appendChild(row);
+    });
+  };
+
+  // Remove one video from the selected song, commit master-songs.json, keep local copy in sync.
+  window.exRemoveVideo = async function (idx) {
+    const songId = $('exSong').value;
+    const s = exSongs.find((x) => x.id === songId);
+    if (!s || !Array.isArray(s.videos) || !s.videos[idx]) return;
+    const v = s.videos[idx];
+    if (!confirm('Remove "' + (v.title || 'this video') + '" from ' + (s.title || songId) +
+      '?\n\nThis clears it from the catalog. Publish the artist site afterward to take it off the live page.')) return;
+    const removedUrl = v.youtube || v.url || '';
+    $('exMsg').textContent = 'Removing video...';
+    try {
+      await exUpdateSongs((songs) => {
+        const t = songs.find((x) => x.id === songId);
+        if (!t || !Array.isArray(t.videos)) return 0;
+        t.videos.splice(idx, 1);
+        t.videos.forEach((vv, n) => { vv.order = n + 1; });
+        if (t.youtubeUrl && t.youtubeUrl === removedUrl) {
+          t.youtubeUrl = t.videos.length ? (t.videos[0].youtube || t.videos[0].url || '') : '';
+        }
+        return 1;
+      }, 'HTR Studio: remove video from ' + songId);
+      // keep the in-memory list in sync so the UI updates without a refetch
+      s.videos.splice(idx, 1);
+      s.videos.forEach((vv, n) => { vv.order = n + 1; });
+      if (s.youtubeUrl === removedUrl) {
+        s.youtubeUrl = s.videos.length ? (s.videos[0].youtube || s.videos[0].url || '') : '';
+      }
+      exLastArtist = $('exArtist').value;
+      $('exMsg').textContent = 'Video removed.';
+      $('exAfter').classList.remove('hidden');
+      window.exRenderVideos();
+      toast('Video removed — publish to update the live site');
     } catch (e) {
       $('exMsg').textContent = '';
       toast('Failed: ' + e.message, true);
