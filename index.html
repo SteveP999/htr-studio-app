@@ -609,6 +609,70 @@
       </div>
     </section>
 
+    <!-- ============ EDIT ARTIST ============ -->
+    <section id="view-editartist" class="hidden">
+      <div class="card editor" style="max-width:720px">
+        <h3>Edit Artist</h3>
+        <div class="sub">Resize the hero logo on an existing artist's landing page and swap out any of
+        their images. Changes go live on the artist's site within a minute — no full rebuild needed.</div>
+
+        <label>Artist</label>
+        <select id="eaArtist" onchange="window.eaSelect()"></select>
+        <div class="sub" id="eaRepoLine"></div>
+
+        <label style="margin-top:22px;color:var(--warn)">— Hero logo size —</label>
+        <div class="sub">The landing-page logo. Base size is 820px desktop / 300px mobile — lower the number
+        to shrink an oversized logo. Offset: negative moves it up, positive moves it down.</div>
+        <label>Desktop max height (px)</label>
+        <input id="eaLogoDesktop" type="number" min="40" max="1200" step="10">
+        <label>Mobile max height (px)</label>
+        <input id="eaLogoMobile" type="number" min="40" max="1200" step="10">
+        <label>Vertical offset (px, optional)</label>
+        <input id="eaLogoOffset" type="number" step="2" value="0">
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.eaSaveLogoSize()">Save logo size</button>
+          <button class="btn" onclick="window.eaResetLogoSize()">Reset to default</button>
+        </div>
+        <div class="sub" id="eaLogoStatus"></div>
+
+        <label style="margin-top:26px;color:var(--warn)">— Replace images (PNG) —</label>
+        <div class="sub">Upload a new PNG to replace any of these. Each overwrites the file at its fixed
+        path, so it updates live immediately (hard-refresh the site to see it).</div>
+        <label>Logo (transparent PNG)</label>
+        <input type="file" id="ea-file-logo" accept="image/png">
+        <button class="btn btn-blue" onclick="window.eaReplaceAsset('logo')">Replace logo</button>
+        <label>Hero photo</label>
+        <input type="file" id="ea-file-hero-photo" accept="image/png">
+        <button class="btn btn-blue" onclick="window.eaReplaceAsset('hero-photo')">Replace hero</button>
+        <label>Roster photo</label>
+        <input type="file" id="ea-file-roster-photo" accept="image/png">
+        <button class="btn btn-blue" onclick="window.eaReplaceAsset('roster-photo')">Replace roster photo</button>
+        <label>Discography background</label>
+        <input type="file" id="ea-file-discography-bg" accept="image/png">
+        <button class="btn btn-blue" onclick="window.eaReplaceAsset('discography-bg')">Replace discography bg</button>
+        <label>Video background</label>
+        <input type="file" id="ea-file-video-bg" accept="image/png">
+        <button class="btn btn-blue" onclick="window.eaReplaceAsset('video-bg')">Replace video bg</button>
+        <label>Promo photo 1 (bottom of page)</label>
+        <input type="file" id="ea-file-photo-1" accept="image/png">
+        <button class="btn btn-blue" onclick="window.eaReplaceAsset('photo-1')">Replace promo 1</button>
+        <label>Promo photo 2 (bottom of page)</label>
+        <input type="file" id="ea-file-photo-2" accept="image/png">
+        <button class="btn btn-blue" onclick="window.eaReplaceAsset('photo-2')">Replace promo 2</button>
+        <label>Promo photo 3 (bottom of page)</label>
+        <input type="file" id="ea-file-photo-3" accept="image/png">
+        <button class="btn btn-blue" onclick="window.eaReplaceAsset('photo-3')">Replace promo 3</button>
+        <div class="sub" id="eaAssetStatus"></div>
+
+        <div class="save-bar" style="margin-top:22px">
+          <button class="btn" onclick="window.eaRebuild()">Full rebuild (optional)</button>
+        </div>
+        <div class="sub">A full rebuild regenerates the whole page from the catalog — only needed if you
+        changed songs or albums. The logo-size and image edits above are already live, and your logo-size
+        override is preserved across rebuilds.</div>
+      </div>
+    </section>
+
     <!-- ============ VIDEO ============ -->
     <section id="view-video" class="hidden">
       <div class="card editor" style="max-width:900px">
@@ -954,13 +1018,13 @@
 
   // ---------- tabs (grouped nav) ----------
   const NAV_GROUPS = {
-    artists: [['artists', 'Roster'], ['newartist', 'New Artist'], ['addsong', 'Add Song'], ['extras', 'Song Extras']],
+    artists: [['artists', 'Roster'], ['newartist', 'New Artist'], ['addsong', 'Add Song'], ['extras', 'Song Extras'], ['editartist', 'Edit Artist']],
     media: [['lyrics', 'Song Workshop'], ['video', 'Music Video'], ['polls', 'Song Polls']],
     radio: [['radio', 'Stations'], ['top20', 'Top 20']],
     publishing: [['bmicat', 'BMI Catalog']],
     admin: [['dashboard', 'Dashboard & Runs']]
   };
-  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'radio', 'top20', 'lyrics', 'video', 'polls', 'bmicat'];
+  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'editartist', 'radio', 'top20', 'lyrics', 'video', 'polls', 'bmicat'];
   let curGroup = 'artists';
 
   function groupOf(view) {
@@ -995,6 +1059,7 @@
     if (name === 'video' && !vidLoaded) window.loadVideo();
     if (name === 'polls' && !pollsLoaded) window.loadPolls();
     if (name === 'bmicat' && !bmiLoaded) window.loadBmi();
+    if (name === 'editartist') window.eaInit();
   };
 
   function applyLyricsOnly() {
@@ -3008,6 +3073,145 @@
     ['photo-3', 'images/artist/', '-photo-3.png', true]
   ];
   const LABEL_REPO_NAME = 'hello-texas-records';
+
+  // ---------- edit artist (hero logo size + replace images) ----------
+  const EA_OVERRIDE_RE = /\/\* HTR-MENU: hero logo size override \*\/[\s\S]*?\/\* end logo size override \*\//;
+  function eaB64Decode(b64) { return decodeURIComponent(escape(atob(String(b64).replace(/\s/g, '')))); }
+  function eaB64Encode(str) { return btoa(unescape(encodeURIComponent(str))); }
+  function eaArtistObj() { return artists.find(function (x) { return x.id === $('eaArtist').value; }); }
+
+  window.eaInit = function () {
+    const sel = $('eaArtist');
+    const cur = sel.value;
+    sel.innerHTML = '';
+    artists.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (a) {
+      const o = document.createElement('option');
+      o.value = a.id; o.textContent = a.name; sel.appendChild(o);
+    });
+    if (cur) sel.value = cur;
+    window.eaSelect();
+  };
+
+  window.eaSelect = function () {
+    const a = eaArtistObj();
+    if (!a) return;
+    $('eaRepoLine').textContent = 'repo: ' + a.githubRepo + '   ·   site: ' + (a.siteUrl || ('https://' + a.id + '.hellotexasrecords.com'));
+    $('eaAssetStatus').textContent = '';
+    $('eaLogoStatus').textContent = 'Loading current logo size…';
+    window.eaLoadLogoSize();
+  };
+
+  window.eaLoadLogoSize = async function () {
+    const a = eaArtistObj();
+    if (!a) return;
+    try {
+      const f = await gh('/repos/' + a.githubRepo + '/contents/index.html');
+      const html = eaB64Decode(f.content);
+      const m = html.match(EA_OVERRIDE_RE);
+      let d = 820, mob = 300, off = 0, has = false;
+      if (m) {
+        has = true;
+        const dm = m[0].match(/\.stage-logo img\{[^}]*max-height:\s*(-?\d+)px/);
+        if (dm) d = parseInt(dm[1], 10);
+        const mm = m[0].match(/max-width:768px\)\{\.stage-logo img\{[^}]*max-height:\s*(-?\d+)px/);
+        if (mm) mob = parseInt(mm[1], 10);
+        const om = m[0].match(/translateY\((-?\d+)px\)/);
+        if (om) off = parseInt(om[1], 10);
+      }
+      $('eaLogoDesktop').value = d;
+      $('eaLogoMobile').value = mob;
+      $('eaLogoOffset').value = off;
+      $('eaLogoStatus').textContent = has
+        ? ('Current override: desktop ' + d + 'px / mobile ' + mob + 'px' + (off ? (' / offset ' + off + 'px') : '') + '.')
+        : 'No override yet — logo is at default size. Lower the numbers to shrink it.';
+    } catch (e) {
+      $('eaLogoStatus').textContent = 'Could not read the site index.html: ' + e.message;
+    }
+  };
+
+  function eaBuildOverride(d, mob, off) {
+    let deskRule = 'max-height:' + d + 'px !important;width:auto !important;';
+    if (off) deskRule += 'transform:translateY(' + off + 'px) !important;';
+    return '/* HTR-MENU: hero logo size override */\n'
+      + '.stage-logo img{' + deskRule + '}\n'
+      + '@media (max-width:768px){.stage-logo img{max-height:' + mob + 'px !important;}}\n'
+      + '/* end logo size override */';
+  }
+
+  window.eaSaveLogoSize = async function () {
+    const a = eaArtistObj();
+    if (!a) return;
+    const d = parseInt($('eaLogoDesktop').value, 10);
+    const mob = parseInt($('eaLogoMobile').value, 10);
+    const off = parseInt($('eaLogoOffset').value, 10) || 0;
+    if (isNaN(d) || isNaN(mob) || d < 40 || d > 1200 || mob < 40 || mob > 1200)
+      return toast('Enter sensible pixel heights (40–1200).', true);
+    $('eaLogoStatus').textContent = 'Saving…';
+    try {
+      const f = await gh('/repos/' + a.githubRepo + '/contents/index.html');
+      let html = eaB64Decode(f.content);
+      const block = eaBuildOverride(d, mob, off);
+      if (EA_OVERRIDE_RE.test(html)) html = html.replace(EA_OVERRIDE_RE, block);
+      else if (html.indexOf('</style>') !== -1) html = html.replace('</style>', block + '\n</style>');
+      else return toast('This page has no <style> block to hook into.', true);
+      await gh('/repos/' + a.githubRepo + '/contents/index.html', {
+        method: 'PUT',
+        body: { message: 'HTR Studio: hero logo size (' + d + '/' + mob + ') for ' + a.id, content: eaB64Encode(html), sha: f.sha }
+      });
+      $('eaLogoStatus').textContent = 'Saved and live. Give GitHub Pages a minute, then hard-refresh the site.';
+      toast('Logo size updated on ' + a.name + "'s site");
+    } catch (e) {
+      $('eaLogoStatus').textContent = '';
+      toast('Failed: ' + e.message, true);
+    }
+  };
+
+  window.eaResetLogoSize = async function () {
+    const a = eaArtistObj();
+    if (!a) return;
+    if (!confirm('Remove the size override and return ' + a.name + "'s logo to default size?")) return;
+    try {
+      const f = await gh('/repos/' + a.githubRepo + '/contents/index.html');
+      let html = eaB64Decode(f.content);
+      if (!EA_OVERRIDE_RE.test(html)) { toast('No override to remove — already default.'); return; }
+      html = html.replace(EA_OVERRIDE_RE, '').replace('\n\n</style>', '\n</style>');
+      await gh('/repos/' + a.githubRepo + '/contents/index.html', {
+        method: 'PUT',
+        body: { message: 'HTR Studio: reset hero logo size for ' + a.id, content: eaB64Encode(html), sha: f.sha }
+      });
+      window.eaLoadLogoSize();
+      toast('Logo size reset to default');
+    } catch (e) { toast('Failed: ' + e.message, true); }
+  };
+
+  window.eaReplaceAsset = async function (key) {
+    const a = eaArtistObj();
+    if (!a) return;
+    const inp = $('ea-file-' + key);
+    const file = inp.files[0];
+    if (!file) return toast('Choose a PNG for ' + key + ' first.', true);
+    const spec = NA_ASSETS.find(function (s) { return s[0] === key; });
+    if (!spec) return;
+    const dir = spec[1], suffix = spec[2], roster = spec[3];
+    $('eaAssetStatus').textContent = 'Uploading ' + key + '…';
+    try {
+      const b64 = await fileToBase64(file);
+      await putFile(a.githubRepo, dir + a.id + suffix, b64, 'HTR Studio: replace ' + key + ' for ' + a.id);
+      if (roster) await putFile(OWNER + '/' + LABEL_REPO_NAME, 'Roster Photos/' + a.id + '/' + a.id + '-' + key + '.png', b64, 'HTR roster: ' + a.id + ' ' + key);
+      inp.value = '';
+      $('eaAssetStatus').textContent = key + ' replaced and live. Hard-refresh the site to see it.';
+      toast(key + ' replaced');
+    } catch (e) {
+      $('eaAssetStatus').textContent = '';
+      toast('Failed: ' + e.message, true);
+    }
+  };
+
+  window.eaRebuild = function () {
+    const a = eaArtistObj();
+    if (!a) return;
+    window.runWorkflow('build-artist.yml', { artist_id: a.id }, 'Rebuild ' + a.name + "'s site");
+  };
 
   window.naPreview = function () {
     const id = slugify($('naName').value.trim());
