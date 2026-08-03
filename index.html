@@ -842,13 +842,23 @@
       <div class="radio-wrap" style="max-height:56vh">
         <table class="rgrid" id="bmiTable">
           <thead><tr>
-            <th class="stick s0">Song</th>
-            <th class="stick s1">Artist</th>
-            <th>U</th><th>Rad</th><th>Wr</th>
-            <th>Album</th><th>Trk</th>
-            <th>Work #</th><th>Reg Date</th><th>ISWC</th><th>BMI #</th>
-            <th>Songview</th><th>Time</th><th>Live</th><th>ISRC</th>
-            <th>Registered Name</th><th>Reg Artists</th>
+            <th class="stick s0" style="cursor:pointer" onclick="window.bmiSortBy('title')">Song<span class="ca" data-k="title"></span></th>
+            <th class="stick s1" style="cursor:pointer" onclick="window.bmiSortBy('artist')">Artist<span class="ca" data-k="artist"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('unique')">U<span class="ca" data-k="unique"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('radio')">Rad<span class="ca" data-k="radio"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('writer')">Wr<span class="ca" data-k="writer"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('album')">Album<span class="ca" data-k="album"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('track')">Trk<span class="ca" data-k="track"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('workNo')">Work #<span class="ca" data-k="workNo"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('regDate')">Reg Date<span class="ca" data-k="regDate"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('iswc')">ISWC<span class="ca" data-k="iswc"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('bmiNo')">BMI #<span class="ca" data-k="bmiNo"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('songview')">Songview<span class="ca" data-k="songview"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('time')">Time<span class="ca" data-k="time"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('liveDate')">Live<span class="ca" data-k="liveDate"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('isrc')">ISRC<span class="ca" data-k="isrc"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('regTitle')">Registered Name<span class="ca" data-k="regTitle"></span></th>
+            <th style="cursor:pointer" onclick="window.bmiSortBy('regArtists')">Reg Artists<span class="ca" data-k="regArtists"></span></th>
           </tr></thead>
           <tbody id="bmiBody"></tbody>
         </table>
@@ -874,7 +884,6 @@
           <div><label>BMI Work #</label><input id="bmiEdWork"></div>
           <div><label>Reg date</label><input id="bmiEdRegDate"></div>
           <div><label>ISWC</label><input id="bmiEdIswc"></div>
-          <div><label>BMI # (reconcile)</label><input id="bmiEdBmiNo"></div>
           <div><label>Songview status</label><input id="bmiEdSv"></div>
           <div><label>Track time</label><input id="bmiEdTime"></div>
           <div><label>Streaming live date</label><input id="bmiEdLive"></div>
@@ -895,6 +904,15 @@
       <div class="row" style="margin-top:14px">
         <button class="btn btn-ghost" onclick="window.bmiAddNew()">+ Add song</button>
         <button class="btn btn-ghost" onclick="window.bmiExportCsv()">Export CSV (backup)</button>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3>Roster &amp; catalog notes</h3>
+        <div class="sub">Working notes, saved with the catalog — hit "Save changes" up top to persist them.</div>
+        <label style="margin-top:10px">Unregistered artists — need adding to the roster</label>
+        <textarea id="bmiUnreg" rows="4" placeholder="Artists that have works/songs but aren't on the roster yet — one per line" oninput="window.bmiNoteEdit('unregisteredArtists', this.value)" style="width:100%;box-sizing:border-box"></textarea>
+        <label style="margin-top:12px">Notes — typos, re-records, moves, to-dos</label>
+        <textarea id="bmiNotes" rows="6" placeholder="e.g. Promises I Broke — fix title typo · move a single to another album · re-record ..." oninput="window.bmiNoteEdit('notes', this.value)" style="width:100%;box-sizing:border-box"></textarea>
       </div>
 
       <div class="card" style="margin-top:20px">
@@ -3993,6 +4011,8 @@
       bmiSha = f.sha;
       bmiData = JSON.parse(b64decode(f.content));
       if (!bmiData.songs) bmiData.songs = [];
+      $('bmiUnreg').value = bmiData.unregisteredArtists || '';
+      $('bmiNotes').value = bmiData.notes || '';
       bmiLoaded = true;
       bmiDirty = false;
       $('bmiSaveBtn').disabled = true;
@@ -4004,10 +4024,47 @@
       });
       sel.value = cur;
       window.bmiRender();
+      bmiUpdateCarets();
     } catch (e) {
       toast('BMI catalog load failed: ' + e.message, true);
       $('bmiBody').innerHTML = '<tr><td colspan="17" style="color:var(--err);padding:14px">' + bmiEsc(e.message) + '</td></tr>';
     }
+  };
+
+  // ----- sorting + working notes -----
+  let bmiSort = { key: 'title', dir: 1 };
+  window.bmiSortBy = function (key) {
+    if (bmiSort.key === key) bmiSort.dir = -bmiSort.dir;
+    else { bmiSort.key = key; bmiSort.dir = 1; }
+    bmiUpdateCarets();
+    window.bmiRender();
+  };
+  function bmiUpdateCarets() {
+    const cs = document.querySelectorAll('#bmiTable thead .ca');
+    for (let i = 0; i < cs.length; i++) {
+      cs[i].textContent = (cs[i].getAttribute('data-k') === bmiSort.key) ? (bmiSort.dir > 0 ? ' \u25B2' : ' \u25BC') : '';
+    }
+  }
+  function bmiSortVal(s, key) {
+    if (key === 'regArtists') return (s.regArtists || []).join(', ');
+    return s[key] == null ? '' : s[key];
+  }
+  function bmiCompare(a, b) {
+    const key = bmiSort.key, dir = bmiSort.dir;
+    const sa = String(bmiSortVal(a, key)).trim(), sb = String(bmiSortVal(b, key)).trim();
+    if (!sa && sb) return 1;
+    if (sa && !sb) return -1;
+    if (!sa && !sb) return 0;
+    if (/^-?\d/.test(sa) && /^-?\d/.test(sb)) {
+      const na = parseFloat(sa), nb = parseFloat(sb);
+      if (!isNaN(na) && !isNaN(nb)) return (na - nb) * dir;
+    }
+    return sa.localeCompare(sb, undefined, { sensitivity: 'base' }) * dir;
+  }
+  window.bmiNoteEdit = function (field, val) {
+    if (!bmiData) return;
+    bmiData[field] = val;
+    bmiMarkDirty();
   };
 
   window.bmiRender = function () {
@@ -4039,8 +4096,8 @@
       idxs.push(i);
     });
     idxs.sort(function (a, b) {
-      const t = songs[a].title.localeCompare(songs[b].title);
-      return t !== 0 ? t : songs[a].artist.localeCompare(songs[b].artist);
+      const c = bmiCompare(songs[a], songs[b]);
+      return c !== 0 ? c : (songs[a].title || '').localeCompare(songs[b].title || '');
     });
     $('bmiFilterCount').textContent = 'showing ' + idxs.length;
 
@@ -4077,7 +4134,7 @@
     $('bmiEdUnq').value = s.unique || ''; $('bmiEdRadio').value = s.radio || '';
     $('bmiEdWriter').value = s.writer || ''; $('bmiEdWork').value = s.workNo || '';
     $('bmiEdRegDate').value = s.regDate || ''; $('bmiEdIswc').value = s.iswc || '';
-    $('bmiEdBmiNo').value = s.bmiNo || ''; $('bmiEdSv').value = s.songview || '';
+    $('bmiEdSv').value = s.songview || '';
     $('bmiEdTime').value = s.time || ''; $('bmiEdLive').value = s.liveDate || '';
     $('bmiEdRel').value = s.releaseId || ''; $('bmiEdUpc').value = s.upc || '';
     $('bmiEdIsrc').value = s.isrc || ''; $('bmiEdRegTitle').value = s.regTitle || '';
@@ -4095,7 +4152,7 @@
     s.unique = $('bmiEdUnq').value.trim(); s.radio = $('bmiEdRadio').value.trim();
     s.writer = $('bmiEdWriter').value.trim(); s.workNo = $('bmiEdWork').value.trim();
     s.regDate = $('bmiEdRegDate').value.trim(); s.iswc = $('bmiEdIswc').value.trim();
-    s.bmiNo = $('bmiEdBmiNo').value.trim(); s.songview = $('bmiEdSv').value.trim();
+    s.songview = $('bmiEdSv').value.trim();
     s.time = $('bmiEdTime').value.trim(); s.liveDate = $('bmiEdLive').value.trim();
     s.releaseId = $('bmiEdRel').value.trim(); s.upc = $('bmiEdUpc').value.trim();
     s.isrc = $('bmiEdIsrc').value.trim(); s.regTitle = $('bmiEdRegTitle').value.trim();
