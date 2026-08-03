@@ -664,6 +664,21 @@
         <button class="btn btn-blue" onclick="window.eaReplaceAsset('photo-3')">Replace promo 3</button>
         <div class="sub" id="eaAssetStatus"></div>
 
+        <label style="margin-top:26px;color:var(--warn)">— Album &amp; song cover art —</label>
+        <div class="sub">Covers live in the artist's <code>images/covers/</code> folder and the same file is
+        shared by everything that shows it (the site, radio, homepage, Top 20). Replacing one overwrites the
+        image in place, so it updates everywhere within a minute — no rebuild.</div>
+        <label>Album</label>
+        <select id="eaAlbum"></select>
+        <label class="chk" style="margin-top:8px"><input type="checkbox" id="eaAlbumApplyTracks" checked> Also set every track in the album to this cover</label>
+        <input type="file" id="ea-file-album-art" accept="image/png" style="margin-top:10px">
+        <button class="btn btn-blue" onclick="window.eaReplaceAlbumArt()">Replace album art</button>
+        <label style="margin-top:18px">Song</label>
+        <select id="eaSong"></select>
+        <input type="file" id="ea-file-song-art" accept="image/png" style="margin-top:10px">
+        <button class="btn btn-blue" onclick="window.eaReplaceSongArt()">Replace song art</button>
+        <div class="sub" id="eaCoverStatus"></div>
+
         <div class="save-bar" style="margin-top:22px">
           <button class="btn" onclick="window.eaRebuild()">Full rebuild (optional)</button>
         </div>
@@ -3099,6 +3114,7 @@
     $('eaAssetStatus').textContent = '';
     $('eaLogoStatus').textContent = 'Loading current logo size…';
     window.eaLoadLogoSize();
+    window.eaFillCovers();
   };
 
   window.eaLoadLogoSize = async function () {
@@ -3205,6 +3221,101 @@
       $('eaAssetStatus').textContent = '';
       toast('Failed: ' + e.message, true);
     }
+  };
+
+  // ---------- cover art: album + song (overwrite referenced image in place) ----------
+  let eaSongsAll = [];
+
+  function eaCoverTarget(url) {
+    const m = String(url || '').match(/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/[^/]+\/(.+)$/);
+    if (!m) return null;
+    return { repo: m[1] + '/' + m[2], path: m[3] };
+  }
+
+  window.eaFillCovers = async function () {
+    const a = eaArtistObj();
+    if (!a) return;
+    $('eaCoverStatus').textContent = 'Loading catalog…';
+    try {
+      const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      eaSongsAll = JSON.parse(b64decode(sf.content));
+    } catch (e) {
+      $('eaCoverStatus').textContent = 'Could not load songs: ' + e.message;
+      return;
+    }
+    const mine = eaSongsAll.filter(function (s) { return s.artistId === a.id; });
+    const albums = [];
+    mine.forEach(function (s) { const al = s.album || 'Singles'; if (albums.indexOf(al) === -1) albums.push(al); });
+    const albSel = $('eaAlbum'); albSel.innerHTML = '';
+    albums.forEach(function (al) { const o = document.createElement('option'); o.value = al; o.textContent = al; albSel.appendChild(o); });
+    const songSel = $('eaSong'); songSel.innerHTML = '';
+    mine.slice().sort(function (x, y) { return (x.title || '').localeCompare(y.title || ''); }).forEach(function (s) {
+      const o = document.createElement('option');
+      o.value = s.id;
+      o.textContent = (s.title || s.id) + (s.album ? ('  ·  ' + s.album) : '');
+      songSel.appendChild(o);
+    });
+    $('eaCoverStatus').textContent = mine.length
+      ? (mine.length + ' songs · ' + albums.length + ' album(s) in the catalog.')
+      : 'This artist has no songs in the catalog yet — nothing to change here until you load their tracks.';
+  };
+
+  window.eaReplaceAlbumArt = async function () {
+    const a = eaArtistObj();
+    if (!a) return;
+    const album = $('eaAlbum').value;
+    if (!album) return toast('Pick an album first.', true);
+    const file = $('ea-file-album-art').files[0];
+    if (!file) return toast('Choose a PNG for the album art.', true);
+    const applyTracks = $('eaAlbumApplyTracks').checked;
+    const mine = eaSongsAll.filter(function (s) { return s.artistId === a.id && (s.album || 'Singles') === album; });
+    if (!mine.length) return toast('No songs found in that album.', true);
+    const targets = {};
+    mine.forEach(function (s) {
+      const ac = eaCoverTarget(s.albumCover); if (ac) targets[ac.repo + '/' + ac.path] = ac;
+      if (applyTracks) { const cc = eaCoverTarget(s.coverImage); if (cc) targets[cc.repo + '/' + cc.path] = cc; }
+    });
+    const keys = Object.keys(targets);
+    if (!keys.length) return toast('These songs have no GitHub-hosted cover files I can overwrite — tell me and I will wire it another way.', true);
+    $('eaCoverStatus').textContent = 'Uploading album art to ' + keys.length + ' image file(s)…';
+    try {
+      const b64 = await fileToBase64(file);
+      for (let i = 0; i < keys.length; i++) {
+        const t = targets[keys[i]];
+        await putFile(t.repo, t.path, b64, 'HTR Studio: album art for ' + album);
+      }
+      $('ea-file-album-art').value = '';
+      $('eaCoverStatus').textContent = 'Album art replaced across ' + keys.length + ' image(s). Live within a minute (raw CDN cache) — hard-refresh to see it.';
+      toast('Album art updated for ' + album);
+    } catch (e) { $('eaCoverStatus').textContent = ''; toast('Failed: ' + e.message, true); }
+  };
+
+  window.eaReplaceSongArt = async function () {
+    const a = eaArtistObj();
+    if (!a) return;
+    const song = eaSongsAll.find(function (s) { return s.id === $('eaSong').value; });
+    if (!song) return toast('Pick a song first.', true);
+    const file = $('ea-file-song-art').files[0];
+    if (!file) return toast('Choose a PNG for the song art.', true);
+    const tgt = eaCoverTarget(song.coverImage);
+    if (!tgt) return toast('This song has no GitHub-hosted cover file I can overwrite — tell me and I will wire it another way.', true);
+    let shared = 0;
+    eaSongsAll.forEach(function (s) {
+      if (s.artistId !== a.id) return;
+      if (s.id !== song.id) { const cc = eaCoverTarget(s.coverImage); if (cc && cc.path === tgt.path) shared++; }
+      const ac = eaCoverTarget(s.albumCover); if (ac && ac.path === tgt.path) shared++;
+    });
+    if (shared > 0) {
+      if (!confirm('This track shares its cover file with ' + shared + ' other item(s) — its album and/or other tracks — so replacing it changes those too. Continue?\n\n(Cancel if you want this one track to have its own distinct art instead — tell me and I will set that up.)')) return;
+    }
+    $('eaCoverStatus').textContent = 'Uploading song art…';
+    try {
+      const b64 = await fileToBase64(file);
+      await putFile(tgt.repo, tgt.path, b64, 'HTR Studio: song art for ' + (song.title || song.id));
+      $('ea-file-song-art').value = '';
+      $('eaCoverStatus').textContent = 'Song art replaced. Live within a minute — hard-refresh to see it.';
+      toast('Song art updated for ' + (song.title || song.id));
+    } catch (e) { $('eaCoverStatus').textContent = ''; toast('Failed: ' + e.message, true); }
   };
 
   window.eaRebuild = function () {
