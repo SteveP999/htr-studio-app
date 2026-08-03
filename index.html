@@ -813,7 +813,6 @@
         <span id="bmiStats" class="rstats"></span>
         <span class="spacer"></span>
         <button class="btn btn-ghost" onclick="window.loadBmi(true)">Reload</button>
-        <button id="bmiSaveBtn" class="btn btn-red" onclick="window.bmiSaveAll()" disabled>Save changes</button>
       </div>
 
       <div class="radio-toolbar">
@@ -908,11 +907,21 @@
 
       <div class="card" style="margin-top:20px">
         <h3>Roster &amp; catalog notes</h3>
-        <div class="sub">Working notes, saved with the catalog — hit "Save changes" up top to persist them.</div>
+        <div class="sub">Type an entry, then hit Save changes below — it files to the list and the box clears,
+        so your next note starts fresh. Nothing here is tied to a row.</div>
+
         <label style="margin-top:10px">Unregistered artists — need adding to the roster</label>
-        <textarea id="bmiUnreg" rows="4" placeholder="Artists that have works/songs but aren't on the roster yet — one per line" oninput="window.bmiNoteEdit('unregisteredArtists', this.value)" style="width:100%;box-sizing:border-box"></textarea>
-        <label style="margin-top:12px">Notes — typos, re-records, moves, to-dos</label>
-        <textarea id="bmiNotes" rows="6" placeholder="e.g. Promises I Broke — fix title typo · move a single to another album · re-record ..." oninput="window.bmiNoteEdit('notes', this.value)" style="width:100%;box-sizing:border-box"></textarea>
+        <div id="bmiUnregList" style="white-space:pre-wrap;font-size:13px;color:var(--muted);border:1px solid var(--line,#333);border-radius:6px;padding:8px;max-height:130px;overflow:auto"></div>
+        <textarea id="bmiUnreg" rows="2" placeholder="Add an artist that needs adding to the roster…" oninput="window.bmiNoteTyping()" style="width:100%;box-sizing:border-box;margin-top:8px"></textarea>
+
+        <label style="margin-top:16px">Notes — typos, re-records, moves, to-dos</label>
+        <div id="bmiNotesList" style="white-space:pre-wrap;font-size:13px;color:var(--muted);border:1px solid var(--line,#333);border-radius:6px;padding:8px;max-height:180px;overflow:auto"></div>
+        <textarea id="bmiNotes" rows="3" placeholder="Add a note — e.g. Promises I Broke: fix title typo…" oninput="window.bmiNoteTyping()" style="width:100%;box-sizing:border-box;margin-top:8px"></textarea>
+      </div>
+
+      <div class="save-bar" style="margin-top:14px">
+        <button id="bmiSaveBtn" class="btn btn-red" onclick="window.bmiSaveAll()" disabled>Save changes</button>
+        <span style="color:var(--muted);font-size:13px">Saves your row edits and files any note or artist typed above.</span>
       </div>
 
       <div class="card" style="margin-top:20px">
@@ -4011,8 +4020,9 @@
       bmiSha = f.sha;
       bmiData = JSON.parse(b64decode(f.content));
       if (!bmiData.songs) bmiData.songs = [];
-      $('bmiUnreg').value = bmiData.unregisteredArtists || '';
-      $('bmiNotes').value = bmiData.notes || '';
+      $('bmiUnreg').value = '';
+      $('bmiNotes').value = '';
+      bmiRenderNotes();
       bmiLoaded = true;
       bmiDirty = false;
       $('bmiSaveBtn').disabled = true;
@@ -4061,11 +4071,13 @@
     }
     return sa.localeCompare(sb, undefined, { sensitivity: 'base' }) * dir;
   }
-  window.bmiNoteEdit = function (field, val) {
-    if (!bmiData) return;
-    bmiData[field] = val;
-    bmiMarkDirty();
-  };
+  window.bmiNoteTyping = function () { bmiMarkDirty(); };
+  function bmiRenderNotes() {
+    const u = ((bmiData && bmiData.unregisteredArtists) || '').trim();
+    const n = ((bmiData && bmiData.notes) || '').trim();
+    $('bmiUnregList').textContent = u || '(nothing filed yet)';
+    $('bmiNotesList').textContent = n || '(nothing filed yet)';
+  }
 
   window.bmiRender = function () {
     if (!bmiData) return;
@@ -4191,7 +4203,12 @@
     if (!bmiData) return;
     $('bmiSaveBtn').disabled = true;
     try {
-      bmiData.updated = new Date().toISOString().slice(0, 10);
+      const pu = $('bmiUnreg').value.trim();
+      const pn = $('bmiNotes').value.trim();
+      const stamp = new Date().toISOString().slice(0, 10);
+      if (pu) bmiData.unregisteredArtists = (((bmiData.unregisteredArtists || '').trim()) + '\n• ' + stamp + '  ' + pu).trim();
+      if (pn) bmiData.notes = (((bmiData.notes || '').trim()) + '\n• ' + stamp + '  ' + pn).trim();
+      bmiData.updated = stamp;
       const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + BMI_PATH);
       const res = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + BMI_PATH, {
         method: 'PUT',
@@ -4199,6 +4216,9 @@
       });
       bmiSha = res && res.content ? res.content.sha : null;
       bmiDirty = false;
+      $('bmiUnreg').value = '';
+      $('bmiNotes').value = '';
+      bmiRenderNotes();
       toast('BMI catalog saved');
     } catch (e) {
       $('bmiSaveBtn').disabled = false;
