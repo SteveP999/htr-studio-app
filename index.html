@@ -152,6 +152,7 @@
     <button id="grp-radio" onclick="window.showGroup('radio')">Radio</button>
     <button id="grp-publishing" onclick="window.showGroup('publishing')">Publishing</button>
     <button id="grp-admin" onclick="window.showGroup('admin')">Admin</button>
+    <button id="grp-tools" onclick="window.showGroup('tools')">Local Tools</button>
   </nav>
   <nav id="subnav" style="border-top:none;padding-top:0"></nav>
   <main>
@@ -954,6 +955,33 @@
       </div>
     </section>
 
+    <!-- ============ LOCAL TOOLS ============ -->
+    <section id="view-tools" class="hidden">
+      <div class="grid">
+        <div class="card">
+          <h3>HTR Video Maker</h3>
+          <div class="sub">Lyric-video and background rendering. Runs locally on this PC only —
+          it needs FFmpeg and your Dropbox files on disk, so it can't run from the cloud or another device.</div>
+          <div class="dry-note" style="margin:10px 0">Start it first: double-click <code>HTR-VIDEO-MAKER.bat</code>
+          in D:\HTR-Studio (or run <code>HTR-Service.vbs</code> to start it silently in the background).
+          Then use the button below.</div>
+          <div class="row"><a class="btn btn-blue" href="http://127.0.0.1:8770/" target="_blank" rel="noreferrer">Open Video Maker</a></div>
+        </div>
+        <div class="card">
+          <h3>HTR Mastering Engine</h3>
+          <div class="sub">Two-pass loudness mastering (FFmpeg loudnorm) for your mixed WAVs — album-at-once
+          or single-track. Never modifies your source files. Same local-only rule as the Video Maker.</div>
+          <div class="dry-note" style="margin:10px 0">Start it first: double-click <code>HTR-MASTERING.bat</code>
+          in D:\HTR-Studio (or run <code>HTR-Mastering-Service.vbs</code> to start it silently in the background).
+          Then use the button below.</div>
+          <div class="row"><a class="btn btn-blue" href="http://127.0.0.1:8771/" target="_blank" rel="noreferrer">Open Mastering Engine</a></div>
+        </div>
+      </div>
+      <div class="dry-note" style="margin-top:14px">Both tools only work while you're using this admin page on the
+      same PC where D:\HTR-Studio lives, and only after you've started their local service. From your phone or
+      another computer these buttons won't connect — that's expected, not broken.</div>
+    </section>
+
   </main>
 </div>
 
@@ -1064,9 +1092,10 @@
     media: [['lyrics', 'Song Workshop'], ['video', 'Music Video'], ['polls', 'Song Polls']],
     radio: [['radio', 'Stations'], ['top20', 'Top 20']],
     publishing: [['bmicat', 'BMI Catalog']],
-    admin: [['dashboard', 'Dashboard & Runs']]
+    admin: [['dashboard', 'Dashboard & Runs']],
+    tools: [['tools', 'Video & Mastering']]
   };
-  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'editartist', 'radio', 'top20', 'lyrics', 'video', 'polls', 'bmicat'];
+  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'editartist', 'radio', 'top20', 'lyrics', 'video', 'polls', 'bmicat', 'tools'];
   let curGroup = 'artists';
 
   function groupOf(view) {
