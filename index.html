@@ -228,12 +228,47 @@
     <!-- ============ SONG EXTRAS ============ -->
     <section id="view-extras" class="hidden">
       <div class="card editor" style="max-width:640px">
-        <h3>Song Extras — Videos &amp; Streaming Links</h3>
+        <h3>Song Extras — Videos, Links, Move &amp; Reorder Tracks</h3>
         <div class="sub">Pick a song, then add a video or streaming links. Publish when done.</div>
         <label>Artist</label>
         <select id="exArtist" onchange="window.exLoadSongs()"></select>
         <label>Song</label>
         <select id="exSong" onchange="window.exSelectSong()"></select>
+
+        <label style="margin-top:26px;color:var(--warn)">- Edit Title -</label>
+        <div class="sub">Fix a wrong or misspelled song title. Save, then publish the artist to update the live site.</div>
+        <input id="exNewTitle" type="text" placeholder="Corrected song title">
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.exEditTitle()">Save title</button>
+          <span id="exTitleMsg" style="color:var(--muted);font-size:14px"></span>
+        </div>
+
+        <label style="margin-top:26px;color:var(--warn)">- Delete Song -</label>
+        <div class="sub">Remove this song from the catalog entirely. Publish the artist afterward to take it off the live site.</div>
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.exDeleteSong()">Delete this song</button>
+          <span id="exDelMsg" style="color:var(--muted);font-size:14px"></span>
+        </div>
+
+        <label style="margin-top:26px;color:var(--warn)">- Rename / Delete Album -</label>
+        <div class="sub">Rename an album across all its tracks, or delete the whole album. Publish the artist afterward to update the live site.</div>
+        <label>Album</label>
+        <select id="exAlbumEdit" onchange="window.exAlbumEditPick()"></select>
+        <label>New album name</label>
+        <input id="exAlbumNewName" type="text" placeholder="Corrected album name">
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.exRenameAlbum()">Rename album</button>
+          <button class="btn btn-red" onclick="window.exDeleteAlbum()">Delete entire album</button>
+          <span id="exAlbumMsg" style="color:var(--muted);font-size:14px"></span>
+        </div>
+
+        <label style="margin-top:26px;color:var(--warn)">- Reorder Albums -</label>
+        <div class="sub">Set which album shows first on the artist page. Move albums up/down, then save. Publish the artist afterward.</div>
+        <div id="exAlbumOrderList"></div>
+        <div class="save-bar">
+          <button class="btn btn-red" onclick="window.exSaveAlbumOrder()">Save album order</button>
+          <span id="exAlbumOrderMsg" style="color:var(--muted);font-size:14px"></span>
+        </div>
 
         <label style="margin-top:26px;color:var(--warn)">— Add Video —</label>
         <label>YouTube URL</label>
@@ -1088,7 +1123,7 @@
 
   // ---------- tabs (grouped nav) ----------
   const NAV_GROUPS = {
-    artists: [['artists', 'Roster'], ['newartist', 'New Artist'], ['addsong', 'Add Song'], ['extras', 'Song Extras'], ['editartist', 'Edit Artist']],
+    artists: [['artists', 'Roster'], ['newartist', 'New Artist'], ['addsong', 'Add Song'], ['extras', 'Song Extras & Reorder'], ['editartist', 'Edit Artist']],
     media: [['lyrics', 'Song Workshop'], ['video', 'Music Video'], ['polls', 'Song Polls']],
     radio: [['radio', 'Stations'], ['top20', 'Top 20']],
     publishing: [['bmicat', 'BMI Catalog']],
@@ -1249,7 +1284,7 @@
     renderMusic(a);
   }
 
-  // ---------- artist MUSIC section (albums + songs, jump to workshop) ----------
+  // ---------- artist MUSIC section — inline song management ----------
   let msCache = null;
 
   async function renderMusic(a) {
@@ -1262,28 +1297,86 @@
       }
       const mine = msCache.filter((s) => s.artistId === a.id);
       const albums = {};
-      mine.forEach((s) => {
-        const k = s.album || 'Singles';
-        (albums[k] = albums[k] || []).push(s);
-      });
+      mine.forEach((s) => { const k = s.album || 'Singles'; (albums[k] = albums[k] || []).push(s); });
+      const allAlbums = Object.keys(albums);
+
       box.innerHTML = '<label style="color:var(--warn)">— Music (' + mine.length + ' songs) —</label>'
         + '<div class="save-bar" style="margin-top:4px">'
         + '<button class="btn btn-blue" onclick="window.artAddSong()">+ Add song</button>'
         + '<button class="btn btn-ghost" onclick="window.artRefreshMusic()">↻ Refresh</button></div>';
-      Object.keys(albums).forEach((alb) => {
+
+      allAlbums.forEach((alb) => {
         const songs = albums[alb];
+        // Album header
         const head = document.createElement('div');
-        head.style.cssText = 'display:flex;align-items:center;gap:10px;margin:12px 0 4px';
-        head.innerHTML = '<img src="' + (songs[0].albumCover || songs[0].coverImage || '') + '" style="width:46px;height:46px;object-fit:cover;border-radius:6px;border:1px solid #333" onerror="this.style.display=\'none\'">'
-          + '<b>' + alb + '</b>&nbsp;<span class="sub">(' + songs.length + ')</span>';
+        head.style.cssText = 'display:flex;align-items:center;gap:10px;margin:14px 0 4px;padding:6px 8px;background:#1a150e;border-radius:6px;border:1px solid #2e261b';
+        head.innerHTML = '<img src="' + (songs[0].albumCover || songs[0].coverImage || '') + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #333" onerror="this.style.display=\'none\'">'
+          + '<b style="flex:1">' + alb + '</b>'
+          + '<span class="sub">' + songs.length + ' track' + (songs.length !== 1 ? 's' : '') + '</span>';
         box.appendChild(head);
+
         songs.forEach((s) => {
+          const rowId = 'srow-' + s.id.replace(/[^a-z0-9]/gi, '_');
+          const detId = 'sdet-' + s.id.replace(/[^a-z0-9]/gi, '_');
+
+          // Main row — always visible
           const row = document.createElement('div');
-          row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:3px 0 3px 56px';
-          row.innerHTML = '<img src="' + (s.coverImage || '') + '" style="width:28px;height:28px;object-fit:cover;border-radius:4px" onerror="this.style.display=\'none\'">'
-            + '<span style="flex:1">' + s.title + '</span>'
-            + '<button class="btn btn-ghost" style="padding:2px 8px" title="lyrics, timestamps, videos" onclick="window.artOpenWorkshop(\'' + s.artistId + '\',\'' + s.id + '\')">Workshop →</button>'
-            + '<button class="btn btn-ghost" style="padding:2px 8px" title="streaming links, move album, covers" onclick="window.artOpenExtras(\'' + s.artistId + '\',\'' + s.id + '\')">Extras →</button>';
+          row.id = rowId;
+          row.style.cssText = 'margin:2px 0 0 48px;border:1px solid #2e261b;border-radius:6px;overflow:hidden';
+
+          const albumOpts = allAlbums.map(al => '<option value="' + al + '"' + (al === alb ? ' selected' : '') + '>' + al + '</option>').join('');
+          const videoUrl = (s.videos && s.videos[0]) ? (s.videos[0].youtube || s.videos[0].url || '') : '';
+          const sp = (s.streaming || {}).spotify || '';
+          const am = (s.streaming || {}).apple || '';
+          const yt = (s.streaming || {}).youtubeMusic || '';
+          const coverSrc = s.coverImage || s.cover || '';
+
+          row.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;background:#17130e"
+                 onclick="window.artToggleSong('${detId}')">
+              <img src="${coverSrc}" style="width:32px;height:32px;object-fit:cover;border-radius:3px;flex-shrink:0" onerror="this.style.display='none'">
+              <span style="flex:1;font-size:14px">${s.title}</span>
+              <span style="font-size:11px;color:var(--muted);margin-right:4px">click to manage</span>
+              <button class="btn" style="padding:2px 10px;background:#5a1010;color:#ffaaaa;font-size:12px;border:1px solid #8b2020;flex-shrink:0"
+                onclick="event.stopPropagation();window.artDeleteSong('${s.artistId}','${s.id}','${s.title.replace(/'/g, "\\'")}')">✕ Delete</button>
+            </div>
+            <div id="${detId}" style="display:none;padding:12px 14px;background:#100d08;border-top:1px solid #2e261b">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+                <div>
+                  <label style="font-size:11px;color:var(--muted)">SONG TITLE</label>
+                  <input id="stitle-${s.id}" value="${s.title}" style="width:100%;margin-top:3px">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:var(--muted)">ALBUM</label>
+                  <select id="salbum-${s.id}" style="width:100%;margin-top:3px">${albumOpts}<option value="Singles"${alb==='Singles'?' selected':''}>Singles</option></select>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+                <div>
+                  <label style="font-size:11px;color:var(--muted)">SPOTIFY URL</label>
+                  <input id="sspot-${s.id}" value="${sp}" placeholder="https://open.spotify.com/…" style="width:100%;margin-top:3px;font-size:11px">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:var(--muted)">APPLE MUSIC URL</label>
+                  <input id="sapple-${s.id}" value="${am}" placeholder="https://music.apple.com/…" style="width:100%;margin-top:3px;font-size:11px">
+                </div>
+                <div>
+                  <label style="font-size:11px;color:var(--muted)">YOUTUBE MUSIC URL</label>
+                  <input id="sytm-${s.id}" value="${yt}" placeholder="https://music.youtube.com/…" style="width:100%;margin-top:3px;font-size:11px">
+                </div>
+              </div>
+              <div style="margin-bottom:10px">
+                <label style="font-size:11px;color:var(--muted)">VIDEO URL (YouTube)</label>
+                <input id="svid-${s.id}" value="${videoUrl}" placeholder="https://youtu.be/…" style="width:100%;margin-top:3px;font-size:11px">
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-blue" style="padding:4px 14px;font-size:12px"
+                  onclick="window.artSaveSongInline('${s.id}','${s.artistId}')">💾 Save changes</button>
+                <button class="btn btn-ghost" style="padding:4px 12px;font-size:12px"
+                  onclick="window.artOpenWorkshop('${s.artistId}','${s.id}')">Lyrics / Timestamps →</button>
+                <span id="smsg-${s.id}" style="font-size:12px;color:var(--ok)"></span>
+              </div>
+            </div>`;
           box.appendChild(row);
         });
       });
@@ -1292,10 +1385,122 @@
     }
   }
 
-  window.artRefreshMusic = function () {
-    msCache = null;
-    const a = artists.find((x) => x.id === selectedId);
-    if (a) renderMusic(a);
+  window.artToggleSong = function(detId) {
+    const det = $(detId);
+    if (!det) return;
+    det.style.display = det.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window.artSaveSongInline = async function(songId, artistId) {
+    const msg = $('smsg-' + songId);
+    if (msg) msg.textContent = 'Saving…';
+    try {
+      // Read current master
+      const msFile = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      const msData = JSON.parse(b64decode(msFile.content));
+      const idx = msData.findIndex(s => s.id === songId);
+      if (idx === -1) throw new Error('Song not found in master-songs.json');
+
+      const title  = $('stitle-' + songId)?.value?.trim() || msData[idx].title;
+      const album  = $('salbum-' + songId)?.value || msData[idx].album;
+      const spot   = $('sspot-' + songId)?.value?.trim() || '';
+      const apple  = $('sapple-' + songId)?.value?.trim() || '';
+      const ytm    = $('sytm-'  + songId)?.value?.trim() || '';
+      const vidUrl = $('svid-'  + songId)?.value?.trim() || '';
+
+      msData[idx].title  = title;
+      msData[idx].album  = album;
+      msData[idx].streaming = { spotify: spot, apple: apple, youtubeMusic: ytm };
+      if (vidUrl) {
+        msData[idx].videos = [{ youtube: vidUrl, title: 'Official Video', order: 1 }];
+      } else {
+        msData[idx].videos = [];
+      }
+
+      await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', 'PUT', {
+        message: 'HTR Studio: update song ' + songId,
+        content: b64encode(JSON.stringify(msData, null, 2)),
+        sha: msFile.sha
+      });
+
+      // Also update artist repo songs.json
+      const artist = artists.find(x => x.id === artistId);
+      if (artist && artist.repo) {
+        const repoName = artist.repo.replace('SteveP999/', '');
+        try {
+          const sFile = await gh('/repos/SteveP999/' + repoName + '/contents/songs.json');
+          const sData = JSON.parse(b64decode(sFile.content));
+          const si = sData.findIndex(s => s.id === songId);
+          if (si !== -1) {
+            sData[si].title  = title;
+            sData[si].album  = album;
+            sData[si].streaming = { spotify: spot, apple: apple, youtubeMusic: ytm };
+            if (vidUrl) {
+              sData[si].videos = [{ youtube: vidUrl, title: 'Official Video', order: 1 }];
+            } else {
+              sData[si].videos = [];
+            }
+            await gh('/repos/SteveP999/' + repoName + '/contents/songs.json', 'PUT', {
+              message: 'HTR Studio: update song ' + songId,
+              content: b64encode(JSON.stringify(sData, null, 2)),
+              sha: sFile.sha
+            });
+          }
+        } catch(e2) { /* artist repo update failed silently */ }
+      }
+
+      msCache = null;
+      if (msg) { msg.textContent = '✓ Saved'; setTimeout(() => { if(msg) msg.textContent=''; }, 3000); }
+      const a = artists.find(x => x.id === artistId);
+      if (a) setTimeout(() => renderMusic(a), 800);
+    } catch(e) {
+      if (msg) msg.textContent = '✗ ' + e.message;
+    }
+  };
+
+  window.artDeleteSong = async function (artistId, songId, songTitle) {
+    if (!confirm('Delete "' + songTitle + '" from ' + artistId + '?\n\nThis removes it from master-songs.json and the artist\'s songs.json. This cannot be undone.')) return;
+    try {
+      // 1. Remove from master-songs.json
+      const msFile = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      const msData = JSON.parse(b64decode(msFile.content));
+      const before = msData.length;
+      const msFiltered = msData.filter(s => s.id !== songId);
+      if (msFiltered.length === before) {
+        toast('Song not found in master-songs.json — may only be in artist repo', false);
+      } else {
+        await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', 'PUT', {
+          message: 'HTR Studio: delete song ' + songId,
+          content: b64encode(JSON.stringify(msFiltered, null, 2)),
+          sha: msFile.sha
+        });
+        toast('Removed from master-songs.json');
+      }
+      // 2. Remove from artist repo songs.json
+      const artist = artists.find(x => x.id === artistId);
+      if (artist && artist.repo) {
+        try {
+          const repoName = artist.repo.replace('SteveP999/', '');
+          const sFile = await gh('/repos/SteveP999/' + repoName + '/contents/songs.json');
+          const sData = JSON.parse(b64decode(sFile.content));
+          const sFiltered = sData.filter(s => s.id !== songId);
+          await gh('/repos/SteveP999/' + repoName + '/contents/songs.json', 'PUT', {
+            message: 'HTR Studio: delete song ' + songId,
+            content: b64encode(JSON.stringify(sFiltered, null, 2)),
+            sha: sFile.sha
+          });
+          toast('"' + songTitle + '" deleted. Refresh to confirm.');
+        } catch (e2) {
+          toast('master-songs.json updated but artist repo songs.json failed: ' + e2.message, true);
+        }
+      }
+      // 3. Bust local cache and re-render
+      msCache = null;
+      const a = artists.find(x => x.id === artistId);
+      if (a) setTimeout(() => renderMusic(a), 1500);
+    } catch (e) {
+      toast('Delete failed: ' + e.message, true);
+    }
   };
   window.artAddSong = function () {
     window.showTab('addsong');
@@ -1642,6 +1847,8 @@
         acsel.appendChild(o2);
       });
       window.exRenderReorder();
+      window.exFillAlbumEdit();
+      window.exBuildAlbumOrder();
       window.exSelectSong();
     } catch (e) {
       toast('Could not load songs: ' + e.message, true);
@@ -1660,6 +1867,7 @@
     $('exVideoTitle').value = '';
     $('exNewAudio').value = '';
     $('exWholeAlbum').checked = false;
+    if ($('exNewTitle')) $('exNewTitle').value = (s && s.title) || '';
     $('exMsg').textContent = '';
     window.exRenderVideos();
   };
@@ -1774,6 +1982,167 @@
     }
   };
 
+  window.exBuildAlbumOrder = function () {
+    const artistId = $('exArtist').value;
+    const orderMap = {};
+    exSongs.filter((s) => s.artistId === artistId).forEach((s) => {
+      const a = s.album;
+      if (!a || a.toLowerCase() === 'singles') return;
+      const o = (typeof s.albumSortOrder === 'number') ? s.albumSortOrder : 9999;
+      if (!(a in orderMap) || o < orderMap[a]) orderMap[a] = o;
+    });
+    exAlbumOrder = Object.keys(orderMap).sort((x, y) => (orderMap[x] - orderMap[y]) || x.localeCompare(y));
+    window.exRenderAlbumOrder();
+  };
+
+  window.exRenderAlbumOrder = function () {
+    const wrap = $('exAlbumOrderList');
+    if (!wrap) return;
+    if (!exAlbumOrder.length) { wrap.innerHTML = '<div style="padding:14px;color:var(--muted)">No albums for this artist.</div>'; return; }
+    let html = '<table class="t20grid"><tbody>';
+    exAlbumOrder.forEach((a, i) => {
+      html += '<tr><td class="t20-pos">' + (i + 1) + '</td><td>' + esc(a) + '</td>' +
+        '<td class="t20-actions">' +
+        '<button onclick="window.exAlbumOrderMove(' + i + ',-1)"' + (i === 0 ? ' disabled' : '') + '>&#9650;</button>' +
+        '<button onclick="window.exAlbumOrderMove(' + i + ',1)"' + (i === exAlbumOrder.length - 1 ? ' disabled' : '') + '>&#9660;</button>' +
+        '</td></tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  };
+
+  window.exAlbumOrderMove = function (i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= exAlbumOrder.length) return;
+    const tmp = exAlbumOrder[i]; exAlbumOrder[i] = exAlbumOrder[j]; exAlbumOrder[j] = tmp;
+    window.exRenderAlbumOrder();
+  };
+
+  window.exSaveAlbumOrder = async function () {
+    const artistId = $('exArtist').value;
+    if (!exAlbumOrder.length) return toast('No albums to order', true);
+    const rank = {};
+    exAlbumOrder.forEach((a, i) => { rank[a] = (i + 1) * 10; });
+    $('exAlbumOrderMsg').textContent = 'Saving album order...';
+    try {
+      const n = await exUpdateSongs((songs) => {
+        let c = 0;
+        songs.forEach((s) => { if (s.artistId === artistId && (s.album in rank)) { s.albumSortOrder = rank[s.album]; c++; } });
+        return c;
+      }, 'HTR Studio: reorder albums for ' + artistId);
+      exLastArtist = artistId;
+      $('exAlbumOrderMsg').textContent = 'Saved (' + n + ' tracks updated).';
+      toast('Album order saved - publish the artist to go live');
+    } catch (e) { $('exAlbumOrderMsg').textContent = ''; toast('Failed: ' + e.message, true); }
+  };
+
+  window.exFillAlbumEdit = function () {
+    const artistId = $('exArtist').value;
+    const albums = [];
+    exSongs.filter((s) => s.artistId === artistId).forEach((s) => {
+      if (s.album && s.album.toLowerCase() !== 'singles' && albums.indexOf(s.album) === -1) albums.push(s.album);
+    });
+    albums.sort((a, b) => a.localeCompare(b));
+    const sel = $('exAlbumEdit');
+    if (!sel) return;
+    sel.innerHTML = '';
+    albums.forEach((a) => { const o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o); });
+    window.exAlbumEditPick();
+  };
+
+  window.exAlbumEditPick = function () {
+    if ($('exAlbumNewName') && $('exAlbumEdit')) $('exAlbumNewName').value = $('exAlbumEdit').value || '';
+  };
+
+  window.exRenameAlbum = async function () {
+    const artistId = $('exArtist').value;
+    const oldName = $('exAlbumEdit').value;
+    const newName = ($('exAlbumNewName').value || '').trim();
+    if (!oldName) return toast('Pick an album first', true);
+    if (!newName) return toast('Enter the new album name', true);
+    if (newName === oldName) return toast('That is already the album name', true);
+    if (!confirm("Rename album '" + oldName + "' to '" + newName + "' across all its tracks?")) return;
+    $('exAlbumMsg').textContent = 'Renaming...';
+    try {
+      const n = await exUpdateSongs((songs) => {
+        let c = 0;
+        songs.forEach((s) => { if (s.artistId === artistId && s.album === oldName) { s.album = newName; c++; } });
+        return c;
+      }, 'HTR Studio: rename album ' + oldName + ' to ' + newName);
+      exLastArtist = artistId;
+      $('exAlbumMsg').textContent = 'Renamed ' + n + ' tracks.';
+      toast('Album renamed - publish the artist to go live');
+      await window.exLoadSongs();
+    } catch (e) { $('exAlbumMsg').textContent = ''; toast('Failed: ' + e.message, true); }
+  };
+
+  window.exDeleteAlbum = async function () {
+    const artistId = $('exArtist').value;
+    const album = $('exAlbumEdit').value;
+    if (!album) return toast('Pick an album first', true);
+    const count = exSongs.filter((s) => s.artistId === artistId && s.album === album).length;
+    if (!confirm("DELETE the entire album '" + album + "' (" + count + " tracks)? Every track is removed from the catalog.")) return;
+    if (!confirm("Confirm: permanently remove all " + count + " tracks of '" + album + "'. Publish the artist afterward.")) return;
+    $('exAlbumMsg').textContent = 'Deleting album...';
+    try {
+      const n = await exUpdateSongs((songs) => {
+        let c = 0;
+        for (let i = songs.length - 1; i >= 0; i--) { if (songs[i].artistId === artistId && songs[i].album === album) { songs.splice(i, 1); c++; } }
+        return c;
+      }, 'HTR Studio: delete album ' + album);
+      exLastArtist = artistId;
+      $('exAlbumMsg').textContent = 'Deleted ' + n + ' tracks.';
+      toast('Album deleted - publish the artist to go live');
+      await window.exLoadSongs();
+    } catch (e) { $('exAlbumMsg').textContent = ''; toast('Failed: ' + e.message, true); }
+  };
+
+  window.exEditTitle = async function () {
+    const songId = $('exSong').value;
+    const s0 = exSongs.find((x) => x.id === songId);
+    const newTitle = ($('exNewTitle').value || '').trim();
+    if (!s0) return toast('Pick a song first', true);
+    if (!newTitle) return toast('Enter the corrected title', true);
+    if (newTitle === s0.title) return toast('That is already the title', true);
+    if (!confirm('Rename \'' + s0.title + '\' to \'' + newTitle + '\'?')) return;
+    $('exTitleMsg').textContent = 'Saving...';
+    try {
+      await exUpdateSongs((songs) => {
+        const s = songs.find((x) => x.id === songId);
+        if (!s) return 0;
+        s.title = newTitle;
+        return 1;
+      }, 'HTR Studio: rename song to ' + newTitle);
+      exLastArtist = $('exArtist').value;
+      const local = exSongs.find((x) => x.id === songId); if (local) local.title = newTitle;
+      const opt = Array.prototype.find.call($('exSong').options, (o) => o.value === songId);
+      if (opt) opt.textContent = (s0.album || '?') + ' - ' + newTitle;
+      $('exTitleMsg').textContent = 'Title updated.';
+      toast('Title updated - publish the artist to go live');
+    } catch (e) { $('exTitleMsg').textContent = ''; toast('Failed: ' + e.message, true); }
+  };
+
+  window.exDeleteSong = async function () {
+    const songId = $('exSong').value;
+    const s0 = exSongs.find((x) => x.id === songId);
+    if (!s0) return toast('Pick a song first', true);
+    if (!confirm('DELETE \'' + s0.title + '\' from the catalog? This removes it from HTR Studio.')) return;
+    if (!confirm('Confirm delete \'' + s0.title + '\'. Publish the artist afterward to remove it from the live site.')) return;
+    $('exDelMsg').textContent = 'Deleting...';
+    try {
+      await exUpdateSongs((songs) => {
+        const i = songs.findIndex((x) => x.id === songId);
+        if (i < 0) return 0;
+        songs.splice(i, 1);
+        return 1;
+      }, 'HTR Studio: delete song ' + s0.title);
+      exLastArtist = $('exArtist').value;
+      $('exDelMsg').textContent = 'Deleted.';
+      toast('Song deleted - publish the artist to go live');
+      await window.exLoadSongs();
+    } catch (e) { $('exDelMsg').textContent = ''; toast('Failed: ' + e.message, true); }
+  };
+
   window.exReplaceAudio = async function () {
     const songId = $('exSong').value;
     const url = $('exNewAudio').value.trim();
@@ -1838,7 +2207,8 @@
   };
 
   // ---- reorder tracks on an album ----
-  let exOrder = [];  // working list of song objects for the chosen album
+  let exOrder = [];
+  let exAlbumOrder = [];  // working list of song objects for the chosen album
 
   function exTrackOrd(s) {
     let v = (s.trackNumber != null) ? s.trackNumber
