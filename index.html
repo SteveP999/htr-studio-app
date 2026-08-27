@@ -1777,6 +1777,8 @@
       }
       songs.push(newSong);
 
+      // Step 1: Write to master-songs.json
+      $('asMsg').textContent = 'Saving to master data...';
       await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', {
         method: 'PUT',
         body: { message: 'HTR Studio: add song ' + title + ' (' + artistId + ')', content: b64encode(JSON.stringify(songs, null, 2)), sha: sf.sha }
@@ -1786,10 +1788,54 @@
         body: { message: 'HTR Studio: latestTitle for ' + artistId, content: b64encode(JSON.stringify(artistsData, null, 2)), sha: af.sha }
       });
 
+      // Step 2: Write directly to artist repo songs.json — no Publish required
+      $('asMsg').textContent = 'Saving to artist site...';
+      try {
+        const repoName = repoFull.replace('SteveP999/', '');
+        let artistSongsSha = null;
+        let artistSongs = [];
+        try {
+          const asf = await gh('/repos/SteveP999/' + repoName + '/contents/songs.json');
+          artistSongsSha = asf.sha;
+          artistSongs = JSON.parse(b64decode(asf.content));
+        } catch(e) { /* new repo, no songs.json yet */ }
+
+        // Remove any stale entry with same id, then add new song in artist repo format
+        artistSongs = artistSongs.filter(s => s.id !== songId);
+        artistSongs.push({
+          id: songId,
+          num: String(artistSongs.length + 1).padStart(2, '0'),
+          title: title,
+          artist: artist.name,
+          album: album,
+          trackNumber: artistSongs.length + 1,
+          albumOrder: artistSongs.length + 1,
+          albumCover: 'images/covers/' + artistId + '-' + albumSlug + '-ALBUM-cover.png',
+          type: 'single',
+          isLatest: latest,
+          cover: 'images/covers/' + coverName,
+          audio: audio,
+          audioSrc: audio,
+          videos: [],
+          includeOnRadio: radio,
+          includeOnHomepage: latest,
+          explicit: $('asExplicit').checked,
+          tags: [],
+          streaming: {}
+        });
+
+        const asBody = { message: 'HTR Studio: add song ' + title, content: b64encode(JSON.stringify(artistSongs, null, 2)) };
+        if (artistSongsSha) asBody.sha = artistSongsSha;
+        await gh('/repos/SteveP999/' + repoName + '/contents/songs.json', { method: 'PUT', body: asBody });
+      } catch(artistRepoErr) {
+        // Don't fail the whole add — master is saved. Log the error clearly.
+        toast('Song saved to master — artist repo write failed: ' + artistRepoErr.message + '. Run Publish to sync.', true);
+      }
+
       lastAddedArtistId = artistId;
       $('asMsg').textContent = 'Saved: ' + title;
       $('asAfter').classList.remove('hidden');
-      toast('Song added to master data');
+      toast('Song added to master data and artist site');
     } catch (e) {
       $('asMsg').textContent = '';
       toast('Add failed: ' + e.message, true);
