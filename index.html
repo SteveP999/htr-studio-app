@@ -176,6 +176,12 @@
           <div class="sub">Rebuilds all radio station data and updates the radio site + homepage player.</div>
           <div class="row"><button class="btn btn-blue" onclick="window.runWorkflow('publish-radio.yml', {}, 'Publish HTR Radio')">Run</button></div>
         </div>
+        <div class="card">
+          <h3>Sync Check</h3>
+          <div class="sub">Verifies every artist's live site matches master data. Flags any songs that are out of sync.</div>
+          <div class="row"><button class="btn btn-blue" onclick="window.runSyncCheck()">Check Now</button></div>
+          <div id="syncCheckResults" style="margin-top:10px;font-size:13px;line-height:1.6"></div>
+        </div>
       </div>
       <div class="dry-note">These buttons publish LIVE immediately. You'll get a confirm prompt before anything goes out.</div>
 
@@ -1610,6 +1616,57 @@
   window.runArtistBuild = function () {
     const id = $('buildArtistSel').value;
     window.runWorkflow('build-artist.yml', { artist_id: id }, 'Build ' + id);
+  };
+
+  window.runSyncCheck = async function () {
+    const out = $('syncCheckResults');
+    out.innerHTML = '<span style="color:var(--muted)">Checking all artists...</span>';
+    try {
+      // Load master songs
+      const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      const master = JSON.parse(b64decode(sf.content));
+      const masterIds = new Set(master.map(s => s.id));
+      const masterByArtist = {};
+      master.forEach(s => {
+        (masterByArtist[s.artistId] = masterByArtist[s.artistId] || new Set()).add(s.id);
+      });
+
+      let html = '';
+      let totalMissing = 0;
+
+      for (const a of artists) {
+        if (!a.githubRepo) continue;
+        const repoName = a.githubRepo.replace('SteveP999/', '');
+        let liveSongs = [];
+        try {
+          const lf = await gh('/repos/SteveP999/' + repoName + '/contents/songs.json');
+          liveSongs = JSON.parse(b64decode(lf.content));
+        } catch(e) { continue; }
+
+        const liveIds = new Set(liveSongs.map(s => s.id));
+        const masterSet = masterByArtist[a.id] || new Set();
+        const missing = [...liveIds].filter(id => !masterSet.has(id));
+
+        if (missing.length > 0) {
+          totalMissing += missing.length;
+          html += '<div style="margin-bottom:8px;padding:8px;background:#1a0a0a;border:1px solid #8b2020;border-radius:4px">'
+            + '<b style="color:#ffaaaa">' + a.name + '</b> — ' + missing.length + ' song(s) on live site but not in master:<br>'
+            + missing.map(id => {
+                const s = liveSongs.find(x => x.id === id);
+                return '<span style="color:var(--muted);padding-left:12px">• ' + (s ? s.title : id) + '</span>';
+              }).join('<br>')
+            + '</div>';
+        }
+      }
+
+      if (totalMissing === 0) {
+        out.innerHTML = '<div style="color:#3fa15c;font-weight:bold">✓ All artists in sync. No missing songs.</div>';
+      } else {
+        out.innerHTML = '<div style="color:#ffaaaa;font-weight:bold;margin-bottom:8px">⚠ ' + totalMissing + ' song(s) found on live sites but missing from master. Contact support.</div>' + html;
+      }
+    } catch(e) {
+      out.innerHTML = '<span style="color:var(--err)">Check failed: ' + e.message + '</span>';
+    }
   };
 
   window.loadRuns = async function () {
