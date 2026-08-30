@@ -5348,8 +5348,20 @@
       // Apply Publishing edits back to master songs by matching _masterId
       bmiData.songs.forEach(function(row) {
         const mid = row._masterId || row.id;
-        const ms = masterSongs.find(function(s) { return s.id === mid; });
-        if (!ms) return;
+        let ms = masterSongs.find(function(s) { return s.id === mid; });
+        if (!ms) {
+          // Song doesn't exist in master yet — create it
+          const newId = mid || (row.artist + '-' + row.title).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+          ms = {
+            id: newId, artistId: '', artist: row.artist, title: row.title,
+            album: row.album, trackNumber: row.track ? parseInt(row.track,10) : null,
+            genre: '', releaseType: 'single', releaseDate: '', coverImage: '', albumCover: '',
+            audioFile: '', youtubeUrl: '', featured: false, explicit: false,
+            includeOnRadio: false, includeOnHomepage: false, isLatest: false,
+            tags: [], videos: [], streaming: {}
+          };
+          masterSongs.push(ms);
+        }
         ms.title        = row.title;
         ms.artist       = row.artist;
         ms.album        = row.album;
