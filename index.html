@@ -1162,6 +1162,14 @@
       if (LYRICS_ONLY) applyLyricsOnly();
       await loadArtists();
       await loadRuns();
+      // Pre-load master songs so catalog is searchable immediately
+      if (!msCache) {
+        try {
+          const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+          msCache = JSON.parse(b64decode(sf.content));
+          window.renderCatalog();
+        } catch(e) { /* non-fatal */ }
+      }
       if (!LYRICS_ONLY) window.showTab('artists');
     } catch (e) {
       token = null;
@@ -1870,8 +1878,11 @@
     const uniqF  = $('catUniqF')?.value||'';
     const radioF = $('catRadioF')?.value||'';
     const writerF= $('catWriterF')?.value||'';
-    let rows = msCache.filter(s => s.artistId === selectedId);
-    if (q)       rows = rows.filter(s => (s.title+s.album+(s.workNo||'')+(s.iswc||'')).toLowerCase().includes(q));
+    // Show all songs when no artist selected, or just this artist's songs
+    let rows = selectedId
+      ? msCache.filter(s => s.artistId === selectedId)
+      : [...msCache];
+    if (q)       rows = rows.filter(s => (s.title+s.artist+s.album+(s.workNo||'')+(s.iswc||'')).toLowerCase().includes(q));
     if (uniqF)   rows = rows.filter(s => (s.unique||'').toUpperCase() === uniqF.toUpperCase());
     if (radioF)  rows = rows.filter(s => (s.radio||'').toUpperCase() === radioF.toUpperCase());
     if (writerF) rows = rows.filter(s => (s.writer||'').toUpperCase() === writerF.toUpperCase());
