@@ -985,8 +985,8 @@
 
         <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:6px">Audio Files</div>
         <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-          <div><label>Dropbox MP3 link (raw=1)</label><input id="bmiEdMp3" placeholder="https://www.dropbox.com/…?raw=1" onblur="this.value=this.value.replace('dl=0','raw=1')"></div>
-          <div><label>Dropbox WAV link (master file)</label><input id="bmiEdWav" placeholder="https://www.dropbox.com/…?raw=1" onblur="this.value=this.value.replace('dl=0','raw=1')"></div>
+          <div><label>Dropbox MP3 link (raw=1)</label><input id="bmiEdMp3" placeholder="https://www.dropbox.com/…?raw=1" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)"></div>
+          <div><label>Dropbox WAV link (master file)</label><input id="bmiEdWav" placeholder="https://www.dropbox.com/…?raw=1" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)"></div>
         </div>
         <div style="display:flex;gap:20px;margin-bottom:14px;font-size:13px">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
@@ -1554,7 +1554,7 @@
               <label style="font-size:11px;color:var(--muted)">AUDIO URL (paste any Dropbox link)</label>
               <input id="saudio-${s.id}" value="${(s.audioFile||s.audio||'').replace(/"/g,'&quot;')}" 
                 style="width:100%;margin-top:3px;font-size:11px"
-                onchange="this.value=this.value.replace(/[?&]dl=0/,'').replace(/[?&]raw=1/,'').replace(/\?/,'?').trim(); if(!this.value.includes('raw=1')) this.value=this.value+(this.value.includes('?')?'&':'?')+'raw=1'">
+                onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)">
             </div>
           </div>
         </div>
@@ -1589,7 +1589,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
           <div>
             <label style="font-size:11px;color:var(--muted)">WAV URL (master file)</label>
-            <input id="swav-${s.id}" value="${s.wavUrl||''}" placeholder="https://www.dropbox.com/…?raw=1" onblur="this.value=this.value.replace('dl=0','raw=1')" style="width:100%;margin-top:3px;font-size:11px">
+            <input id="swav-${s.id}" value="${s.wavUrl||''}" placeholder="https://www.dropbox.com/…?raw=1" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)" style="width:100%;margin-top:3px;font-size:11px">
           </div>
           <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:6px;padding-bottom:3px">
             <label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer">
@@ -1693,6 +1693,14 @@
       </div>`;
     return card;
   }
+
+  window.fixDropbox = function(input) {
+    let v = input.value.trim();
+    if (!v || !v.includes('dropbox.com')) return;
+    v = v.replace(/[?&]dl=0/g, '').replace(/[?&]raw=1/g, '');
+    v = v + (v.includes('?') ? '&' : '?') + 'raw=1';
+    input.value = v;
+  };
 
   window.artToggleSong = function(detId) {
     const det = $(detId);
