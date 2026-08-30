@@ -1576,9 +1576,43 @@
           <label style="font-size:11px;color:var(--muted)">VIDEO URL (YouTube)</label>
           <input id="svid-${s.id}" value="${videoUrl}" placeholder="https://youtu.be/…" style="width:100%;margin-top:3px;font-size:11px">
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:var(--muted)">TIKTOK URL (vertical)</label>
+            <input id="stiktok-${s.id}" value="${s.tiktokUrl||''}" placeholder="https://www.tiktok.com/…" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">SRT / TIMESTAMPS FILE (Dropbox)</label>
+            <input id="ssrt-${s.id}" value="${s.srtUrl||''}" placeholder="https://www.dropbox.com/…?raw=1" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:var(--muted)">WAV URL (master file)</label>
+            <input id="swav-${s.id}" value="${s.wavUrl||''}" placeholder="https://www.dropbox.com/…?raw=1" onblur="this.value=this.value.replace('dl=0','raw=1')" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:6px;padding-bottom:3px">
+            <label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="shasrt-${s.id}" ${s.hasSrt?'checked':''}> Timestamps exist
+            </label>
+            <label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="sneedswav-${s.id}" ${s.needsWav?'checked':''}> Needs WAV conversion
+            </label>
+          </div>
+        </div>
         <div style="margin-bottom:12px">
           <label style="font-size:11px;color:var(--muted)">SUNO STYLE PROMPT</label>
           <textarea id="ssuno-${s.id}" style="width:100%;margin-top:3px;font-size:11px;height:60px;resize:vertical">${s.sunoPrompt||s.sunoStylePrompt||''}</textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:var(--muted)">SUNO GENERATION DATE</label>
+            <input id="ssunodate-${s.id}" value="${s.sunoDate||''}" placeholder="MM/DD/YYYY" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">SUNO LINK</label>
+            <input id="ssunolink-${s.id}" value="${s.sunoLink||''}" placeholder="https://suno.com/…" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
         </div>
         <div style="margin-bottom:12px">
           <label style="font-size:11px;color:var(--muted)">LYRICS</label>
@@ -1604,6 +1638,10 @@
           </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:var(--muted)">BMI SUBMISSION DATE</label>
+            <input id="ssubmit-${s.id}" value="${s.bmiSubmitDate||''}" placeholder="MM/DD/YYYY" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
           <div>
             <label style="font-size:11px;color:var(--muted)">BMI WORK #</label>
             <input id="swork-${s.id}" value="${s.workNo||s.bmi?.workNo||''}" style="width:100%;margin-top:3px;font-size:11px"
@@ -1803,8 +1841,16 @@
       const apple  = $('sapple-'+songId)?.value?.trim()||'';
       const ytm    = $('sytm-'+songId)?.value?.trim()||'';
       const vidUrl = $('svid-'+songId)?.value?.trim()||'';
+      const tiktok = $('stiktok-'+songId)?.value?.trim()||'';
+      const srtUrl = $('ssrt-'+songId)?.value?.trim()||'';
+      const wavUrl = $('swav-'+songId)?.value?.trim()||'';
+      const hasSrt = $('shasrt-'+songId)?.checked||false;
+      const needsWav = $('sneedswav-'+songId)?.checked||false;
       const suno   = $('ssuno-'+songId)?.value?.trim()||'';
+      const sunoDate = $('ssunodate-'+songId)?.value?.trim()||'';
+      const sunoLink = $('ssunolink-'+songId)?.value?.trim()||'';
       const lyrics = $('slyrics-'+songId)?.value||'';
+      const submit = $('ssubmit-'+songId)?.value?.trim()||'';
 
       // Update master-songs.json
       const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
@@ -1816,8 +1862,16 @@
       if (audio)  { msData[idx].audioFile = audio; msData[idx].audio = audio; msData[idx].audioSrc = audio; }
       msData[idx].streaming = {spotify:spot, apple:apple, youtubeMusic:ytm};
       msData[idx].videos = vidUrl ? [{youtube:vidUrl, title:'Official Video', order:1}] : [];
-      if (suno)   msData[idx].sunoPrompt = suno;
-      if (lyrics) msData[idx].lyrics = lyrics;
+      if (suno)      msData[idx].sunoPrompt    = suno;
+      if (sunoDate)  msData[idx].sunoDate      = sunoDate;
+      if (sunoLink)  msData[idx].sunoLink      = sunoLink;
+      if (lyrics)    msData[idx].lyrics        = lyrics;
+      if (submit)    msData[idx].bmiSubmitDate = submit;
+      if (wavUrl)    msData[idx].wavUrl        = wavUrl;
+      if (tiktok)    msData[idx].tiktokUrl     = tiktok;
+      if (srtUrl)    msData[idx].srtUrl        = srtUrl;
+      msData[idx].hasSrt   = hasSrt;
+      msData[idx].needsWav = needsWav;
       // BMI/Publishing fields
       msData[idx].unique   = $('suniq-'+songId)?.value?.trim()||msData[idx].unique||'';
       msData[idx].radio    = $('sradio-'+songId)?.value?.trim()||msData[idx].radio||'';
