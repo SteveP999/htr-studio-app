@@ -1531,7 +1531,9 @@
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
           <div>
             <label style="font-size:11px;color:var(--muted)">BMI WORK #</label>
-            <input id="swork-${s.id}" value="${s.workNo||s.bmi?.workNo||''}" style="width:100%;margin-top:3px;font-size:11px">
+            <input id="swork-${s.id}" value="${s.workNo||s.bmi?.workNo||''}" style="width:100%;margin-top:3px;font-size:11px"
+              onblur="window.showWorkMatches('${s.id}',this.value)">
+            <div id="swork-matches-${s.id}" style="margin-top:4px;font-size:11px;color:var(--muted)"></div>
           </div>
           <div>
             <label style="font-size:11px;color:var(--muted)">REG DATE</label>
@@ -1903,6 +1905,23 @@
     const detId = 'sdet-' + songId.replace(/[^a-z0-9]/gi,'_');
     const det = $(detId);
     if (det) { det.style.display = 'block'; det.scrollIntoView({behavior:'smooth', block:'nearest'}); }
+  };
+
+  window.showWorkMatches = function(songId, workNo) {
+    const el = $('swork-matches-'+songId);
+    if (!el) return;
+    workNo = (workNo||'').trim();
+    if (!workNo || !msCache) { el.innerHTML = ''; return; }
+    const matches = msCache.filter(s => s.id !== songId && s.workNo === workNo);
+    if (!matches.length) { el.innerHTML = '<span style="color:var(--ok)">✓ No other songs share this Work #</span>'; return; }
+    el.innerHTML = '<div style="margin-top:4px;padding:6px 8px;background:#1a150e;border-radius:4px;border:1px solid #2e261b">'
+      + '<div style="color:var(--warn);margin-bottom:4px">Also using Work # ' + workNo + ':</div>'
+      + matches.map(s => '<div style="padding:2px 0">'
+          + '<span style="color:var(--cream)">' + s.artist + ' — ' + s.title + '</span>'
+          + ' <span style="color:var(--muted)">(' + (s.unique||'?') + ')</span>'
+          + ' <span style="color:var(--muted)">Radio: ' + (s.radio||'?') + '</span>'
+          + '</div>').join('')
+      + '</div>';
   };
   window.artOpenWorkshop = async function (artistId, songId) {
     window.showTab('lyrics');
