@@ -201,7 +201,12 @@
     <!-- ============ ARTISTS ============ -->
     <section id="view-artists">
       <div class="artists-layout">
-        <div class="artist-list" id="artistList"></div>
+        <div>
+          <button onclick="window.clearArtist()" style="width:100%;margin-bottom:6px;padding:5px;background:#1a150e;border:1px solid #2e261b;color:var(--muted);font-size:12px;border-radius:4px;cursor:pointer;text-align:left" id="allArtistsBtn">
+            ☰ All Artists (show all songs)
+          </button>
+          <div class="artist-list" id="artistList"></div>
+        </div>
         <div>
           <div class="card editor" id="artistEditor">
             <h3 id="edName">Select an artist</h3>
@@ -1333,6 +1338,8 @@
   function selectArtist(id, btnEl) {
     selectedId = id;
     document.querySelectorAll('.artist-list button').forEach((b) => b.classList.remove('sel'));
+    const allBtn = $('allArtistsBtn');
+    if (allBtn) allBtn.style.color = 'var(--muted)';
     if (btnEl) btnEl.classList.add('sel');
     const a = artists.find((x) => x.id === id);
     if (!a) return;
@@ -1349,7 +1356,17 @@
     renderMusic(a).then(() => window.renderCatalog());
   }
 
-  // ---------- artist MUSIC section — inline song management ----------
+  window.clearArtist = function() {
+    selectedId = null;
+    document.querySelectorAll('.artist-list button').forEach((b) => b.classList.remove('sel'));
+    const allBtn = $('allArtistsBtn');
+    if (allBtn) allBtn.style.color = 'var(--warn)';
+    $('edName').textContent = 'All Artists';
+    $('edMeta').textContent = 'Showing all songs across the full catalog';
+    $('edFields').classList.add('hidden');
+    $('edMusic').innerHTML = '';
+    window.renderCatalog();
+  };
   let msCache = null;
 
   async function renderMusic(a) {
