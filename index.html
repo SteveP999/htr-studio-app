@@ -970,26 +970,76 @@
       <div id="bmiEditor" class="card editor hidden" style="margin-top:16px">
         <h3 id="bmiEdTitle">Edit song</h3>
         <input type="hidden" id="bmiEdIdx">
-        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px">
+
+        <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:6px">Song Info</div>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:14px">
           <div><label>Song name (mine)</label><input id="bmiEdSong"></div>
           <div><label>Band / Artist</label><input id="bmiEdArtist"></div>
           <div><label>Album</label><input id="bmiEdAlbum"></div>
           <div><label>Track #</label><input id="bmiEdTrack"></div>
-          <div><label>Unique (X/V/C/R/D/N)</label><input id="bmiEdUnq"></div>
-          <div><label>Radio (R/I/P/X/D/N)</label><input id="bmiEdRadio"></div>
-          <div><label>Writer (P/B/2/O)</label><input id="bmiEdWriter"></div>
+          <div><label>Unique (X/V/C/R/D/N)</label><input id="bmiEdUnq" onblur="this.value=this.value.toUpperCase()"></div>
+          <div><label>Radio (R/I/P/X/D/N)</label><input id="bmiEdRadio" onblur="this.value=this.value.toUpperCase()"></div>
+          <div><label>Writer (P/B/2/O)</label><input id="bmiEdWriter" onblur="this.value=this.value.toUpperCase()"></div>
+          <div><label>Track time</label><input id="bmiEdTime" placeholder="3:42"></div>
+        </div>
+
+        <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:6px">Audio Files</div>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div><label>Dropbox MP3 link (raw=1)</label><input id="bmiEdMp3" placeholder="https://www.dropbox.com/…?raw=1" onblur="this.value=this.value.replace('dl=0','raw=1')"></div>
+          <div><label>Dropbox WAV link (master file)</label><input id="bmiEdWav" placeholder="https://www.dropbox.com/…?raw=1" onblur="this.value=this.value.replace('dl=0','raw=1')"></div>
+        </div>
+        <div style="display:flex;gap:20px;margin-bottom:14px;font-size:13px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="bmiEdNeedsWav"> Needs WAV conversion (Bender MP3)
+          </label>
+        </div>
+
+        <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:6px">BMI Registration</div>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:14px">
+          <div><label>BMI submission date</label><input id="bmiEdSubmit" placeholder="MM/DD/YYYY"></div>
           <div><label>BMI Work #</label><input id="bmiEdWork"></div>
-          <div><label>Reg date</label><input id="bmiEdRegDate"></div>
+          <div><label>Reg date (accepted)</label><input id="bmiEdRegDate"></div>
           <div><label>ISWC</label><input id="bmiEdIswc"></div>
           <div><label>Songview status</label><input id="bmiEdSv"></div>
-          <div><label>Track time</label><input id="bmiEdTime"></div>
+          <div><label>Registered name (BMI)</label><input id="bmiEdRegTitle"></div>
+          <div><label>Registered artists (comma-sep)</label><input id="bmiEdRegArtists"></div>
+        </div>
+
+        <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:6px">Streaming</div>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:14px">
           <div><label>Streaming live date</label><input id="bmiEdLive"></div>
           <div><label>Release ID</label><input id="bmiEdRel"></div>
           <div><label>UPC</label><input id="bmiEdUpc"></div>
           <div><label>ISRC</label><input id="bmiEdIsrc"></div>
-          <div><label>Registered name (BMI)</label><input id="bmiEdRegTitle"></div>
-          <div><label>Registered artists (comma-sep)</label><input id="bmiEdRegArtists"></div>
+          <div><label>Spotify URL</label><input id="bmiEdSpotify" placeholder="https://open.spotify.com/…"></div>
+          <div><label>Apple Music URL</label><input id="bmiEdApple" placeholder="https://music.apple.com/…"></div>
+          <div><label>YouTube Music URL</label><input id="bmiEdYtMusic" placeholder="https://music.youtube.com/…"></div>
         </div>
+
+        <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:6px">Videos</div>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div><label>YouTube URL (horizontal)</label><input id="bmiEdYt" placeholder="https://youtu.be/…"></div>
+          <div><label>TikTok URL (vertical)</label><input id="bmiEdTiktok" placeholder="https://www.tiktok.com/…"></div>
+          <div><label>SRT/Timestamps file (Dropbox)</label><input id="bmiEdSrt" placeholder="https://www.dropbox.com/…?raw=1"></div>
+          <div style="display:flex;align-items:center;gap:6px;padding-top:22px;font-size:13px">
+            <input type="checkbox" id="bmiEdHasSrt"> Timestamps exist
+          </div>
+        </div>
+
+        <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:6px">Suno / Creative</div>
+        <div style="margin-bottom:10px">
+          <label>Suno style prompt</label>
+          <textarea id="bmiEdSunoPrompt" rows="3" style="width:100%;box-sizing:border-box;margin-top:4px;font-size:12px"></textarea>
+        </div>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div><label>Suno generation date</label><input id="bmiEdSunoDate" placeholder="MM/DD/YYYY"></div>
+          <div><label>Suno link</label><input id="bmiEdSunoLink" placeholder="https://suno.com/…"></div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label>Lyrics</label>
+          <textarea id="bmiEdLyrics" rows="6" style="width:100%;box-sizing:border-box;margin-top:4px;font-size:12px;font-family:monospace"></textarea>
+        </div>
+
         <div class="save-bar">
           <button class="btn btn-blue" onclick="window.bmiEdApply()">Apply to row</button>
           <button class="btn btn-ghost" onclick="window.bmiEdClose()">Close</button>
@@ -4930,31 +4980,44 @@
   // bmiData.songs maps master fields to the Publishing table format
 
   function masterToBmi(s) {
-    // Map a master-songs entry to the Publishing/BMI row format
     return {
-      _masterId: s.id,          // keep master id for saving back
-      id: s.id,
-      unique:     (s.unique||'').toUpperCase(),
-      radio:      (s.radio||'').toUpperCase(),
-      writer:     (s.writer||'').toUpperCase(),
-      title:      s.title||'',
-      artist:     s.artist||'',
-      album:      s.album||'',
-      track:      s.trackNumber ? String(s.trackNumber).padStart(2,'0') : '',
-      workNo:     s.workNo||'',
-      regDate:    s.regDate||'',
-      iswc:       s.iswc||'',
-      bmiNo:      s.workNo||'',   // bmiNo = workNo (legacy duplicate field)
-      regOrigin:  s.regOrigin||'',
-      songview:   s.songview||'',
-      time:       s.trackTime||'',
-      liveDate:   s.liveDate||'',
-      releaseId:  s.releaseId||'',
-      upc:        s.upc||'',
-      isrc:       s.isrc||'',
-      recon:      s.songview && /reconciled/i.test(s.songview) ? 'x' : '',
-      regTitle:   s.regTitle||'',
-      regArtists: s.regArtists||[],
+      _masterId:     s.id,
+      id:            s.id,
+      unique:        (s.unique||'').toUpperCase(),
+      radio:         (s.radio||'').toUpperCase(),
+      writer:        (s.writer||'').toUpperCase(),
+      title:         s.title||'',
+      artist:        s.artist||'',
+      album:         s.album||'',
+      track:         s.trackNumber ? String(s.trackNumber).padStart(2,'0') : '',
+      workNo:        s.workNo||'',
+      regDate:       s.regDate||'',
+      iswc:          s.iswc||'',
+      bmiNo:         s.workNo||'',
+      regOrigin:     s.regOrigin||'',
+      songview:      s.songview||'',
+      time:          s.trackTime||'',
+      liveDate:      s.liveDate||'',
+      releaseId:     s.releaseId||'',
+      upc:           s.upc||'',
+      isrc:          s.isrc||'',
+      recon:         s.songview && /reconciled/i.test(s.songview) ? 'x' : '',
+      regTitle:      s.regTitle||'',
+      regArtists:    s.regArtists||[],
+      // New fields
+      mp3Url:        s.audioFile||s.audio||s.mp3Url||'',
+      wavUrl:        s.wavUrl||'',
+      needsWav:      !!s.needsWav,
+      bmiSubmitDate: s.bmiSubmitDate||'',
+      streaming:     s.streaming||{},
+      youtubeUrl:    s.youtubeUrl||(s.videos&&s.videos[0]?s.videos[0].youtube||'':''),
+      tiktokUrl:     s.tiktokUrl||'',
+      srtUrl:        s.srtUrl||'',
+      hasSrt:        !!s.hasSrt,
+      sunoPrompt:    s.sunoPrompt||'',
+      sunoDate:      s.sunoDate||'',
+      sunoLink:      s.sunoLink||'',
+      lyrics:        s.lyrics||'',
     };
   }
 
@@ -5131,6 +5194,22 @@
     $('bmiEdRel').value = s.releaseId || ''; $('bmiEdUpc').value = s.upc || '';
     $('bmiEdIsrc').value = s.isrc || ''; $('bmiEdRegTitle').value = s.regTitle || '';
     $('bmiEdRegArtists').value = (s.regArtists || []).join(', ');
+    // New fields
+    $('bmiEdMp3').value = s.mp3Url || s.audioFile || '';
+    $('bmiEdWav').value = s.wavUrl || '';
+    $('bmiEdNeedsWav').checked = !!s.needsWav;
+    $('bmiEdSubmit').value = s.bmiSubmitDate || '';
+    $('bmiEdSpotify').value = (s.streaming||{}).spotify || '';
+    $('bmiEdApple').value = (s.streaming||{}).apple || '';
+    $('bmiEdYtMusic').value = (s.streaming||{}).youtubeMusic || '';
+    $('bmiEdYt').value = s.youtubeUrl || (s.videos&&s.videos[0] ? s.videos[0].youtube||'' : '');
+    $('bmiEdTiktok').value = s.tiktokUrl || '';
+    $('bmiEdSrt').value = s.srtUrl || '';
+    $('bmiEdHasSrt').checked = !!s.hasSrt;
+    $('bmiEdSunoPrompt').value = s.sunoPrompt || '';
+    $('bmiEdSunoDate').value = s.sunoDate || '';
+    $('bmiEdSunoLink').value = s.sunoLink || '';
+    $('bmiEdLyrics').value = s.lyrics || '';
     $('bmiEditor').classList.remove('hidden');
     $('bmiEditor').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
@@ -5141,14 +5220,31 @@
     if (!s) return;
     s.title = $('bmiEdSong').value.trim(); s.artist = $('bmiEdArtist').value.trim();
     s.album = $('bmiEdAlbum').value.trim(); s.track = $('bmiEdTrack').value.trim();
-    s.unique = $('bmiEdUnq').value.trim(); s.radio = $('bmiEdRadio').value.trim();
-    s.writer = $('bmiEdWriter').value.trim(); s.workNo = $('bmiEdWork').value.trim();
+    s.unique = ($('bmiEdUnq').value.trim()).toUpperCase();
+    s.radio  = ($('bmiEdRadio').value.trim()).toUpperCase();
+    s.writer = ($('bmiEdWriter').value.trim()).toUpperCase();
+    s.workNo = $('bmiEdWork').value.trim();
     s.regDate = $('bmiEdRegDate').value.trim(); s.iswc = $('bmiEdIswc').value.trim();
     s.songview = $('bmiEdSv').value.trim();
     s.time = $('bmiEdTime').value.trim(); s.liveDate = $('bmiEdLive').value.trim();
     s.releaseId = $('bmiEdRel').value.trim(); s.upc = $('bmiEdUpc').value.trim();
     s.isrc = $('bmiEdIsrc').value.trim(); s.regTitle = $('bmiEdRegTitle').value.trim();
     s.regArtists = $('bmiEdRegArtists').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    // New fields
+    s.mp3Url       = $('bmiEdMp3').value.trim();
+    s.wavUrl       = $('bmiEdWav').value.trim();
+    s.needsWav     = $('bmiEdNeedsWav').checked;
+    s.bmiSubmitDate= $('bmiEdSubmit').value.trim();
+    s.streaming    = { spotify: $('bmiEdSpotify').value.trim(), apple: $('bmiEdApple').value.trim(), youtubeMusic: $('bmiEdYtMusic').value.trim() };
+    s.youtubeUrl   = $('bmiEdYt').value.trim();
+    s.tiktokUrl    = $('bmiEdTiktok').value.trim();
+    s.srtUrl       = $('bmiEdSrt').value.trim();
+    s.hasSrt       = $('bmiEdHasSrt').checked;
+    s.sunoPrompt   = $('bmiEdSunoPrompt').value.trim();
+    s.sunoDate     = $('bmiEdSunoDate').value.trim();
+    s.sunoLink     = $('bmiEdSunoLink').value.trim();
+    s.lyrics       = $('bmiEdLyrics').value;
+    if (s.youtubeUrl) s.videos = [{ youtube: s.youtubeUrl, title: 'Official Video', order: 1 }];
     bmiMarkDirty();
     window.bmiRender();
     toast('Row updated — remember to Save changes');
@@ -5192,24 +5288,38 @@
         const mid = row._masterId || row.id;
         const ms = masterSongs.find(function(s) { return s.id === mid; });
         if (!ms) return;
-        ms.title      = row.title;
-        ms.artist     = row.artist;
-        ms.album      = row.album;
-        ms.trackNumber= row.track ? parseInt(row.track, 10) : ms.trackNumber;
-        ms.unique     = (row.unique||'').toUpperCase();
-        ms.radio      = (row.radio||'').toUpperCase();
-        ms.writer     = (row.writer||'').toUpperCase();
-        ms.workNo     = row.workNo;
-        ms.regDate    = row.regDate;
-        ms.iswc       = row.iswc;
-        ms.songview   = row.songview;
-        ms.trackTime  = row.time;
-        ms.liveDate   = row.liveDate;
-        ms.releaseId  = row.releaseId;
-        ms.upc        = row.upc;
-        ms.isrc       = row.isrc;
-        ms.regTitle   = row.regTitle;
-        ms.regArtists = row.regArtists;
+        ms.title        = row.title;
+        ms.artist       = row.artist;
+        ms.album        = row.album;
+        ms.trackNumber  = row.track ? parseInt(row.track, 10) : ms.trackNumber;
+        ms.unique       = (row.unique||'').toUpperCase();
+        ms.radio        = (row.radio||'').toUpperCase();
+        ms.writer       = (row.writer||'').toUpperCase();
+        ms.workNo       = row.workNo;
+        ms.regDate      = row.regDate;
+        ms.iswc         = row.iswc;
+        ms.songview     = row.songview;
+        ms.trackTime    = row.time;
+        ms.liveDate     = row.liveDate;
+        ms.releaseId    = row.releaseId;
+        ms.upc          = row.upc;
+        ms.isrc         = row.isrc;
+        ms.regTitle     = row.regTitle;
+        ms.regArtists   = row.regArtists;
+        // New fields
+        if (row.mp3Url)        { ms.audioFile = row.mp3Url; ms.audio = row.mp3Url; ms.audioSrc = row.mp3Url; }
+        if (row.wavUrl)          ms.wavUrl       = row.wavUrl;
+        ms.needsWav             = row.needsWav;
+        if (row.bmiSubmitDate)   ms.bmiSubmitDate= row.bmiSubmitDate;
+        if (row.streaming)       ms.streaming    = row.streaming;
+        if (row.youtubeUrl)    { ms.youtubeUrl   = row.youtubeUrl; ms.videos = [{ youtube: row.youtubeUrl, title: 'Official Video', order: 1 }]; }
+        if (row.tiktokUrl)       ms.tiktokUrl    = row.tiktokUrl;
+        if (row.srtUrl)          ms.srtUrl       = row.srtUrl;
+        ms.hasSrt               = row.hasSrt;
+        if (row.sunoPrompt)      ms.sunoPrompt   = row.sunoPrompt;
+        if (row.sunoDate)        ms.sunoDate     = row.sunoDate;
+        if (row.sunoLink)        ms.sunoLink     = row.sunoLink;
+        if (row.lyrics)          ms.lyrics       = row.lyrics;
       });
 
       await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', {
@@ -5231,19 +5341,31 @@
 
   window.bmiExportCsv = function () {
     if (!bmiData) return;
-    const head = ['Unq', 'Radio', 'Writer', 'Song Name', 'Band/Artist', 'Album', 'Track', 'BMI Work #', 'Reg Date', 'ISWC', 'BMI#', 'Reg Origin', 'Songview', 'Time', 'Live', 'ReleaseID', 'UPC', 'ISRC', 'Recon', 'Registered Name', 'Reg Artist 1', 'Reg Artist 2', 'Reg Artist 3', 'Reg Artist 4'];
+    const head = ['Unq','Radio','Writer','Song Name','Band/Artist','Album','Track','Time',
+      'BMI Submit Date','BMI Work #','Reg Date','ISWC','Songview','Live Date',
+      'Release ID','UPC','ISRC','Registered Name','Reg Artist 1','Reg Artist 2','Reg Artist 3',
+      'MP3 URL','WAV URL','Needs WAV','Spotify','Apple Music','YouTube Music',
+      'YouTube URL','TikTok URL','SRT URL','Has SRT',
+      'Suno Prompt','Suno Date','Suno Link','Lyrics'];
     function cell(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
-    const lines = [head.join(',')];
+    const csvLines = [head.join(',')];
     bmiData.songs.forEach(function (s) {
       const ra = s.regArtists || [];
-      lines.push([s.unique, s.radio, s.writer, s.title, s.artist, s.album, s.track, s.workNo, s.regDate,
-        s.iswc, s.bmiNo, s.regOrigin, s.songview, s.time, s.liveDate, s.releaseId, s.upc, s.isrc, s.recon,
-        s.regTitle, ra[0] || '', ra[1] || '', ra[2] || '', ra[3] || ''].map(cell).join(','));
+      const st = s.streaming || {};
+      csvLines.push([
+        s.unique, s.radio, s.writer, s.title, s.artist, s.album, s.track, s.time,
+        s.bmiSubmitDate||'', s.workNo, s.regDate, s.iswc, s.songview, s.liveDate,
+        s.releaseId, s.upc, s.isrc, s.regTitle, ra[0]||'', ra[1]||'', ra[2]||'',
+        s.mp3Url||'', s.wavUrl||'', s.needsWav?'Y':'',
+        st.spotify||'', st.apple||'', st.youtubeMusic||'',
+        s.youtubeUrl||'', s.tiktokUrl||'', s.srtUrl||'', s.hasSrt?'Y':'',
+        s.sunoPrompt||'', s.sunoDate||'', s.sunoLink||'', s.lyrics||''
+      ].map(cell).join(','));
     });
-    const blob = new Blob([lines.join('\r\n')], { type: 'text/csv' });
+    const blob = new Blob([csvLines.join('\r\n')], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'bmi-catalog-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.download = 'htr-publishing-' + new Date().toISOString().slice(0, 10) + '.csv';
     a.click();
     URL.revokeObjectURL(a.href);
   };
