@@ -4898,6 +4898,38 @@
   let bmiDirty = false;
   let bmiChanges = [];
 
+  // Publishing reads from master-songs.json — single source of truth
+  // bmiData.songs maps master fields to the Publishing table format
+
+  function masterToBmi(s) {
+    // Map a master-songs entry to the Publishing/BMI row format
+    return {
+      _masterId: s.id,          // keep master id for saving back
+      id: s.id,
+      unique:     (s.unique||'').toUpperCase(),
+      radio:      (s.radio||'').toUpperCase(),
+      writer:     (s.writer||'').toUpperCase(),
+      title:      s.title||'',
+      artist:     s.artist||'',
+      album:      s.album||'',
+      track:      s.trackNumber ? String(s.trackNumber).padStart(2,'0') : '',
+      workNo:     s.workNo||'',
+      regDate:    s.regDate||'',
+      iswc:       s.iswc||'',
+      bmiNo:      s.workNo||'',   // bmiNo = workNo (legacy duplicate field)
+      regOrigin:  s.regOrigin||'',
+      songview:   s.songview||'',
+      time:       s.trackTime||'',
+      liveDate:   s.liveDate||'',
+      releaseId:  s.releaseId||'',
+      upc:        s.upc||'',
+      isrc:       s.isrc||'',
+      recon:      s.songview && /reconciled/i.test(s.songview) ? 'x' : '',
+      regTitle:   s.regTitle||'',
+      regArtists: s.regArtists||[],
+    };
+  }
+
   function bmiEsc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
@@ -4929,9 +4961,16 @@
     if (bmiLoaded && !force) return;
     $('bmiBody').innerHTML = '<tr><td colspan="17" style="color:var(--muted);padding:14px">Loading catalog...</td></tr>';
     try {
-      const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + BMI_PATH);
+      // Read from master-songs.json — single source of truth
+      const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
       bmiSha = f.sha;
-      bmiData = JSON.parse(b64decode(f.content));
+      const masterSongs = JSON.parse(b64decode(f.content));
+      // Convert master entries to Publishing row format
+      bmiData = {
+        songs: masterSongs.map(masterToBmi),
+        notes: '',
+        unregisteredArtists: ''
+      };
       if (!bmiData.songs) bmiData.songs = [];
       $('bmiUnreg').value = '';
       $('bmiNotes').value = '';
@@ -4949,7 +4988,7 @@
       window.bmiRender();
       bmiUpdateCarets();
     } catch (e) {
-      toast('BMI catalog load failed: ' + e.message, true);
+      toast('Publishing catalog load failed: ' + e.message, true);
       $('bmiBody').innerHTML = '<tr><td colspan="17" style="color:var(--err);padding:14px">' + bmiEsc(e.message) + '</td></tr>';
     }
   };
@@ -5116,23 +5155,46 @@
     if (!bmiData) return;
     $('bmiSaveBtn').disabled = true;
     try {
-      const pu = $('bmiUnreg').value.trim();
-      const pn = $('bmiNotes').value.trim();
-      const stamp = new Date().toISOString().slice(0, 10);
-      if (pu) bmiData.unregisteredArtists = (((bmiData.unregisteredArtists || '').trim()) + '\n• ' + stamp + '  ' + pu).trim();
-      if (pn) bmiData.notes = (((bmiData.notes || '').trim()) + '\n• ' + stamp + '  ' + pn).trim();
-      bmiData.updated = stamp;
-      const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + BMI_PATH);
-      const res = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + BMI_PATH, {
-        method: 'PUT',
-        body: { message: 'HTR Studio: BMI catalog update', content: b64encode(JSON.stringify(bmiData, null, 2)), sha: f.sha }
+      // Read current master-songs.json
+      const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      const masterSongs = JSON.parse(b64decode(f.content));
+
+      // Apply Publishing edits back to master songs by matching _masterId
+      bmiData.songs.forEach(function(row) {
+        const mid = row._masterId || row.id;
+        const ms = masterSongs.find(function(s) { return s.id === mid; });
+        if (!ms) return;
+        ms.title      = row.title;
+        ms.artist     = row.artist;
+        ms.album      = row.album;
+        ms.trackNumber= row.track ? parseInt(row.track, 10) : ms.trackNumber;
+        ms.unique     = (row.unique||'').toUpperCase();
+        ms.radio      = (row.radio||'').toUpperCase();
+        ms.writer     = (row.writer||'').toUpperCase();
+        ms.workNo     = row.workNo;
+        ms.regDate    = row.regDate;
+        ms.iswc       = row.iswc;
+        ms.songview   = row.songview;
+        ms.trackTime  = row.time;
+        ms.liveDate   = row.liveDate;
+        ms.releaseId  = row.releaseId;
+        ms.upc        = row.upc;
+        ms.isrc       = row.isrc;
+        ms.regTitle   = row.regTitle;
+        ms.regArtists = row.regArtists;
       });
-      bmiSha = res && res.content ? res.content.sha : null;
+
+      await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', {
+        method: 'PUT',
+        body: { message: 'HTR Studio: Publishing update', content: b64encode(JSON.stringify(masterSongs, null, 2)), sha: f.sha }
+      });
+
       bmiDirty = false;
       $('bmiUnreg').value = '';
       $('bmiNotes').value = '';
       bmiRenderNotes();
-      toast('BMI catalog saved');
+      msCache = null; // clear artist page cache so it picks up changes
+      toast('Publishing catalog saved');
     } catch (e) {
       $('bmiSaveBtn').disabled = false;
       toast('Save failed: ' + e.message, true);
