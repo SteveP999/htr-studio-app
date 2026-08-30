@@ -1429,7 +1429,15 @@
     card.className = 'song-card';
     card.draggable = true;
     card.dataset.songId = s.id;
-    card.style.cssText = 'border:1px solid #2e261b;border-radius:6px;overflow:hidden;cursor:grab;background:#17130e;margin-bottom:2px';
+    card.style.cssText = 'border:1px solid #2e261b;border-radius:6px;overflow:hidden;background:#17130e;margin-bottom:2px';
+
+    // Stop drag from interfering with text selection inside inputs/textareas
+    card.addEventListener('mousedown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+        card.draggable = false;
+      }
+    });
+    card.addEventListener('mouseup', () => { card.draggable = true; });
 
     card.addEventListener('dragstart', () => { card.classList.add('dragging'); card.style.opacity='0.5'; const btn = $('saveOrderBtn'); if(btn) btn.style.display='inline-block'; });
     card.addEventListener('dragend', () => { card.classList.remove('dragging'); card.style.opacity='1'; });
@@ -1444,19 +1452,19 @@
           onclick="event.stopPropagation();window.artDeleteSong('${artistId}','${s.id}','${safeTitle}')">✕ Delete</button>
       </div>
       <div id="${detId}" style="display:none;padding:14px;background:#100d08;border-top:1px solid #2e261b">
-        <div style="display:grid;grid-template-columns:80px 1fr;gap:14px;margin-bottom:14px;align-items:start">
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:14px;margin-bottom:14px;align-items:start">
           <div>
             <div id="cover-drop-${s.id}" 
-              style="width:80px;height:80px;border-radius:6px;border:2px dashed #444;position:relative;overflow:hidden;cursor:pointer;margin-bottom:4px;background:#1a150e;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center"
-              ondragover="event.preventDefault();this.style.borderColor='var(--warn)'"
+              style="width:200px;height:200px;border-radius:8px;border:2px dashed #444;position:relative;overflow:hidden;cursor:pointer;background:#1a150e;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);text-align:center"
+              ondragover="event.preventDefault();event.stopPropagation();this.style.borderColor='var(--warn)'"
               ondragleave="this.style.borderColor='#444'"
-              ondrop="event.preventDefault();this.style.borderColor='#444';window.artUploadCover(event.dataTransfer.files[0],'${s.id}','${artistId}')"
+              ondrop="event.preventDefault();event.stopPropagation();this.style.borderColor='#444';window.artUploadCover(event.dataTransfer.files[0],'${s.id}','${artistId}')"
               onclick="document.getElementById('cover-file-${s.id}').click()">
               <img id="cover-thumb-${s.id}" src="${coverSrc}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:${coverSrc?'block':'none'}" onerror="this.style.display='none'">
-              <span id="cover-label-${s.id}" style="${coverSrc?'display:none':''}">Drop<br>image</span>
+              <span id="cover-label-${s.id}" style="${coverSrc?'display:none':''}">Drop or click<br>to upload art</span>
               <input id="cover-file-${s.id}" type="file" accept="image/png,image/jpeg" style="display:none" onchange="window.artUploadCover(this.files[0],'${s.id}','${artistId}')">
             </div>
-            <div style="font-size:10px;color:var(--muted);text-align:center">Drop or click</div>
+            <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px">Song art</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:8px">
             <div>
