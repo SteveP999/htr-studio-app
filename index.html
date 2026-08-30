@@ -1317,12 +1317,23 @@
         const songs = albums[alb];
         const albSlug = alb.replace(/[^a-z0-9]/gi,'_');
 
-        // Album header
+        // Album header — click to edit album name and cover
         const head = document.createElement('div');
         head.style.cssText = 'display:flex;align-items:center;gap:10px;margin:14px 0 4px;padding:6px 8px;background:#1a150e;border-radius:6px;border:1px solid #2e261b';
-        head.innerHTML = '<img src="' + (songs[0].albumCover||songs[0].coverImage||'') + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #333" onerror="this.style.display=\'none\'">'
-          + '<b style="flex:1">' + alb + '</b>'
-          + '<span class="sub">' + songs.length + ' track' + (songs.length!==1?'s':'') + '</span>';
+        const albCover = songs[0].albumCover||songs[0].coverImage||'';
+        head.innerHTML = '<div style="position:relative;width:40px;height:40px;flex-shrink:0">'
+          + '<img src="'+albCover+'" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #333" onerror="this.style.display=\'none\'" id="albthumb-'+albSlug+'">'
+          + '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);border-radius:4px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:14px;cursor:pointer" '
+          + 'onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0" '
+          + 'onclick="document.getElementById(\'albfile-'+albSlug+'\').click()" title="Replace album art">🖼'
+          + '<input id="albfile-'+albSlug+'" type="file" accept="image/png,image/jpeg" style="display:none" '
+          + 'onchange="window.artUploadAlbumCover(this.files[0],\''+alb+'\',\''+a.id+'\',\''+albSlug+'\')"></div>'
+          + '</div>'
+          + '<div style="flex:1;display:flex;align-items:center;gap:6px">'
+          + '<input id="albname-'+albSlug+'" value="'+alb.replace(/"/g,'&quot;')+'" style="background:transparent;border:none;border-bottom:1px dashed #444;color:var(--cream);font-weight:bold;font-size:14px;width:100%;outline:none" '
+          + 'onblur="window.artRenameAlbum(this.value,\''+alb+'\',\''+a.id+'\')" onkeydown="if(event.key===\'Enter\')this.blur()">'
+          + '</div>'
+          + '<span class="sub">'+songs.length+' track'+(songs.length!==1?'s':'')+'</span>';
         box.appendChild(head);
 
         // Draggable song list
@@ -1384,10 +1395,17 @@
       <div id="${detId}" style="display:none;padding:14px;background:#100d08;border-top:1px solid #2e261b">
         <div style="display:grid;grid-template-columns:80px 1fr;gap:14px;margin-bottom:14px;align-items:start">
           <div>
-            <img id="cover-thumb-${s.id}" src="${coverSrc}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #333;display:block;margin-bottom:6px" onerror="this.style.display='none'">
-            <label class="btn btn-ghost" style="padding:3px 6px;font-size:11px;cursor:pointer;display:block;text-align:center">
-              🖼 Art<input type="file" accept="image/png,image/jpeg" style="display:none" onchange="window.artUploadCover(this,'${s.id}','${artistId}')">
-            </label>
+            <div id="cover-drop-${s.id}" 
+              style="width:80px;height:80px;border-radius:6px;border:2px dashed #444;position:relative;overflow:hidden;cursor:pointer;margin-bottom:4px;background:#1a150e;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center"
+              ondragover="event.preventDefault();this.style.borderColor='var(--warn)'"
+              ondragleave="this.style.borderColor='#444'"
+              ondrop="event.preventDefault();this.style.borderColor='#444';window.artUploadCover(event.dataTransfer.files[0],'${s.id}','${artistId}')"
+              onclick="document.getElementById('cover-file-${s.id}').click()">
+              <img id="cover-thumb-${s.id}" src="${coverSrc}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:${coverSrc?'block':'none'}" onerror="this.style.display='none'">
+              <span id="cover-label-${s.id}" style="${coverSrc?'display:none':''}">Drop<br>image</span>
+              <input id="cover-file-${s.id}" type="file" accept="image/png,image/jpeg" style="display:none" onchange="window.artUploadCover(this.files[0],'${s.id}','${artistId}')">
+            </div>
+            <div style="font-size:10px;color:var(--muted);text-align:center">Drop or click</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:8px">
             <div>
@@ -1399,8 +1417,10 @@
               <select id="salbum-${s.id}" style="width:100%;margin-top:3px">${albumOpts}</select>
             </div>
             <div>
-              <label style="font-size:11px;color:var(--muted)">AUDIO URL (Dropbox raw=1)</label>
-              <input id="saudio-${s.id}" value="${(s.audioFile||s.audio||'').replace(/"/g,'&quot;')}" style="width:100%;margin-top:3px;font-size:11px">
+              <label style="font-size:11px;color:var(--muted)">AUDIO URL (paste any Dropbox link)</label>
+              <input id="saudio-${s.id}" value="${(s.audioFile||s.audio||'').replace(/"/g,'&quot;')}" 
+                style="width:100%;margin-top:3px;font-size:11px"
+                onchange="this.value=this.value.replace(/[?&]dl=0/,'').replace(/[?&]raw=1/,'').replace(/\?/,'?').trim(); if(!this.value.includes('raw=1')) this.value=this.value+(this.value.includes('?')?'&':'?')+'raw=1'">
             </div>
           </div>
         </div>
@@ -1484,8 +1504,7 @@
     }
   };
 
-  window.artUploadCover = async function(input, songId, artistId) {
-    const file = input.files[0];
+  window.artUploadCover = async function(file, songId, artistId) {
     if (!file) return;
     const msg = $('smsg-'+songId);
     if (msg) msg.textContent = 'Uploading cover…';
@@ -1502,7 +1521,9 @@
       const result = await gh('/repos/SteveP999/'+repoName+'/contents/'+path, {method:'PUT', body});
       const rawUrl = 'https://raw.githubusercontent.com/SteveP999/'+repoName+'/main/'+path;
       const thumb = $('cover-thumb-'+songId);
+      const label = $('cover-label-'+songId);
       if (thumb) { thumb.src = rawUrl + '?cb=' + Date.now(); thumb.style.display='block'; }
+      if (label) label.style.display = 'none';
       // Update coverImage in master
       const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
       const msData = JSON.parse(b64decode(sf.content));
@@ -1513,6 +1534,65 @@
     } catch(e) {
       if (msg) msg.textContent = '✗ Upload failed: '+e.message;
     }
+  };
+
+  window.artRenameAlbum = async function(newName, oldName, artistId) {
+    newName = newName.trim();
+    if (!newName || newName === oldName) return;
+    try {
+      // Update all songs in master with this album name
+      const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
+      const msData = JSON.parse(b64decode(sf.content));
+      let changed = 0;
+      msData.forEach(s => { if (s.artistId === artistId && s.album === oldName) { s.album = newName; changed++; } });
+      if (!changed) return;
+      await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {method:'PUT', body:{message:'HTR Studio: rename album '+oldName+' to '+newName, content:b64encode(JSON.stringify(msData,null,2)), sha:sf.sha}});
+      // Update artist repo
+      const artist = artists.find(x => x.id === artistId);
+      if (artist && artist.githubRepo) {
+        const repoName = artist.githubRepo.replace('SteveP999/','');
+        const asf = await gh('/repos/SteveP999/'+repoName+'/contents/songs.json');
+        const asData = JSON.parse(b64decode(asf.content));
+        asData.forEach(s => { if (s.album === oldName) s.album = newName; });
+        await gh('/repos/SteveP999/'+repoName+'/contents/songs.json', {method:'PUT', body:{message:'HTR Studio: rename album', content:b64encode(JSON.stringify(asData,null,2)), sha:asf.sha}});
+      }
+      msCache = null;
+      toast('Album renamed to "'+newName+'"');
+      const a = artists.find(x => x.id === artistId);
+      if (a) setTimeout(()=>renderMusic(a), 800);
+    } catch(e) { toast('Rename failed: '+e.message, true); }
+  };
+
+  window.artUploadAlbumCover = async function(file, albumName, artistId, albSlug) {
+    if (!file) return;
+    try {
+      const b64 = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+      const artist = artists.find(x => x.id === artistId);
+      const repoName = artist.githubRepo.replace('SteveP999/','');
+      const fname = file.name.toLowerCase().replace(/\s+/g,'-');
+      const path = 'images/covers/' + fname;
+      let sha = null;
+      try { const ex = await gh('/repos/SteveP999/'+repoName+'/contents/'+path); sha=ex.sha; } catch(e){}
+      const body = {message:'HTR Studio: upload album cover '+fname, content:b64};
+      if (sha) body.sha = sha;
+      await gh('/repos/SteveP999/'+repoName+'/contents/'+path, {method:'PUT', body});
+      const rawUrl = 'https://raw.githubusercontent.com/SteveP999/'+repoName+'/main/'+path;
+      // Update thumb
+      const thumb = $('albthumb-'+albSlug);
+      if (thumb) { thumb.src = rawUrl+'?cb='+Date.now(); thumb.style.display='block'; }
+      // Update all songs in this album in master
+      const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
+      const msData = JSON.parse(b64decode(sf.content));
+      msData.forEach(s => { if (s.artistId === artistId && s.album === albumName) s.albumCover = rawUrl; });
+      await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {method:'PUT', body:{message:'HTR Studio: update album cover for '+albumName, content:b64encode(JSON.stringify(msData,null,2)), sha:sf.sha}});
+      // Update artist repo
+      const asf = await gh('/repos/SteveP999/'+repoName+'/contents/songs.json');
+      const asData = JSON.parse(b64decode(asf.content));
+      asData.forEach(s => { if (s.album === albumName) s.albumCover = 'images/covers/'+fname; });
+      await gh('/repos/SteveP999/'+repoName+'/contents/songs.json', {method:'PUT', body:{message:'HTR Studio: update album cover', content:b64encode(JSON.stringify(asData,null,2)), sha:asf.sha}});
+      msCache = null;
+      toast('Album cover updated');
+    } catch(e) { toast('Album cover upload failed: '+e.message, true); }
   };
 
   window.artSaveSong = async function(songId, artistId) {
