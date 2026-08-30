@@ -226,7 +226,58 @@
               </div>
             </div>
             <div id="edMusic" style="margin-top:18px"></div>
-          </div>
+
+            <!-- ── Artist Catalog Table ── -->
+            <div id="edCatalog" style="margin-top:24px;border-top:2px solid var(--border);padding-top:16px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+                <b style="font-family:'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--warn)">Song Catalog</b>
+                <input id="catSearch" type="text" placeholder="Search…" style="font-size:12px;padding:3px 8px;width:160px" oninput="window.renderCatalog()">
+                <select id="catUniqF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()">
+                  <option value="">All types</option>
+                  <option value="X">X — Unique</option>
+                  <option value="V">V — Version</option>
+                  <option value="C">C — Copy</option>
+                  <option value="D">D — Development</option>
+                  <option value="R">R — Retired</option>
+                  <option value="N">N — Research</option>
+                </select>
+                <select id="catRadioF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()">
+                  <option value="">All radio</option>
+                  <option value="R">R — On radio</option>
+                  <option value="I">I — Instrumental</option>
+                  <option value="P">P — Profane</option>
+                  <option value="X">X — Off</option>
+                  <option value="D">D — Development</option>
+                </select>
+                <select id="catWriterF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()">
+                  <option value="">All writers</option>
+                  <option value="P">P — Peters</option>
+                  <option value="B">B — Bender</option>
+                  <option value="2">2 — Both</option>
+                  <option value="O">O — Instrumental</option>
+                </select>
+                <span id="catCount" style="font-size:11px;color:var(--muted)"></span>
+              </div>
+              <div style="overflow-x:auto;max-height:340px;overflow-y:auto">
+                <table style="border-collapse:collapse;width:100%;font-size:12px">
+                  <thead>
+                    <tr style="position:sticky;top:0;background:var(--panel2);z-index:5">
+                      <th style="padding:4px 8px;text-align:left;color:var(--muted);cursor:pointer;white-space:nowrap" onclick="window.catSort('title')">Song ↕</th>
+                      <th style="padding:4px 8px;text-align:left;color:var(--muted);cursor:pointer;white-space:nowrap" onclick="window.catSort('album')">Album ↕</th>
+                      <th style="padding:4px 4px;text-align:center;color:var(--muted);cursor:pointer" onclick="window.catSort('trackNumber')">Trk</th>
+                      <th style="padding:4px 4px;text-align:center;color:var(--muted);cursor:pointer" onclick="window.catSort('unique')">U</th>
+                      <th style="padding:4px 4px;text-align:center;color:var(--muted);cursor:pointer" onclick="window.catSort('radio')">Rad</th>
+                      <th style="padding:4px 4px;text-align:center;color:var(--muted);cursor:pointer" onclick="window.catSort('writer')">Wr</th>
+                      <th style="padding:4px 8px;text-align:left;color:var(--muted);white-space:nowrap">Work #</th>
+                      <th style="padding:4px 8px;text-align:left;color:var(--muted);white-space:nowrap">ISWC</th>
+                      <th style="padding:4px 8px;text-align:left;color:var(--muted);white-space:nowrap">Songview</th>
+                      <th style="padding:4px 4px;text-align:center;color:var(--muted)">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="catBody"></tbody>
+                </table>
+              </div>
+            </div>
         </div>
       </div>
     </section>
@@ -1287,7 +1338,7 @@
     $('edRadio').checked = a.includeOnRadio !== false;
     $('afterSave').classList.add('hidden');
     $('saveMsg').textContent = '';
-    renderMusic(a);
+    renderMusic(a).then(() => window.renderCatalog());
   }
 
   // ---------- artist MUSIC section — inline song management ----------
@@ -1449,6 +1500,67 @@
         <div style="margin-bottom:12px">
           <label style="font-size:11px;color:var(--muted)">LYRICS</label>
           <textarea id="slyrics-${s.id}" style="width:100%;margin-top:3px;font-size:11px;height:120px;resize:vertical;font-family:monospace">${s.lyrics||''}</textarea>
+        </div>
+        <div style="margin:16px 0 8px;padding-top:12px;border-top:1px solid #2e261b;font-family:'Barlow Condensed',sans-serif;font-size:.75rem;letter-spacing:.15em;text-transform:uppercase;color:var(--warn)">Publishing / BMI</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:var(--muted)">UNIQUE (X/V/C/R/D/N)</label>
+            <input id="suniq-${s.id}" value="${s.unique||s.bmi?.unique||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">RADIO (R/I/P/X/D/N)</label>
+            <input id="sradio-${s.id}" value="${s.radio||s.bmi?.radio||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">WRITER (P/B/2/O)</label>
+            <input id="swriter-${s.id}" value="${s.writer||s.bmi?.writer||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">TRACK TIME</label>
+            <input id="stime-${s.id}" value="${s.trackTime||s.bmi?.time||''}" placeholder="3:42" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:var(--muted)">BMI WORK #</label>
+            <input id="swork-${s.id}" value="${s.workNo||s.bmi?.workNo||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">REG DATE</label>
+            <input id="sregdate-${s.id}" value="${s.regDate||s.bmi?.regDate||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">ISWC</label>
+            <input id="siswc-${s.id}" value="${s.iswc||s.bmi?.iswc||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:var(--muted)">SONGVIEW STATUS</label>
+            <input id="ssongview-${s.id}" value="${s.songview||s.bmi?.songview||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">STREAMING LIVE DATE</label>
+            <input id="slivedate-${s.id}" value="${s.liveDate||s.bmi?.liveDate||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">RELEASE ID</label>
+            <input id="srelid-${s.id}" value="${s.releaseId||s.bmi?.releaseId||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:var(--muted)">UPC</label>
+            <input id="supc-${s.id}" value="${s.upc||s.bmi?.upc||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">ISRC</label>
+            <input id="sisrc-${s.id}" value="${s.isrc||s.bmi?.isrc||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted)">REGISTERED NAME (BMI)</label>
+            <input id="sregname-${s.id}" value="${s.regTitle||s.bmi?.regTitle||''}" style="width:100%;margin-top:3px;font-size:11px">
+          </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-blue" style="padding:4px 16px;font-size:12px" onclick="window.artSaveSong('${s.id}','${artistId}')">💾 Save</button>
@@ -1621,6 +1733,20 @@
       msData[idx].videos = vidUrl ? [{youtube:vidUrl, title:'Official Video', order:1}] : [];
       if (suno)   msData[idx].sunoPrompt = suno;
       if (lyrics) msData[idx].lyrics = lyrics;
+      // BMI/Publishing fields
+      msData[idx].unique   = $('suniq-'+songId)?.value?.trim()||msData[idx].unique||'';
+      msData[idx].radio    = $('sradio-'+songId)?.value?.trim()||msData[idx].radio||'';
+      msData[idx].writer   = $('swriter-'+songId)?.value?.trim()||msData[idx].writer||'';
+      msData[idx].trackTime= $('stime-'+songId)?.value?.trim()||msData[idx].trackTime||'';
+      msData[idx].workNo   = $('swork-'+songId)?.value?.trim()||msData[idx].workNo||'';
+      msData[idx].regDate  = $('sregdate-'+songId)?.value?.trim()||msData[idx].regDate||'';
+      msData[idx].iswc     = $('siswc-'+songId)?.value?.trim()||msData[idx].iswc||'';
+      msData[idx].songview = $('ssongview-'+songId)?.value?.trim()||msData[idx].songview||'';
+      msData[idx].liveDate = $('slivedate-'+songId)?.value?.trim()||msData[idx].liveDate||'';
+      msData[idx].releaseId= $('srelid-'+songId)?.value?.trim()||msData[idx].releaseId||'';
+      msData[idx].upc      = $('supc-'+songId)?.value?.trim()||msData[idx].upc||'';
+      msData[idx].isrc     = $('sisrc-'+songId)?.value?.trim()||msData[idx].isrc||'';
+      msData[idx].regTitle = $('sregname-'+songId)?.value?.trim()||msData[idx].regTitle||'';
       await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {method:'PUT', body:{message:'HTR Studio: update '+songId, content:b64encode(JSON.stringify(msData,null,2)), sha:sf.sha}});
 
       // Update artist repo songs.json
@@ -1710,6 +1836,65 @@
   window.artAddSong = function () {
     window.showTab('addsong');
     if (selectedId) $('asArtist').value = selectedId;
+  };
+
+  window.artRefreshMusic = function () {
+    msCache = null;
+    const a = artists.find((x) => x.id === selectedId);
+    if (a) renderMusic(a).then(() => window.renderCatalog());
+  };
+
+  let catSortKey = 'trackNumber';
+  let catSortDir = 1;
+
+  window.catSort = function(key) {
+    if (catSortKey === key) catSortDir *= -1;
+    else { catSortKey = key; catSortDir = 1; }
+    window.renderCatalog();
+  };
+
+  window.renderCatalog = function() {
+    const body = $('catBody');
+    if (!body || !msCache) return;
+    const q      = ($('catSearch')?.value||'').toLowerCase();
+    const uniqF  = $('catUniqF')?.value||'';
+    const radioF = $('catRadioF')?.value||'';
+    const writerF= $('catWriterF')?.value||'';
+    let rows = msCache.filter(s => s.artistId === selectedId);
+    if (q)       rows = rows.filter(s => (s.title+s.album+(s.workNo||')+(s.iswc||'')).toLowerCase().includes(q));
+    if (uniqF)   rows = rows.filter(s => (s.unique||'').toUpperCase() === uniqF.toUpperCase());
+    if (radioF)  rows = rows.filter(s => (s.radio||'').toUpperCase() === radioF.toUpperCase());
+    if (writerF) rows = rows.filter(s => (s.writer||'').toUpperCase() === writerF.toUpperCase());
+    rows.sort((a,b) => {
+      const av = String(a[catSortKey]||'').toLowerCase();
+      const bv = String(b[catSortKey]||'').toLowerCase();
+      return av < bv ? -catSortDir : av > bv ? catSortDir : 0;
+    });
+    const count = $('catCount');
+    if (count) count.textContent = rows.length + ' songs';
+    body.innerHTML = rows.map(s => {
+      const uniq = (s.unique||'').toUpperCase();
+      const uniqColor = uniq==='R'?'#e74c3c':uniq==='D'?'#e67e22':uniq==='X'?'var(--ok)':'var(--cream)';
+      const noWork = !s.workNo;
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onclick="window.artOpenSongCard(\''+s.id+'\')" onmouseover="this.style.background=\'rgba(255,255,255,.04)\'" onmouseout="this.style.background=\'\'">'
+        + '<td style="padding:4px 8px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.title+'</td>'
+        + '<td style="padding:4px 8px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.album||'')+'</td>'
+        + '<td style="padding:4px 4px;text-align:center;color:var(--muted)">'+(s.trackNumber||'')+'</td>'
+        + '<td style="padding:4px 4px;text-align:center;color:'+uniqColor+';font-weight:bold">'+uniq+'</td>'
+        + '<td style="padding:4px 4px;text-align:center;color:var(--muted)">'+((s.radio||'').toUpperCase())+'</td>'
+        + '<td style="padding:4px 4px;text-align:center;color:var(--muted)">'+((s.writer||'').toUpperCase())+'</td>'
+        + '<td style="padding:4px 8px;color:'+(noWork?'var(--err)':'var(--cream)')+';white-space:nowrap">'+(s.workNo||'—')+'</td>'
+        + '<td style="padding:4px 8px;color:var(--muted);white-space:nowrap">'+(s.iswc||'—')+'</td>'
+        + '<td style="padding:4px 8px;color:var(--muted);white-space:nowrap">'+(s.songview||'')+'</td>'
+        + '<td style="padding:4px 4px;text-align:center;color:var(--muted)">'+(s.trackTime||'')+'</td>'
+        + '</tr>';
+    }).join('');
+  };
+
+  window.artOpenSongCard = function(songId) {
+    const detId = 'sdet-' + songId.replace(/[^a-z0-9]/gi,'_');
+    const det = $(detId);
+    if (det) { det.style.display = 'block'; det.scrollIntoView({behavior:'smooth', block:'nearest'}); }
   };
   window.artOpenWorkshop = async function (artistId, songId) {
     window.showTab('lyrics');
