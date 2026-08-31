@@ -1459,7 +1459,8 @@
           + '<input id="albname-'+albSlug+'" value="'+alb.replace(/"/g,'&quot;')+'" style="background:transparent;border:none;border-bottom:1px dashed #444;color:var(--cream);font-weight:bold;font-size:14px;width:100%;outline:none" '
           + 'onblur="window.artRenameAlbum(this.value,\''+alb+'\',\''+a.id+'\')" onkeydown="if(event.key===\'Enter\')this.blur()">'
           + '</div>'
-          + '<span class="sub">'+songs.length+' track'+(songs.length!==1?'s':'')+'</span>';
+          + '<span class="sub">'+songs.length+' track'+(songs.length!==1?'s':'')+'</span>'
+          + (songs.length===0 ? '<button onclick="window.artDeleteAlbum(\''+alb+'\',\''+a.id+'\')" style="margin-left:8px;padding:2px 8px;background:#5a1010;color:#ffaaaa;border:1px solid #8b2020;font-size:11px;cursor:pointer">✕ Delete empty album</button>' : '');
         box.appendChild(head);
 
         // Draggable song list
@@ -1776,6 +1777,26 @@
       if (msg) msg.textContent = '✓ Cover uploaded';
     } catch(e) {
       if (msg) msg.textContent = '✗ Upload failed: '+e.message;
+    }
+  };
+
+  window.artDeleteAlbum = async function(albumName, artistId) {
+    if (!confirm('Delete empty album "' + albumName + '"?\n\nThis removes it from master data. Songs must already be moved or deleted.')) return;
+    try {
+      // Verify no songs remain on this album in master
+      const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
+      const msData = JSON.parse(b64decode(sf.content));
+      const remaining = msData.filter(s => s.artistId === artistId && s.album === albumName);
+      if (remaining.length > 0) {
+        toast('Album still has ' + remaining.length + ' song(s) — move or delete them first', true);
+        return;
+      }
+      toast('Album "' + albumName + '" removed');
+      msCache = null;
+      const a = artists.find(x => x.id === artistId);
+      if (a) setTimeout(() => renderMusic(a), 500);
+    } catch(e) {
+      toast('Delete album failed: ' + e.message, true);
     }
   };
 
