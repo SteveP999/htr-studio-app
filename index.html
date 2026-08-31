@@ -910,7 +910,116 @@
         <h2 style="margin:0">BMI Catalog</h2>
         <span id="bmiStats" class="rstats"></span>
         <span class="spacer"></span>
+        <button class="btn btn-blue" onclick="window.bmiAddNew()" style="margin-right:8px">+ Add song</button>
         <button class="btn btn-ghost" onclick="window.loadBmi(true)">Reload</button>
+      </div>
+
+      <!-- Add Song Modal -->
+      <div id="bmiAddModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;overflow-y:auto;padding:2rem">
+        <div style="max-width:680px;margin:0 auto;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:24px">
+          <h3 style="margin-bottom:16px">Add New Song</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
+              <label style="font-size:11px;color:var(--muted)">SONG NAME (MINE)</label>
+              <input id="bmiAddTitle" style="width:100%;margin-top:3px" placeholder="Title">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted)">BAND / ARTIST</label>
+              <select id="bmiAddArtist" style="width:100%;margin-top:3px" onchange="window.bmiAddFillAlbums()">
+                <option value="">— select artist —</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+            <div style="grid-column:1/3">
+              <label style="font-size:11px;color:var(--muted)">ALBUM</label>
+              <select id="bmiAddAlbumSel" style="width:100%;margin-top:3px" onchange="window.bmiAddAlbumChange()">
+                <option value="">— select album —</option>
+                <option value="__new__">+ New album...</option>
+              </select>
+              <input id="bmiAddAlbumNew" style="width:100%;margin-top:4px;display:none" placeholder="Type new album name exactly">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted)">TRACK #</label>
+              <input id="bmiAddTrack" style="width:100%;margin-top:3px" placeholder="01">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted)">TRACK TIME</label>
+              <input id="bmiAddTime" style="width:100%;margin-top:3px" placeholder="3:42">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
+              <label style="font-size:11px;color:var(--muted)">UNIQUE (X/V/C/R/D/N)</label>
+              <input id="bmiAddUniq" value="X" style="width:100%;margin-top:3px" onblur="this.value=this.value.toUpperCase()">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted)">RADIO (R/I/P/X/D/N)</label>
+              <input id="bmiAddRadio" value="R" style="width:100%;margin-top:3px" onblur="this.value=this.value.toUpperCase()">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted)">WRITER (P/B/2/O)</label>
+              <input id="bmiAddWriter" value="P" style="width:100%;margin-top:3px" onblur="this.value=this.value.toUpperCase()">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
+              <label style="font-size:11px;color:var(--muted)">DROPBOX MP3 LINK</label>
+              <input id="bmiAddMp3" style="width:100%;margin-top:3px" placeholder="paste Dropbox link" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted)">DROPBOX WAV LINK</label>
+              <input id="bmiAddWav" style="width:100%;margin-top:3px" placeholder="paste Dropbox link" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
+              <label style="font-size:11px;color:var(--muted)">BMI WORK #</label>
+              <input id="bmiAddWork" style="width:100%;margin-top:3px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted)">REG DATE (ACCEPTED)</label>
+              <input id="bmiAddRegDate" style="width:100%;margin-top:3px" placeholder="MM/DD/YYYY">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted)">ISWC</label>
+              <input id="bmiAddIswc" style="width:100%;margin-top:3px">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
+              <label style="font-size:11px;color:var(--muted)">REGISTERED NAME (BMI)</label>
+              <input id="bmiAddRegTitle" style="width:100%;margin-top:3px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted)">REGISTERED ARTISTS (COMMA-SEP)</label>
+              <input id="bmiAddRegArtists" style="width:100%;margin-top:3px">
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <label style="font-size:11px;color:var(--muted)">SUNO STYLE PROMPT</label>
+            <textarea id="bmiAddSuno" rows="2" style="width:100%;margin-top:3px;font-size:12px"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
+              <label style="font-size:11px;color:var(--muted)">SUNO GENERATION DATE</label>
+              <input id="bmiAddSunoDate" style="width:100%;margin-top:3px" placeholder="MM/DD/YYYY">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted)">SUNO LINK</label>
+              <input id="bmiAddSunoLink" style="width:100%;margin-top:3px" placeholder="https://suno.com/…">
+            </div>
+          </div>
+          <div style="margin-bottom:16px">
+            <label style="font-size:11px;color:var(--muted)">LYRICS</label>
+            <textarea id="bmiAddLyrics" rows="4" style="width:100%;margin-top:3px;font-size:12px;font-family:monospace"></textarea>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn btn-blue" onclick="window.bmiAddSave()">💾 Save to catalog</button>
+            <button class="btn btn-ghost" onclick="window.bmiAddClose()">Cancel</button>
+            <span id="bmiAddMsg" style="font-size:12px;color:var(--ok)"></span>
+          </div>
+        </div>
       </div>
 
       <div class="radio-toolbar">
@@ -1047,7 +1156,7 @@
       </div>
 
       <div class="row" style="margin-top:14px">
-        <button class="btn btn-ghost" onclick="window.bmiAddNew()">+ Add song</button>
+        <button class="btn btn-blue" onclick="window.bmiAddNew()">+ Add song</button>
         <button class="btn btn-ghost" onclick="window.bmiExportCsv()">Export CSV (backup)</button>
       </div>
 
@@ -5341,15 +5450,158 @@
   };
 
   window.bmiAddNew = function () {
-    bmiData.songs.push({
-      id: 'bmi-' + Date.now(), unique: 'X', radio: 'N', writer: 'P', title: 'New Song',
-      artist: '', album: '', track: '', workNo: '', regDate: '', iswc: '', bmiNo: '',
-      regOrigin: '', songview: '', time: '', liveDate: '', releaseId: '', upc: '',
-      isrc: '', recon: 'x', regTitle: '', regArtists: []
+    // Populate artist dropdown from roster
+    const sel = $('bmiAddArtist');
+    sel.innerHTML = '<option value="">— select artist —</option>';
+    [...artists].sort((a,b) => a.name.localeCompare(b.name)).forEach(a => {
+      const o = document.createElement('option');
+      o.value = a.id; o.textContent = a.name; sel.appendChild(o);
     });
-    bmiMarkDirty();
-    window.bmiRender();
-    window.bmiEdOpen(bmiData.songs.length - 1);
+    // Reset all fields
+    ['bmiAddTitle','bmiAddTrack','bmiAddTime','bmiAddMp3','bmiAddWav',
+     'bmiAddWork','bmiAddRegDate','bmiAddIswc','bmiAddRegTitle','bmiAddRegArtists',
+     'bmiAddSuno','bmiAddSunoDate','bmiAddSunoLink','bmiAddLyrics'].forEach(id => {
+      const el = $(id); if(el) el.value = '';
+    });
+    $('bmiAddUniq').value = 'X';
+    $('bmiAddRadio').value = 'R';
+    $('bmiAddWriter').value = 'P';
+    $('bmiAddAlbumSel').innerHTML = '<option value="">— select album —</option><option value="__new__">+ New album...</option>';
+    $('bmiAddAlbumNew').style.display = 'none';
+    $('bmiAddMsg').textContent = '';
+    $('bmiAddModal').style.display = 'block';
+    $('bmiAddTitle').focus();
+  };
+
+  window.bmiAddClose = function() { $('bmiAddModal').style.display = 'none'; };
+
+  window.bmiAddFillAlbums = function() {
+    const artistId = $('bmiAddArtist').value;
+    const sel = $('bmiAddAlbumSel');
+    sel.innerHTML = '<option value="">— select album —</option>';
+    if (artistId && msCache) {
+      const albums = [...new Set(
+        msCache.filter(s => s.artistId === artistId && s.album)
+               .map(s => s.album)
+      )].sort();
+      albums.forEach(alb => {
+        const o = document.createElement('option');
+        o.value = alb; o.textContent = alb; sel.appendChild(o);
+      });
+    }
+    const newOpt = document.createElement('option');
+    newOpt.value = '__new__'; newOpt.textContent = '+ New album...';
+    sel.appendChild(newOpt);
+    $('bmiAddAlbumNew').style.display = 'none';
+    // Auto-fill registered artist from roster
+    const artist = artists.find(a => a.id === artistId);
+    if (artist && !$('bmiAddRegArtists').value) {
+      $('bmiAddRegArtists').value = artist.name;
+    }
+  };
+
+  window.bmiAddAlbumChange = function() {
+    const v = $('bmiAddAlbumSel').value;
+    $('bmiAddAlbumNew').style.display = v === '__new__' ? 'block' : 'none';
+    if (v === '__new__') $('bmiAddAlbumNew').focus();
+  };
+
+  window.bmiAddSave = async function() {
+    const msg = $('bmiAddMsg');
+    const title = $('bmiAddTitle').value.trim();
+    const artistId = $('bmiAddArtist').value;
+    const artist = artists.find(a => a.id === artistId);
+    const albumSel = $('bmiAddAlbumSel').value;
+    const album = albumSel === '__new__' ? $('bmiAddAlbumNew').value.trim() : albumSel;
+    const track = $('bmiAddTrack').value.trim();
+    const mp3 = $('bmiAddMp3').value.trim();
+
+    if (!title) { msg.textContent = '✗ Song title required'; msg.style.color='var(--err)'; return; }
+    if (!artistId) { msg.textContent = '✗ Artist required'; msg.style.color='var(--err)'; return; }
+
+    msg.textContent = 'Saving...'; msg.style.color='var(--muted)';
+
+    try {
+      // Build ID
+      const newId = (artistId + '-' + title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')).substring(0,80);
+
+      // Build master entry
+      const newSong = {
+        id: newId,
+        artistId: artistId,
+        artist: artist ? artist.name : artistId,
+        title: title,
+        album: album || '',
+        trackNumber: track ? parseInt(track,10) : null,
+        albumOrder: track ? parseInt(track,10) : null,
+        genre: artist ? artist.genre||'' : '',
+        releaseType: 'single',
+        releaseDate: '',
+        coverImage: '',
+        albumCover: '',
+        audioFile: mp3 || '',
+        audio: mp3 || '',
+        audioSrc: mp3 || '',
+        wavUrl: $('bmiAddWav').value.trim(),
+        youtubeUrl: '',
+        featured: false,
+        explicit: false,
+        includeOnRadio: ['R','I'].includes($('bmiAddRadio').value.toUpperCase()),
+        includeOnHomepage: false,
+        isLatest: false,
+        unique: $('bmiAddUniq').value.toUpperCase(),
+        radio: $('bmiAddRadio').value.toUpperCase(),
+        writer: $('bmiAddWriter').value.toUpperCase(),
+        trackTime: $('bmiAddTime').value.trim(),
+        workNo: $('bmiAddWork').value.trim(),
+        regDate: $('bmiAddRegDate').value.trim(),
+        iswc: $('bmiAddIswc').value.trim(),
+        regTitle: $('bmiAddRegTitle').value.trim(),
+        regArtists: $('bmiAddRegArtists').value.split(',').map(x=>x.trim()).filter(Boolean),
+        songview: '',
+        sunoPrompt: $('bmiAddSuno').value.trim(),
+        sunoDate: $('bmiAddSunoDate').value.trim(),
+        sunoLink: $('bmiAddSunoLink').value.trim(),
+        lyrics: $('bmiAddLyrics').value,
+        tags: [], videos: [], streaming: {}
+      };
+
+      // Save to master-songs.json
+      const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
+      const masterSongs = JSON.parse(b64decode(sf.content));
+      masterSongs.push(newSong);
+      await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {
+        method:'PUT',
+        body:{message:'HTR Studio: add song '+title+' ('+artist.name+')', content:b64encode(JSON.stringify(masterSongs,null,2)), sha:sf.sha}
+      });
+
+      // Also write to artist repo songs.json if mp3 exists
+      if (mp3 && artist && artist.githubRepo) {
+        const repoName = artist.githubRepo.replace('SteveP999/','');
+        try {
+          const asf = await gh('/repos/SteveP999/'+repoName+'/contents/songs.json');
+          const asSongs = JSON.parse(b64decode(asf.content));
+          asSongs.push({
+            id: newId, num: track ? track.padStart(2,'0') : '01',
+            title, artist: artist.name, album: album||'', trackNumber: track?parseInt(track,10):99,
+            albumOrder: track?parseInt(track,10):99,
+            albumCover: '', type:'single', isLatest:false, cover:'',
+            audio:mp3, audioSrc:mp3, videos:[], includeOnRadio:newSong.includeOnRadio,
+            includeOnHomepage:false, explicit:false, tags:[], streaming:{}
+          });
+          await gh('/repos/SteveP999/'+repoName+'/contents/songs.json', {
+            method:'PUT',
+            body:{message:'HTR Studio: add song '+title, content:b64encode(JSON.stringify(asSongs,null,2)), sha:asf.sha}
+          });
+        } catch(e2) { /* artist repo update failed — master is saved */ }
+      }
+
+      msCache = null;
+      msg.textContent = '✓ Saved!'; msg.style.color='var(--ok)';
+      setTimeout(() => { window.bmiAddClose(); window.loadBmi(true); }, 1200);
+    } catch(e) {
+      msg.textContent = '✗ '+e.message; msg.style.color='var(--err)';
+    }
   };
 
   window.bmiSaveAll = async function () {
