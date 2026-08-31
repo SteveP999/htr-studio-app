@@ -949,7 +949,6 @@
             <th style="cursor:pointer" onclick="window.bmiSortBy('workNo')">Work #<span class="ca" data-k="workNo"></span></th>
             <th style="cursor:pointer" onclick="window.bmiSortBy('regDate')">Reg Date<span class="ca" data-k="regDate"></span></th>
             <th style="cursor:pointer" onclick="window.bmiSortBy('iswc')">ISWC<span class="ca" data-k="iswc"></span></th>
-            <th style="cursor:pointer" onclick="window.bmiSortBy('bmiNo')">BMI #<span class="ca" data-k="bmiNo"></span></th>
             <th style="cursor:pointer" onclick="window.bmiSortBy('songview')">Songview<span class="ca" data-k="songview"></span></th>
             <th style="cursor:pointer" onclick="window.bmiSortBy('time')">Time<span class="ca" data-k="time"></span></th>
             <th style="cursor:pointer" onclick="window.bmiSortBy('liveDate')">Live<span class="ca" data-k="liveDate"></span></th>
@@ -996,7 +995,6 @@
 
         <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:6px">BMI Registration</div>
         <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:14px">
-          <div><label>BMI submission date</label><input id="bmiEdSubmit" placeholder="MM/DD/YYYY"></div>
           <div><label>BMI Work #</label><input id="bmiEdWork"></div>
           <div><label>Reg date (accepted)</label><input id="bmiEdRegDate"></div>
           <div><label>ISWC</label><input id="bmiEdIswc"></div>
@@ -1639,10 +1637,6 @@
           </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
-          <div>
-            <label style="font-size:11px;color:var(--muted)">BMI SUBMISSION DATE</label>
-            <input id="ssubmit-${s.id}" value="${s.bmiSubmitDate||''}" placeholder="MM/DD/YYYY" style="width:100%;margin-top:3px;font-size:11px">
-          </div>
           <div>
             <label style="font-size:11px;color:var(--muted)">BMI WORK #</label>
             <input id="swork-${s.id}" value="${s.workNo||s.bmi?.workNo||''}" style="width:100%;margin-top:3px;font-size:11px"
@@ -5251,7 +5245,7 @@
         '<td>' + bmiEsc(s.unique) + '</td><td>' + bmiEsc(s.radio) + '</td><td>' + bmiEsc(s.writer) + '</td>' +
         '<td class="alb">' + bmiEsc(s.album) + '</td><td>' + bmiEsc(s.track) + '</td>' +
         '<td>' + bmiEsc(s.workNo) + '</td><td>' + bmiEsc(s.regDate) + '</td>' +
-        '<td>' + iswcCell + '</td><td' + mism + '>' + bmiEsc(s.bmiNo) + '</td>' +
+        '<td>' + iswcCell + '</td>' +
         '<td>' + (s.songview ? '<span class="pill ' + svCls + '">' + bmiEsc(s.songview) + '</span>' : '') + '</td>' +
         '<td>' + bmiEsc(s.time) + '</td><td>' + bmiEsc(s.liveDate) + '</td><td>' + bmiEsc(s.isrc) + '</td>' +
         '<td>' + bmiEsc(s.regTitle) + '</td><td>' + bmiEsc((s.regArtists || []).join(', ')) + '</td>' +
