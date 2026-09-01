@@ -2050,58 +2050,44 @@
 
   window.artDeleteSong = async function (artistId, songId, songTitle) {
     if (!confirm('Delete "' + songTitle + '"?\n\nThis cannot be undone.')) return;
+    const btn = document.querySelector('[onclick*="'+songId+'"]');
+    if (btn) { btn.textContent = 'Deleting...'; btn.disabled = true; }
     try {
-      let deletedFromMaster = false;
-
-      // 1. Remove from master-songs.json if present
-      try {
-        const msFile = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
-        const msData = JSON.parse(b64decode(msFile.content));
-        const msFiltered = msData.filter(s => s.id !== songId);
-        if (msFiltered.length < msData.length) {
-          await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', 'PUT', {
-            message: 'HTR Studio: delete song ' + songId,
-            content: b64encode(JSON.stringify(msFiltered, null, 2)),
-            sha: msFile.sha
-          });
-          deletedFromMaster = true;
-        }
-      } catch(e1) { /* master-songs may not have it */ }
-
-      // 2. Remove from artist repo songs.json (githubRepo or repo field)
       const artist = artists.find(x => x.id === artistId);
       const repoFull = (artist && (artist.githubRepo || artist.repo)) || null;
+
+      // 1. Remove from master-songs.json
+      const msFile = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      const msData = JSON.parse(b64decode(msFile.content));
+      const msFiltered = msData.filter(s => s.id !== songId);
+      if (msFiltered.length < msData.length) {
+        await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', {
+          method: 'PUT',
+          body: { message: 'HTR Studio: delete ' + songId, content: b64encode(JSON.stringify(msFiltered, null, 2)), sha: msFile.sha }
+        });
+      }
+
+      // 2. Remove from artist repo songs.json
       if (repoFull) {
         const repoName = repoFull.replace('SteveP999/', '');
         const sFile = await gh('/repos/SteveP999/' + repoName + '/contents/songs.json');
         const sData = JSON.parse(b64decode(sFile.content));
         const sFiltered = sData.filter(s => s.id !== songId);
         if (sFiltered.length < sData.length) {
-          await gh('/repos/SteveP999/' + repoName + '/contents/songs.json', 'PUT', {
-            message: 'HTR Studio: delete song ' + songId,
-            content: b64encode(JSON.stringify(sFiltered, null, 2)),
-            sha: sFile.sha
+          await gh('/repos/SteveP999/' + repoName + '/contents/songs.json', {
+            method: 'PUT',
+            body: { message: 'HTR Studio: delete ' + songId, content: b64encode(JSON.stringify(sFiltered, null, 2)), sha: sFile.sha }
           });
-          toast('"' + songTitle + '" deleted successfully.');
-        } else if (!deletedFromMaster) {
-          toast('Song not found in either data source.', true);
-          return;
-        } else {
-          toast('"' + songTitle + '" removed from master data.');
         }
-      } else if (deletedFromMaster) {
-        toast('"' + songTitle + '" removed from master data.');
-      } else {
-        toast('Could not find artist repo — song not deleted.', true);
-        return;
       }
 
-      // 3. Refresh
+      toast('"' + songTitle + '" deleted.');
       msCache = null;
       const a = artists.find(x => x.id === artistId);
-      if (a) setTimeout(() => renderMusic(a), 1500);
+      if (a) setTimeout(() => renderMusic(a), 800);
     } catch (e) {
       toast('Delete failed: ' + e.message, true);
+      if (btn) { btn.textContent = '✕ Delete'; btn.disabled = false; }
     }
   };
   window.artAddSong = function () {
