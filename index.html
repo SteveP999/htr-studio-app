@@ -5384,7 +5384,6 @@
     $('bmiEdMp3').value = s.mp3Url || s.audioFile || '';
     $('bmiEdWav').value = s.wavUrl || '';
     $('bmiEdNeedsWav').checked = !!s.needsWav;
-    $('bmiEdSubmit').value = s.bmiSubmitDate || '';
     $('bmiEdSpotify').value = (s.streaming||{}).spotify || '';
     $('bmiEdApple').value = (s.streaming||{}).apple || '';
     $('bmiEdYtMusic').value = (s.streaming||{}).youtubeMusic || '';
@@ -5420,7 +5419,6 @@
     s.mp3Url       = $('bmiEdMp3').value.trim();
     s.wavUrl       = $('bmiEdWav').value.trim();
     s.needsWav     = $('bmiEdNeedsWav').checked;
-    s.bmiSubmitDate= $('bmiEdSubmit').value.trim();
     s.streaming    = { spotify: $('bmiEdSpotify').value.trim(), apple: $('bmiEdApple').value.trim(), youtubeMusic: $('bmiEdYtMusic').value.trim() };
     s.youtubeUrl   = $('bmiEdYt').value.trim();
     s.tiktokUrl    = $('bmiEdTiktok').value.trim();
