@@ -1801,7 +1801,11 @@
   window.fixDropbox = function(input) {
     let v = input.value.trim();
     if (!v || !v.includes('dropbox.com')) return;
-    v = v.replace(/[?&]dl=0/g, '').replace(/[?&]raw=1/g, '');
+    // Strip all existing dl= and raw= parameters
+    v = v.replace(/[?&](dl|raw)=[^&]*/g, '');
+    // Clean up trailing ? or &
+    v = v.replace(/[?&]+$/, '');
+    // Add raw=1
     v = v + (v.includes('?') ? '&' : '?') + 'raw=1';
     input.value = v;
   };
