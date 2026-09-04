@@ -1845,6 +1845,8 @@
       msCache = null;
       toast('Order saved');
       if (btn) { btn.textContent = '💾 Save Order'; btn.disabled = false; btn.style.display = 'none'; }
+      const aObj = artists.find(x => x.id === artistId);
+      if (aObj && aObj.githubRepo) syncIndexHtml(aObj.githubRepo.replace('SteveP999/',''));
     } catch(e) {
       toast('Save order failed: '+e.message, true);
       if (btn) { btn.textContent = '💾 Save Order'; btn.disabled = false; }
@@ -2041,12 +2043,47 @@
 
       msCache = null;
       if (msg) { msg.textContent = '✓ Saved'; setTimeout(()=>{ if(msg) msg.textContent=''; },3000); }
+      // Sync index.html so the live site reflects the change immediately
       const a = artists.find(x => x.id === artistId);
+      if (a && a.githubRepo) syncIndexHtml(a.githubRepo.replace('SteveP999/',''));
       if (a) setTimeout(()=>renderMusic(a), 800);
     } catch(e) {
       if (msg) msg.textContent = '✗ ' + e.message;
     }
   };
+
+  // Syncs the songs array in index.html from songs.json — called after every song save
+  async function syncIndexHtml(repoName) {
+    try {
+      const [sf, hf] = await Promise.all([
+        gh('/repos/SteveP999/'+repoName+'/contents/songs.json'),
+        gh('/repos/SteveP999/'+repoName+'/contents/index.html'),
+      ]);
+      const songs = JSON.parse(b64decode(sf.content));
+      const htmlRaw = b64decode(hf.content);
+      // Find and replace the songs array in the artist-data script tag
+      const tagMatch = htmlRaw.match(/<script\s+id="artist-data"\s+type="application\/json">([\s\S]*?)<\/script>/);
+      if (!tagMatch) return; // site doesn't use this pattern
+      let data;
+      try { data = JSON.parse(tagMatch[1]); }
+      catch(e) {
+        // Fix common corruption and retry
+        try { data = JSON.parse(tagMatch[1].replace(/\]\]/g,']')); }
+        catch(e2) { return; } // can't parse, skip
+      }
+      data.songs = songs;
+      const newTag = '<script id="artist-data" type="application/json">'+JSON.stringify(data)+'</script>';
+      const newHtml = htmlRaw.replace(tagMatch[0], newTag);
+      if (newHtml === htmlRaw) return; // nothing changed
+      await gh('/repos/SteveP999/'+repoName+'/contents/index.html', {
+        method:'PUT',
+        body:{message:'HTR Studio: sync songs to index.html', content:b64encode(newHtml), sha:hf.sha}
+      });
+    } catch(e) {
+      // Silent — index.html sync is best-effort, songs.json is already saved
+      console.warn('syncIndexHtml failed for '+repoName+':', e.message);
+    }
+  }
 
   window.artDeleteSong = async function (artistId, songId, songTitle) {
     if (!confirm('Delete "' + songTitle + '"?\n\nThis cannot be undone.')) return;
@@ -2084,6 +2121,7 @@
       toast('"' + songTitle + '" deleted.');
       msCache = null;
       const a = artists.find(x => x.id === artistId);
+      if (a && a.githubRepo) syncIndexHtml(a.githubRepo.replace('SteveP999/',''));
       if (a) setTimeout(() => renderMusic(a), 800);
     } catch (e) {
       toast('Delete failed: ' + e.message, true);
