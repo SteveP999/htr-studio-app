@@ -5683,17 +5683,23 @@
       });
 
       // Also write to artist repo songs.json if mp3 exists
-      if (mp3 && artist && artist.githubRepo) {
+      if (artist && artist.githubRepo) {
         const repoName = artist.githubRepo.replace('SteveP999/','');
         try {
           const asf = await gh('/repos/SteveP999/'+repoName+'/contents/songs.json');
           const asSongs = JSON.parse(b64decode(asf.content));
+          // Use relative paths for cover images in songs.json
+          const relCover = coverImageUrl ? 'images/covers/'+newId+'-cover.'+(window._bmiAddCoverFile?.name.split('.').pop()||'png') : '';
+          const relAlbum = albumCoverUrl ? 'images/covers/'+artistId+'-'+(album||'album').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-ALBUM-cover.'+(window._bmiAddAlbumFile?.name.split('.').pop()||'png') : '';
           asSongs.push({
             id: newId, num: track ? track.padStart(2,'0') : '01',
-            title, artist: artist.name, album: album||'', trackNumber: track?parseInt(track,10):99,
+            title, artist: artist.name, album: album||'',
+            trackNumber: track?parseInt(track,10):99,
             albumOrder: track?parseInt(track,10):99,
-            albumCover: '', type:'single', isLatest:false, cover:'',
-            audio:mp3, audioSrc:mp3, videos:[], includeOnRadio:newSong.includeOnRadio,
+            albumCover: relAlbum, type:'single', isLatest:false,
+            cover: relCover,
+            audio:mp3, audioSrc:mp3, videos:[],
+            includeOnRadio:newSong.includeOnRadio,
             includeOnHomepage:false, explicit:false, tags:[], streaming:{}
           });
           await gh('/repos/SteveP999/'+repoName+'/contents/songs.json', {
@@ -5704,8 +5710,13 @@
       }
 
       msCache = null;
-      msg.textContent = '✓ Saved!'; msg.style.color='var(--ok)';
-      setTimeout(() => { window.bmiAddClose(); window.loadBmi(true); }, 1200);
+      // Sync index.html so live site updates immediately
+      if (artist && artist.githubRepo) {
+        const repoName = artist.githubRepo.replace('SteveP999/','');
+        syncIndexHtml(repoName);
+      }
+      msg.textContent = '✓ Saved! Site will update in ~1 minute.'; msg.style.color='var(--ok)';
+      setTimeout(() => { window.bmiAddClose(); window.loadBmi(true); }, 2000);
     } catch(e) {
       msg.textContent = '✗ '+e.message; msg.style.color='var(--err)';
     }
