@@ -148,11 +148,10 @@
   </header>
   <nav>
     <button id="grp-artists" class="active" onclick="window.showGroup('artists')">Artists</button>
-    <button id="grp-media" onclick="window.showGroup('media')">Songs &amp; Media</button>
-    <button id="grp-radio" onclick="window.showGroup('radio')">Radio</button>
     <button id="grp-publishing" onclick="window.showGroup('publishing')">Publishing</button>
+    <button id="grp-videos" onclick="window.showGroup('videos')">Videos</button>
+    <button id="grp-radio" onclick="window.showGroup('radio')">Radio</button>
     <button id="grp-admin" onclick="window.showGroup('admin')">Admin</button>
-    <button id="grp-tools" onclick="window.showGroup('tools')">Local Tools</button>
   </nav>
   <nav id="subnav" style="border-top:none;padding-top:0"></nav>
   <main>
@@ -1350,12 +1349,11 @@
 
   // ---------- tabs (grouped nav) ----------
   const NAV_GROUPS = {
-    artists: [['artists', 'Roster'], ['newartist', 'New Artist'], ['addsong', 'Add Song'], ['extras', 'Song Extras & Reorder'], ['editartist', 'Edit Artist']],
-    media: [['lyrics', 'Song Workshop'], ['video', 'Music Video'], ['polls', 'Song Polls']],
-    radio: [['radio', 'Stations'], ['top20', 'Top 20']],
-    publishing: [['bmicat', 'BMI Catalog']],
-    admin: [['dashboard', 'Dashboard & Runs']],
-    tools: [['tools', 'Video & Mastering']]
+    artists:    [['artists', 'Roster'], ['newartist', 'New Artist'], ['editartist', 'Edit Artist']],
+    publishing: [['bmicat', 'Song Catalog']],
+    videos:     [['lyrics', 'Lyric Timestamps'], ['video', 'Music Video'], ['polls', 'Song Polls']],
+    radio:      [['radio', 'Stations'], ['top20', 'Top 20']],
+    admin:      [['dashboard', 'Dashboard & Runs']],
   };
   const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'editartist', 'radio', 'top20', 'lyrics', 'video', 'polls', 'bmicat', 'tools'];
   let curGroup = 'artists';
