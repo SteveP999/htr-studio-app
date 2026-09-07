@@ -1554,10 +1554,9 @@
     const box = $('edMusic');
     box.innerHTML = '<div class="sub">Loading music…</div>';
     try {
-      if (!msCache) {
-        const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
-        msCache = JSON.parse(b64decode(sf.content));
-      }
+      // Always reload fresh from GitHub — never use stale cache when switching artists
+      const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      msCache = JSON.parse(b64decode(sf.content));
       const mine = msCache.filter(s => s.artistId === a.id)
         .sort((x,y) => (x.albumOrder||x.trackNumber||99) - (y.albumOrder||y.trackNumber||99));
       const albums = {};
