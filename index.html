@@ -963,6 +963,32 @@
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
             <div>
+              <label style="font-size:11px;color:var(--muted)">SONG COVER ART</label>
+              <div style="margin-top:4px;border:2px dashed #444;border-radius:6px;padding:8px;text-align:center;cursor:pointer;background:#1a150e"
+                ondragover="event.preventDefault();this.style.borderColor='var(--warn)'"
+                ondragleave="this.style.borderColor='#444'"
+                ondrop="event.preventDefault();this.style.borderColor='#444';window.bmiAddPreviewCover(event.dataTransfer.files[0],'song')"
+                onclick="$('bmiAddCoverFile').click()">
+                <img id="bmiAddCoverThumb" style="max-width:100%;max-height:80px;display:none;margin:0 auto 4px">
+                <div style="font-size:11px;color:var(--muted)">Drop or click</div>
+                <input id="bmiAddCoverFile" type="file" accept="image/png,image/jpeg" style="display:none" onchange="window.bmiAddPreviewCover(this.files[0],'song')">
+              </div>
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted)">ALBUM COVER ART</label>
+              <div style="margin-top:4px;border:2px dashed #444;border-radius:6px;padding:8px;text-align:center;cursor:pointer;background:#1a150e"
+                ondragover="event.preventDefault();this.style.borderColor='var(--warn)'"
+                ondragleave="this.style.borderColor='#444'"
+                ondrop="event.preventDefault();this.style.borderColor='#444';window.bmiAddPreviewCover(event.dataTransfer.files[0],'album')"
+                onclick="$('bmiAddAlbumFile').click()">
+                <img id="bmiAddAlbumThumb" style="max-width:100%;max-height:80px;display:none;margin:0 auto 4px">
+                <div style="font-size:11px;color:var(--muted)">Drop or click</div>
+                <input id="bmiAddAlbumFile" type="file" accept="image/png,image/jpeg" style="display:none" onchange="window.bmiAddPreviewCover(this.files[0],'album')">
+              </div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
               <label style="font-size:11px;color:var(--muted)">DROPBOX MP3 LINK</label>
               <input id="bmiAddMp3" style="width:100%;margin-top:3px" placeholder="paste Dropbox link" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)">
             </div>
@@ -5496,11 +5522,38 @@
     $('bmiAddAlbumSel').innerHTML = '<option value="">— select album —</option><option value="__new__">+ New album...</option>';
     $('bmiAddAlbumNew').style.display = 'none';
     $('bmiAddMsg').textContent = '';
+    // Reset cover art previews
+    ['bmiAddCoverThumb','bmiAddAlbumThumb'].forEach(id => {
+      const el = $(id); if(el) { el.src=''; el.style.display='none'; }
+    });
+    window._bmiAddCoverFile = null;
+    window._bmiAddAlbumFile = null;
     $('bmiAddModal').style.display = 'block';
     $('bmiAddTitle').focus();
   };
 
   window.bmiAddClose = function() { $('bmiAddModal').style.display = 'none'; };
+
+  window.bmiAddPreviewCover = function(file, type) {
+    if (!file) return;
+    if (type === 'song') { window._bmiAddCoverFile = file; }
+    else { window._bmiAddAlbumFile = file; }
+    const thumbId = type === 'song' ? 'bmiAddCoverThumb' : 'bmiAddAlbumThumb';
+    const reader = new FileReader();
+    reader.onload = e => { const t = $(thumbId); t.src = e.target.result; t.style.display = 'block'; };
+    reader.readAsDataURL(file);
+  };
+
+  async function bmiUploadImage(file, repoName, filename) {
+    const b64 = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+    const path = 'images/covers/' + filename;
+    let sha = null;
+    try { const ex = await gh('/repos/SteveP999/'+repoName+'/contents/'+path); sha = ex.sha; } catch(e) {}
+    const body = { message: 'HTR Studio: upload '+filename, content: b64 };
+    if (sha) body.sha = sha;
+    await gh('/repos/SteveP999/'+repoName+'/contents/'+path, { method: 'PUT', body });
+    return 'https://raw.githubusercontent.com/SteveP999/'+repoName+'/main/'+path;
+  }
 
   window.bmiAddFillAlbums = async function() {
     const artistId = $('bmiAddArtist').value;
@@ -5560,6 +5613,25 @@
         return;
       }
 
+      // Upload cover images if provided
+      let coverImageUrl = '';
+      let albumCoverUrl = '';
+      if (artist && artist.githubRepo) {
+        const repoName = artist.githubRepo.replace('SteveP999/','');
+        if (window._bmiAddCoverFile) {
+          msg.textContent = 'Uploading song art...'; msg.style.color='var(--muted)';
+          const ext = window._bmiAddCoverFile.name.split('.').pop().toLowerCase();
+          coverImageUrl = await bmiUploadImage(window._bmiAddCoverFile, repoName, newId+'-cover.'+ext);
+        }
+        if (window._bmiAddAlbumFile) {
+          msg.textContent = 'Uploading album art...'; msg.style.color='var(--muted)';
+          const albSlug = artistId+'-'+(album||'album').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-ALBUM-cover';
+          const ext = window._bmiAddAlbumFile.name.split('.').pop().toLowerCase();
+          albumCoverUrl = await bmiUploadImage(window._bmiAddAlbumFile, repoName, albSlug+'.'+ext);
+        }
+      }
+      msg.textContent = 'Saving to catalog...'; msg.style.color='var(--muted)';
+
       // Build master entry
       const newSong = {
         id: newId,
@@ -5572,8 +5644,8 @@
         genre: artist ? artist.genre||'' : '',
         releaseType: 'single',
         releaseDate: '',
-        coverImage: '',
-        albumCover: '',
+        coverImage: coverImageUrl,
+        albumCover: albumCoverUrl,
         audioFile: mp3 || '',
         audio: mp3 || '',
         audioSrc: mp3 || '',
