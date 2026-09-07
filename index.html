@@ -2074,7 +2074,7 @@
         catch(e2) { return; } // can't parse, skip
       }
       data.songs = songs;
-      const newTag = '<script id="artist-data" type="application/json">'+JSON.stringify(data)+'</script>';
+      const newTag = '<script id="artist-data" type="application/json">'+JSON.stringify(data)+'<\/script>';
       const newHtml = htmlRaw.replace(tagMatch[0], newTag);
       if (newHtml === htmlRaw) return; // nothing changed
       await gh('/repos/SteveP999/'+repoName+'/contents/index.html', {
