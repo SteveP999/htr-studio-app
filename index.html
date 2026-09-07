@@ -1536,6 +1536,8 @@
         .sort((x,y) => (x.albumOrder||x.trackNumber||99) - (y.albumOrder||y.trackNumber||99));
       const albums = {};
       mine.forEach(s => { const k = s.album||'Singles'; (albums[k]=albums[k]||[]).push(s); });
+      // All album names for this artist — used in song card dropdowns
+      const allAlbums = Object.keys(albums);
 
       box.innerHTML = '<label style="color:var(--warn)">— Music (' + mine.length + ' songs) —</label>'
         + '<div class="save-bar" style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">'
@@ -1603,7 +1605,8 @@
     const sp = (s.streaming||{}).spotify||'';
     const am = (s.streaming||{}).apple||'';
     const yt = (s.streaming||{}).youtubeMusic||'';
-    const albumOpts = allAlbums.map(al => '<option value="'+al+'"'+(al===s.album?' selected':'')+'>'+al+'</option>').join('') + '<option value="Singles"'+(s.album==='Singles'?' selected':'')+'>Singles</option>';
+    const albumOpts = allAlbums.map(al => '<option value="'+al+'"'+(al===s.album?' selected':'')+'>'+al+'</option>').join('')
+      + (allAlbums.includes('Singles') ? '' : '<option value="Singles"'+(s.album==='Singles'?' selected':'')+'>Singles</option>');
     const safeTitle = s.title.replace(/'/g,"\\'").replace(/"/g,'&quot;');
 
     const card = document.createElement('div');
@@ -5548,6 +5551,18 @@
     try {
       // Build ID
       const newId = (artistId + '-' + title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')).substring(0,80);
+
+      // Check for duplicate — same title + artist already exists
+      const sf0 = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
+      const existingMs = JSON.parse(b64decode(sf0.content));
+      const duplicate = existingMs.find(s => s.artistId === artistId &&
+        s.title.trim().toLowerCase() === title.toLowerCase() &&
+        s.id !== newId);
+      if (duplicate) {
+        msg.textContent = '✗ "'+title+'" already exists for this artist (id: '+duplicate.id+')';
+        msg.style.color='var(--err)';
+        return;
+      }
 
       // Build master entry
       const newSong = {
