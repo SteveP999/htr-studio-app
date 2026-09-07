@@ -2160,8 +2160,8 @@
     }
   };
   window.artAddSong = function () {
-    window.showTab('addsong');
-    if (selectedId) $('asArtist').value = selectedId;
+    window.showGroup('publishing');
+    setTimeout(() => window.bmiAddNew(), 100);
   };
 
   window.artRefreshMusic = function () {
