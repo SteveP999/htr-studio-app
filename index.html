@@ -1353,7 +1353,7 @@
     publishing: [['bmicat', 'Song Catalog']],
     videos:     [['lyrics', 'Lyric Timestamps'], ['video', 'Music Video'], ['polls', 'Song Polls']],
     radio:      [['radio', 'Stations'], ['top20', 'Top 20']],
-    admin:      [['dashboard', 'Dashboard & Runs']],
+    admin:      [['dashboard', 'Dashboard & Runs'], ['tools', 'Local Tools']],
   };
   const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'editartist', 'radio', 'top20', 'lyrics', 'video', 'polls', 'bmicat', 'tools'];
   let curGroup = 'artists';
@@ -5502,29 +5502,25 @@
 
   window.bmiAddClose = function() { $('bmiAddModal').style.display = 'none'; };
 
-  window.bmiAddFillAlbums = function() {
+  window.bmiAddFillAlbums = async function() {
     const artistId = $('bmiAddArtist').value;
     const sel = $('bmiAddAlbumSel');
+    sel.innerHTML = '<option value="">— loading albums —</option>';
+    if (!artistId) { sel.innerHTML = '<option value="">— select artist first —</option><option value="__new__">+ New album...</option>'; return; }
+    // Load msCache if not already loaded
+    if (!msCache) {
+      try {
+        const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
+        msCache = JSON.parse(b64decode(sf.content));
+      } catch(e) { sel.innerHTML = '<option value="">— could not load albums —</option><option value="__new__">+ New album...</option>'; return; }
+    }
+    const albums = [...new Set(msCache.filter(s => s.artistId === artistId && s.album).map(s => s.album))].sort();
     sel.innerHTML = '<option value="">— select album —</option>';
-    if (artistId && msCache) {
-      const albums = [...new Set(
-        msCache.filter(s => s.artistId === artistId && s.album)
-               .map(s => s.album)
-      )].sort();
-      albums.forEach(alb => {
-        const o = document.createElement('option');
-        o.value = alb; o.textContent = alb; sel.appendChild(o);
-      });
-    }
-    const newOpt = document.createElement('option');
-    newOpt.value = '__new__'; newOpt.textContent = '+ New album...';
-    sel.appendChild(newOpt);
+    albums.forEach(alb => { const o = document.createElement('option'); o.value = alb; o.textContent = alb; sel.appendChild(o); });
+    const newOpt = document.createElement('option'); newOpt.value = '__new__'; newOpt.textContent = '+ New album...'; sel.appendChild(newOpt);
     $('bmiAddAlbumNew').style.display = 'none';
-    // Auto-fill registered artist from roster
     const artist = artists.find(a => a.id === artistId);
-    if (artist && !$('bmiAddRegArtists').value) {
-      $('bmiAddRegArtists').value = artist.name;
-    }
+    if (artist && !$('bmiAddRegArtists').value) $('bmiAddRegArtists').value = artist.name;
   };
 
   window.bmiAddAlbumChange = function() {
