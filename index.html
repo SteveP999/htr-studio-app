@@ -1039,6 +1039,14 @@
             <label style="font-size:11px;color:var(--muted)">LYRICS</label>
             <textarea id="bmiAddLyrics" rows="4" style="width:100%;margin-top:3px;font-size:12px;font-family:monospace"></textarea>
           </div>
+          <div style="display:flex;gap:20px;margin-bottom:14px;font-size:13px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="bmiAddIsLatest" checked> Set as Latest Single
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="bmiAddNeedsWav"> Needs WAV conversion
+            </label>
+          </div>
           <div style="display:flex;gap:10px;align-items:center">
             <button class="btn btn-blue" onclick="window.bmiAddSave()">💾 Save to catalog</button>
             <button class="btn btn-ghost" onclick="window.bmiAddClose()">Cancel</button>
@@ -1727,6 +1735,9 @@
           </div>
           <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:6px;padding-bottom:3px">
             <label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" id="sislatest-${s.id}" ${s.isLatest?'checked':''}> Latest Single
+            </label>
+            <label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer">
               <input type="checkbox" id="shasrt-${s.id}" ${s.hasSrt?'checked':''}> Timestamps exist
             </label>
             <label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer">
@@ -2010,6 +2021,7 @@
       const wavUrl = $('swav-'+songId)?.value?.trim()||'';
       const hasSrt = $('shasrt-'+songId)?.checked||false;
       const needsWav = $('sneedswav-'+songId)?.checked||false;
+      const isLatest = $('sislatest-'+songId)?.checked||false;
       const suno   = $('ssuno-'+songId)?.value?.trim()||'';
       const sunoDate = $('ssunodate-'+songId)?.value?.trim()||'';
       const sunoLink = $('ssunolink-'+songId)?.value?.trim()||'';
@@ -2019,6 +2031,10 @@
       // Update master-songs.json
       const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
       const msData = JSON.parse(b64decode(sf.content));
+      // If setting as latest, clear isLatest from all other songs for this artist
+      if (isLatest) {
+        msData.forEach(s => { if (s.artistId === artistId && s.id !== songId) { s.isLatest = false; s.featured = false; s.includeOnHomepage = false; } });
+      }
       const idx = msData.findIndex(s => s.id === songId);
       if (idx === -1) throw new Error('Song not found in master');
       if (title)  msData[idx].title  = title;
@@ -2030,6 +2046,9 @@
       if (sunoDate)  msData[idx].sunoDate      = sunoDate;
       if (sunoLink)  msData[idx].sunoLink      = sunoLink;
       if (lyrics)    msData[idx].lyrics        = lyrics;
+      msData[idx].isLatest    = isLatest;
+      msData[idx].featured    = isLatest;
+      msData[idx].includeOnHomepage = isLatest;
       if (submit)    msData[idx].bmiSubmitDate = submit;
       if (wavUrl)    msData[idx].wavUrl        = wavUrl;
       if (tiktok)    msData[idx].tiktokUrl     = tiktok;
@@ -2059,11 +2078,15 @@
         try {
           const asf = await gh('/repos/SteveP999/'+repoName+'/contents/songs.json');
           const asData = JSON.parse(b64decode(asf.content));
+          // Clear isLatest from all songs if setting new latest
+          if (isLatest) { asData.forEach(s => { s.isLatest = false; s.includeOnHomepage = false; }); }
           const ai = asData.findIndex(s => s.id === songId);
           if (ai !== -1) {
             if (title)  asData[ai].title  = title;
             if (album)  asData[ai].album  = album;
             if (audio)  { asData[ai].audio = audio; asData[ai].audioSrc = audio; }
+            asData[ai].isLatest = isLatest;
+            asData[ai].includeOnHomepage = isLatest;
             asData[ai].streaming = {spotify:spot, apple:apple, youtubeMusic:ytm};
             asData[ai].videos = vidUrl ? [{youtube:vidUrl, title:'Official Video', order:1}] : [];
             await gh('/repos/SteveP999/'+repoName+'/contents/songs.json', {method:'PUT', body:{message:'HTR Studio: update '+songId, content:b64encode(JSON.stringify(asData,null,2)), sha:asf.sha}});
@@ -5518,6 +5541,8 @@
     $('bmiAddUniq').value = 'X';
     $('bmiAddRadio').value = 'R';
     $('bmiAddWriter').value = 'P';
+    if ($('bmiAddIsLatest')) $('bmiAddIsLatest').checked = true;
+    if ($('bmiAddNeedsWav')) $('bmiAddNeedsWav').checked = false;
     $('bmiAddAlbumSel').innerHTML = '<option value="">— select album —</option><option value="__new__">+ New album...</option>';
     $('bmiAddAlbumNew').style.display = 'none';
     $('bmiAddMsg').textContent = '';
@@ -5650,11 +5675,12 @@
         audioSrc: mp3 || '',
         wavUrl: $('bmiAddWav').value.trim(),
         youtubeUrl: '',
-        featured: false,
+        featured: $('bmiAddIsLatest')?.checked || false,
         explicit: false,
         includeOnRadio: ['R','I'].includes($('bmiAddRadio').value.toUpperCase()),
-        includeOnHomepage: false,
-        isLatest: false,
+        includeOnHomepage: $('bmiAddIsLatest')?.checked || false,
+        isLatest: $('bmiAddIsLatest')?.checked || false,
+        needsWav: $('bmiAddNeedsWav')?.checked || false,
         unique: $('bmiAddUniq').value.toUpperCase(),
         radio: $('bmiAddRadio').value.toUpperCase(),
         writer: $('bmiAddWriter').value.toUpperCase(),
@@ -5675,6 +5701,10 @@
       // Save to master-songs.json
       const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
       const masterSongs = JSON.parse(b64decode(sf.content));
+      // If setting as latest, clear isLatest from all other songs for this artist
+      if (newSong.isLatest) {
+        masterSongs.forEach(s => { if (s.artistId === artistId) { s.isLatest = false; s.featured = false; s.includeOnHomepage = false; } });
+      }
       masterSongs.push(newSong);
       await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {
         method:'PUT',
@@ -5687,6 +5717,8 @@
         try {
           const asf = await gh('/repos/SteveP999/'+repoName+'/contents/songs.json');
           const asSongs = JSON.parse(b64decode(asf.content));
+          // Clear isLatest from all songs if setting new one as latest
+          if (newSong.isLatest) { asSongs.forEach(s => { s.isLatest = false; s.includeOnHomepage = false; }); }
           // Use relative paths for cover images in songs.json
           const relCover = coverImageUrl ? 'images/covers/'+newId+'-cover.'+(window._bmiAddCoverFile?.name.split('.').pop()||'png') : '';
           const relAlbum = albumCoverUrl ? 'images/covers/'+artistId+'-'+(album||'album').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-ALBUM-cover.'+(window._bmiAddAlbumFile?.name.split('.').pop()||'png') : '';
@@ -5695,11 +5727,11 @@
             title, artist: artist.name, album: album||'',
             trackNumber: track?parseInt(track,10):99,
             albumOrder: track?parseInt(track,10):99,
-            albumCover: relAlbum, type:'single', isLatest:false,
+            albumCover: relAlbum, type:'single', isLatest: newSong.isLatest,
             cover: relCover,
             audio:mp3, audioSrc:mp3, videos:[],
             includeOnRadio:newSong.includeOnRadio,
-            includeOnHomepage:false, explicit:false, tags:[], streaming:{}
+            includeOnHomepage: newSong.isLatest, explicit:false, tags:[], streaming:{}
           });
           await gh('/repos/SteveP999/'+repoName+'/contents/songs.json', {
             method:'PUT',
