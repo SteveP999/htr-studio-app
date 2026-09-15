@@ -1565,8 +1565,8 @@
       // Always reload fresh from GitHub — never use stale cache when switching artists
       const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
       msCache = JSON.parse(b64decode(sf.content));
-      const SITE_REGS = ['R','V','A','L','C','D','I','X'];
-      const mine = msCache.filter(s => s.artistId === a.id && SITE_REGS.includes((s.unique||s.reg||'R').toUpperCase()))
+      const SITE_VISIBLE = s => (s.unique||s.reg||'REG').toUpperCase() !== 'RET';
+      const mine = msCache.filter(s => s.artistId === a.id && SITE_VISIBLE(s))
         .sort((x,y) => (x.albumOrder||x.trackNumber||99) - (y.albumOrder||y.trackNumber||99));
       const albums = {};
       mine.forEach(s => { const k = s.album||'Singles'; (albums[k]=albums[k]||[]).push(s); });
@@ -2109,7 +2109,7 @@
   // Syncs the songs array in index.html from songs.json — called after every song save
   async function syncIndexHtml(repoName) {
     try {
-      const SITE_REGS = ['R','V','A','L','C','D','I','X'];
+      const SITE_VISIBLE = s => (s.unique||s.reg||'REG').toUpperCase() !== 'RET';
       const RADIO_UNQS = ['X','V','A','D','I'];
       const [sf, hf] = await Promise.all([
         gh('/repos/SteveP999/'+repoName+'/contents/songs.json'),
@@ -2117,7 +2117,7 @@
       ]);
       // Filter to site-ready songs only before syncing
       const allSongs = JSON.parse(b64decode(sf.content));
-      const songs = allSongs.filter(s => SITE_REGS.includes((s.unique||s.reg||'R').toUpperCase()));
+      const songs = allSongs.filter(s => SITE_VISIBLE(s));
       // Set includeOnRadio based on UNQ column
       songs.forEach(s => {
         const unq = (s.radio||s.unq||'').toUpperCase();
