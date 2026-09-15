@@ -236,30 +236,9 @@
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
                 <b style="font-family:'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--warn)">Song Catalog</b>
                 <input id="catSearch" type="text" placeholder="Search…" style="font-size:12px;padding:3px 8px;width:160px" oninput="window.renderCatalog()">
-                <select id="catUniqF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()">
-                  <option value="">All types</option>
-                  <option value="X">X — Unique</option>
-                  <option value="V">V — Version</option>
-                  <option value="C">C — Copy</option>
-                  <option value="D">D — Development</option>
-                  <option value="R">R — Retired</option>
-                  <option value="N">N — Research</option>
-                </select>
-                <select id="catRadioF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()">
-                  <option value="">All radio</option>
-                  <option value="R">R — On radio</option>
-                  <option value="I">I — Instrumental</option>
-                  <option value="P">P — Profane</option>
-                  <option value="X">X — Off</option>
-                  <option value="D">D — Development</option>
-                </select>
-                <select id="catWriterF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()">
-                  <option value="">All writers</option>
-                  <option value="P">P — Peters</option>
-                  <option value="B">B — Bender</option>
-                  <option value="2">2 — Both</option>
-                  <option value="O">O — Instrumental</option>
-                </select>
+                <select id="catUniqF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()"><option value="">All types</option><option value="REG">REG - Registered</option><option value="VER">VER - Version</option><option value="COP">COP - Copy</option><option value="LIV">LIV - Live</option><option value="ACU">ACU - Acoustic</option><option value="RET">RET - Retired</option></select>
+                <select id="catRadioF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()"><option value="">All radio</option><option value="RAD">RAD - On Radio</option><option value="DEV">DEV - Developing</option><option value="INS">INS - Instrumental</option><option value="PRO">PRO - Profane</option><option value="FUT">FUT - Future</option></select>
+                <select id="catWriterF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()"><option value="">All writers</option><option value="P">P - Peters</option><option value="B">B - Bender</option><option value="2">2 - Both</option><option value="O">O - Peters other/uncounted</option></select>
                 <span id="catCount" style="font-size:11px;color:var(--muted)"></span>
               </div>
               <div style="overflow-x:auto;max-height:340px;overflow-y:auto">
@@ -950,15 +929,15 @@
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
             <div>
               <label style="font-size:11px;color:var(--muted)">UNIQUE (X/V/C/R/D/N)</label>
-              <input id="bmiAddUniq" value="X" style="width:100%;margin-top:3px" onblur="this.value=this.value.toUpperCase()">
+              <select id="bmiAddUniq"><option value="REG" selected>REG - Registered</option><option value="VER">VER - Version</option><option value="COP">COP - Copy</option><option value="LIV">LIV - Live</option><option value="ACU">ACU - Acoustic</option><option value="RET">RET - Retired</option></select>
             </div>
             <div>
               <label style="font-size:11px;color:var(--muted)">RADIO (R/I/P/X/D/N)</label>
-              <input id="bmiAddRadio" value="R" style="width:100%;margin-top:3px" onblur="this.value=this.value.toUpperCase()">
+              <select id="bmiAddRadio"><option value="RAD" selected>RAD - On Radio</option><option value="DEV">DEV - Developing</option><option value="INS">INS - Instrumental</option><option value="PRO">PRO - Profane</option><option value="FUT">FUT - Future</option></select>
             </div>
             <div>
               <label style="font-size:11px;color:var(--muted)">WRITER (P/B/2/O)</label>
-              <input id="bmiAddWriter" value="P" style="width:100%;margin-top:3px" onblur="this.value=this.value.toUpperCase()">
+              <select id="bmiAddWriter"><option value="P" selected>P - Peters</option><option value="B">B - Bender</option><option value="2">2 - Both</option><option value="O">O - Peters other/uncounted</option></select>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
@@ -1118,9 +1097,9 @@
           <div><label>Band / Artist</label><input id="bmiEdArtist"></div>
           <div><label>Album</label><input id="bmiEdAlbum"></div>
           <div><label>Track #</label><input id="bmiEdTrack"></div>
-          <div><label>Unique (X/V/C/R/D/N)</label><input id="bmiEdUnq" onblur="this.value=this.value.toUpperCase()"></div>
-          <div><label>Radio (R/I/P/X/D/N)</label><input id="bmiEdRadio" onblur="this.value=this.value.toUpperCase()"></div>
-          <div><label>Writer (P/B/2/O)</label><input id="bmiEdWriter" onblur="this.value=this.value.toUpperCase()"></div>
+          <div><label>Unique (X/V/C/R/D/N)</label><select id="bmiEdUnq"><option value="REG">REG - Registered</option><option value="VER">VER - Version</option><option value="COP">COP - Copy</option><option value="LIV">LIV - Live</option><option value="ACU">ACU - Acoustic</option><option value="RET">RET - Retired</option></select></div>
+          <div><label>Radio (R/I/P/X/D/N)</label><select id="bmiEdRadio"><option value="RAD">RAD - On Radio</option><option value="DEV">DEV - Developing</option><option value="INS">INS - Instrumental</option><option value="PRO">PRO - Profane</option><option value="FUT">FUT - Future</option></select></div>
+          <div><label>Writer (P/B/2/O)</label><select id="bmiEdWriter"><option value="">-</option><option value="P">P - Peters</option><option value="B">B - Bender</option><option value="2">2 - Both</option><option value="O">O - Peters other/uncounted</option></select></div>
           <div><label>Track time</label><input id="bmiEdTime" placeholder="3:42"></div>
         </div>
 
@@ -1275,6 +1254,10 @@
 <div id="toast"></div>
 
 <script>
+function regOptsHTML(val){var v=String(val||'REG').toUpperCase();var o=[['REG','Registered'],['VER','Version'],['COP','Copy'],['LIV','Live'],['ACU','Acoustic'],['RET','Retired']];return o.map(function(p){return '<option value="'+p[0]+'"'+(p[0]===v?' selected':'')+'>'+p[0]+' - '+p[1]+'</option>';}).join('');}
+function radOptsHTML(val){var v=String(val||'DEV').toUpperCase();var o=[['RAD','On Radio'],['DEV','Developing'],['INS','Instrumental'],['PRO','Profane'],['FUT','Future']];return o.map(function(p){return '<option value="'+p[0]+'"'+(p[0]===v?' selected':'')+'>'+p[0]+' - '+p[1]+'</option>';}).join('');}
+function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['B','Bender'],['2','Both'],['O','Peters other/uncounted']];return o.map(function(p){return '<option value="'+p[0]+'"'+(p[0]===v?' selected':'')+'>'+(p[0]||'-')+(p[1]?(' - '+p[1]):'')+'</option>';}).join('');}
+
 (function () {
   'use strict';
 
@@ -1768,15 +1751,15 @@
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
           <div>
             <label style="font-size:11px;color:var(--muted)">UNIQUE (X/V/C/R/D/N)</label>
-            <input id="suniq-${s.id}" value="${s.unique||s.bmi?.unique||''}" style="width:100%;margin-top:3px;font-size:11px" onblur="this.value=this.value.toUpperCase()">
+            <select id="suniq-${s.id}" style="width:100%;margin-top:3px;font-size:11px">${regOptsHTML(s.unique||s.bmi?.unique||'')}</select>
           </div>
           <div>
             <label style="font-size:11px;color:var(--muted)">RADIO (R/I/P/X/D/N)</label>
-            <input id="sradio-${s.id}" value="${s.radio||s.bmi?.radio||''}" style="width:100%;margin-top:3px;font-size:11px" onblur="this.value=this.value.toUpperCase()">
+            <select id="sradio-${s.id}" style="width:100%;margin-top:3px;font-size:11px">${radOptsHTML(s.radio||s.bmi?.radio||'')}</select>
           </div>
           <div>
             <label style="font-size:11px;color:var(--muted)">WRITER (P/B/2/O)</label>
-            <input id="swriter-${s.id}" value="${s.writer||s.bmi?.writer||''}" style="width:100%;margin-top:3px;font-size:11px" onblur="this.value=this.value.toUpperCase()">
+            <select id="swriter-${s.id}" style="width:100%;margin-top:3px;font-size:11px">${wrOptsHTML(s.writer||s.bmi?.writer||'')}</select>
           </div>
           <div>
             <label style="font-size:11px;color:var(--muted)">TRACK TIME</label>
