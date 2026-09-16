@@ -1599,7 +1599,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
           + 'onblur="window.artRenameAlbum(this.value,\''+alb+'\',\''+a.id+'\')" onkeydown="if(event.key===\'Enter\')this.blur()">'
           + '</div>'
           + '<span class="sub">'+songs.length+' track'+(songs.length!==1?'s':'')+'</span>'
-          + ('<button onclick="window.artDeleteAlbum(\''+alb+'\',\''+a.id+'\','+songs.length+')" style="margin-left:8px;padding:2px 8px;background:#5a1010;color:#ffaaaa;border:1px solid #8b2020;font-size:11px;cursor:pointer">✕ Delete album'+(songs.length>0?(' ('+songs.length+' songs)'):' (empty)')+'</button>');
+          + ('<button onclick="window.artDeleteAlbum(\''+alb+'\',\''+a.id+'\','+songs.length+')" style="margin-left:8px;padding:2px 8px;background:#5a1010;color:#ffaaaa;border:1px solid #8b2020;font-size:11px;cursor:pointer">✕ '+(songs.length>0?'Retire album':'Delete album')+(songs.length>0?(' ('+songs.length+' songs)'):' (empty)')+'</button>');
         box.appendChild(head);
 
         // Draggable song list
@@ -1928,8 +1928,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.artDeleteAlbum = async function(albumName, artistId, songCount) {
   songCount = songCount || 0;
   if (songCount > 0) {
-    const typed = prompt('This will permanently delete "' + albumName + '" and all ' + songCount + ' song(s) in it from master data. This cannot be undone.\n\nType the album name exactly to confirm:');
-    if (typed !== albumName) { if (typed !== null) toast('Album name did not match \u2014 nothing deleted', true); return; }
+    if (!confirm('This album has ' + songCount + ' song(s). To protect BMI-registered songs, HTR Studio never deletes songs from Publishing automatically.\n\nThis will instead mark all ' + songCount + ' song(s) in "' + albumName + '" as Retired (hidden from the live site, but kept in Publishing/master data).\n\nContinue?')) return;
   } else {
     if (!confirm('Delete empty album "' + albumName + '"?')) return;
   }
@@ -1944,14 +1943,14 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       if (a) setTimeout(() => renderMusic(a), 500);
       return;
     }
-    const kept = msData.filter(s => !(s.artistId === artistId && s.album === albumName));
-    await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {method:'PUT', body:{message:'HTR Studio: delete album "'+albumName+'" ('+remaining.length+' songs) for '+artistId, content:b64encode(JSON.stringify(kept,null,2)), sha:sf.sha}});
-    toast('Deleted album "' + albumName + '" and ' + remaining.length + ' song(s)');
+    remaining.forEach(s => { s.unique = 'RET'; });
+    await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {method:'PUT', body:{message:'HTR Studio: retire '+remaining.length+' song(s) from album "'+albumName+'" for '+artistId, content:b64encode(JSON.stringify(msData,null,2)), sha:sf.sha}});
+    toast('Retired ' + remaining.length + ' song(s) from "' + albumName + '" \u2014 kept in Publishing');
     msCache = null;
     const a = artists.find(x => x.id === artistId);
     if (a) setTimeout(() => renderMusic(a), 500);
   } catch(e) {
-    toast('Delete album failed: ' + e.message, true);
+    toast('Operation failed: ' + e.message, true);
   }
 };
 
