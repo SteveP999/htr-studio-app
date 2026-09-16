@@ -131,7 +131,7 @@
   <div class="lock-logo brand"><span class="r">HTR</span> <span>STUDIO</span></div>
   <div class="lock-card">
     <p>Paste your GitHub access token to unlock. It is stored only in this
-    browser, on this device ÃÂ¢ÃÂÃÂ never sent anywhere except to GitHub itself.</p>
+    browser, on this device — never sent anywhere except to GitHub itself.</p>
     <input id="patInput" type="password" placeholder="github_pat_...">
     <button id="unlockBtn" class="btn btn-red full">Unlock</button>
     <p id="lockMsg" style="margin-top:12px"></p>
@@ -202,7 +202,7 @@
       <div class="artists-layout">
         <div>
           <button onclick="window.clearArtist()" style="width:100%;margin-bottom:6px;padding:5px;background:#1a150e;border:1px solid #2e261b;color:var(--muted);font-size:12px;border-radius:4px;cursor:pointer;text-align:left" id="allArtistsBtn">
-            ÃÂ¢ÃÂÃÂ° All Artists (show all songs)
+            ☰ All Artists (show all songs)
           </button>
           <div class="artist-list" id="artistList"></div>
         </div>
@@ -225,17 +225,17 @@
                 <span id="saveMsg" style="color:var(--muted);font-size:14px"></span>
               </div>
               <div class="after-save hidden" id="afterSave">
-                <p>Saved. The change is in the master data ÃÂ¢ÃÂÃÂ publish it live when ready:</p>
+                <p>Saved. The change is in the master data — publish it live when ready:</p>
                 <button class="btn btn-blue" onclick="window.publishAfterSave()">Rebuild this artist's site + homepage (LIVE)</button>
               </div>
             </div>
             <div id="edMusic" style="margin-top:18px"></div>
 
-            <!-- ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Artist Catalog Table ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ -->
+            <!-- ── Artist Catalog Table ── -->
             <div id="edCatalog" style="margin-top:24px;border-top:2px solid var(--border);padding-top:16px">
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
                 <b style="font-family:'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--warn)">Song Catalog</b>
-                <input id="catSearch" type="text" placeholder="SearchÃÂ¢ÃÂÃÂ¦" style="font-size:12px;padding:3px 8px;width:160px" oninput="window.renderCatalog()">
+                <input id="catSearch" type="text" placeholder="Search…" style="font-size:12px;padding:3px 8px;width:160px" oninput="window.renderCatalog()">
                 <select id="catUniqF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()"><option value="">All types</option><option value="REG">REG - Registered</option><option value="VER">VER - Version</option><option value="COP">COP - Copy</option><option value="LIV">LIV - Live</option><option value="ACU">ACU - Acoustic</option><option value="RET">RET - Retired</option></select>
                 <select id="catRadioF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()"><option value="">All radio</option><option value="RAD">RAD - On Radio</option><option value="DEV">DEV - Developing</option><option value="INS">INS - Instrumental</option><option value="PRO">PRO - Profane</option><option value="FUT">FUT - Future</option></select>
                 <select id="catWriterF" style="font-size:12px;padding:3px 6px" onchange="window.renderCatalog()"><option value="">All writers</option><option value="P">P - Peters</option><option value="B">B - Bender</option><option value="2">2 - Both</option><option value="O">O - Peters other/uncounted</option></select>
@@ -245,8 +245,8 @@
                 <table style="border-collapse:collapse;width:100%;font-size:12px">
                   <thead>
                     <tr style="position:sticky;top:0;background:var(--panel2);z-index:5">
-                      <th style="padding:4px 8px;text-align:left;color:var(--muted);cursor:pointer;white-space:nowrap" onclick="window.catSort('title')">Song ÃÂ¢ÃÂÃÂ</th>
-                      <th style="padding:4px 8px;text-align:left;color:var(--muted);cursor:pointer;white-space:nowrap" onclick="window.catSort('album')">Album ÃÂ¢ÃÂÃÂ</th>
+                      <th style="padding:4px 8px;text-align:left;color:var(--muted);cursor:pointer;white-space:nowrap" onclick="window.catSort('title')">Song ↕</th>
+                      <th style="padding:4px 8px;text-align:left;color:var(--muted);cursor:pointer;white-space:nowrap" onclick="window.catSort('album')">Album ↕</th>
                       <th style="padding:4px 4px;text-align:center;color:var(--muted);cursor:pointer" onclick="window.catSort('trackNumber')">Trk</th>
                       <th style="padding:4px 4px;text-align:center;color:var(--muted);cursor:pointer" onclick="window.catSort('unique')">U</th>
                       <th style="padding:4px 4px;text-align:center;color:var(--muted);cursor:pointer" onclick="window.catSort('radio')">Rad</th>
@@ -268,7 +268,7 @@
     <!-- ============ SONG EXTRAS ============ -->
     <section id="view-extras" class="hidden">
       <div class="card editor" style="max-width:640px">
-        <h3>Song Extras ÃÂ¢ÃÂÃÂ Videos, Links, Move &amp; Reorder Tracks</h3>
+        <h3>Song Extras — Videos, Links, Move &amp; Reorder Tracks</h3>
         <div class="sub">Pick a song, then add a video or streaming links. Publish when done.</div>
         <label>Artist</label>
         <select id="exArtist" onchange="window.exLoadSongs()"></select>
@@ -310,7 +310,7 @@
           <span id="exAlbumOrderMsg" style="color:var(--muted);font-size:14px"></span>
         </div>
 
-        <label style="margin-top:26px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Add Video ÃÂ¢ÃÂÃÂ</label>
+        <label style="margin-top:26px;color:var(--warn)">— Add Video —</label>
         <label>YouTube URL</label>
         <input id="exVideoUrl" type="text" placeholder="https://youtu.be/...">
         <label>Video title (default: Official Video)</label>
@@ -319,12 +319,12 @@
           <button class="btn btn-red" onclick="window.exSaveVideo()">Add video to song</button>
         </div>
 
-        <label style="margin-top:22px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Current Videos (remove) ÃÂ¢ÃÂÃÂ</label>
+        <label style="margin-top:22px;color:var(--warn)">— Current Videos (remove) —</label>
         <div class="sub">Videos attached to the selected song. Remove clears it from the catalog;
         publish the artist's site afterward to take it off the live page.</div>
         <div id="exVideoList"><span style="color:var(--muted);font-size:14px">Pick a song to see its videos.</span></div>
 
-        <label style="margin-top:26px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Replace Audio (new version of the song) ÃÂ¢ÃÂÃÂ</label>
+        <label style="margin-top:26px;color:var(--warn)">— Replace Audio (new version of the song) —</label>
         <div class="sub">Tip: if you overwrite the MP3 in Dropbox keeping the same filename,
         the old link keeps working and you don't need this at all. Use this only when the
         new version is a new file/link.</div>
@@ -334,7 +334,7 @@
           <button class="btn btn-red" onclick="window.exReplaceAudio()">Replace audio on this song</button>
         </div>
 
-        <label style="margin-top:26px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Streaming Links ÃÂ¢ÃÂÃÂ</label>
+        <label style="margin-top:26px;color:var(--warn)">— Streaming Links —</label>
         <label>Spotify URL</label>
         <input id="exSpotify" type="text">
         <label>Apple Music URL</label>
@@ -349,7 +349,7 @@
           <span id="exMsg" style="color:var(--muted);font-size:14px"></span>
         </div>
 
-        <label style="margin-top:26px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Move / Album Placement ÃÂ¢ÃÂÃÂ</label>
+        <label style="margin-top:26px;color:var(--warn)">— Move / Album Placement —</label>
         <div class="sub">Move the selected song onto an album (or back to Singles). Updates its
         album and album cover so it shows under that album on the site. Pick the target album, then Move.</div>
         <label>Target album</label>
@@ -359,8 +359,8 @@
           <span id="exMoveMsg" style="color:var(--muted);font-size:14px"></span>
         </div>
 
-        <label style="margin-top:26px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Reorder Tracks on Album ÃÂ¢ÃÂÃÂ</label>
-        <div class="sub">Set the play order of tracks within an album. Pick the album, use ÃÂ¢ÃÂÃÂ ÃÂ¢ÃÂÃÂ to
+        <label style="margin-top:26px;color:var(--warn)">— Reorder Tracks on Album —</label>
+        <div class="sub">Set the play order of tracks within an album. Pick the album, use ↑ ↓ to
         arrange, then Save track order.</div>
         <label>Album</label>
         <select id="exReorderAlbum" onchange="window.exRenderReorder()"></select>
@@ -370,7 +370,7 @@
           <span id="exOrderMsg" style="color:var(--muted);font-size:14px"></span>
         </div>
 
-        <label style="margin-top:26px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Replace Cover ÃÂ¢ÃÂÃÂ</label>
+        <label style="margin-top:26px;color:var(--warn)">— Replace Cover —</label>
         <div class="sub">Swap the artwork for the selected song. Uploads a new PNG over the
         existing cover in the artist repo (same filename) and rebuilds the site. The website
         image can take a few minutes to refresh (GitHub image cache).</div>
@@ -381,8 +381,8 @@
           <span id="exCoverMsg" style="color:var(--muted);font-size:14px"></span>
         </div>
 
-        <label style="margin-top:26px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Album Cover ÃÂ¢ÃÂÃÂ</label>
-        <div class="sub">Upload the shared cover for an album (once per album ÃÂ¢ÃÂÃÂ e.g. a brand-new
+        <label style="margin-top:26px;color:var(--warn)">— Album Cover —</label>
+        <div class="sub">Upload the shared cover for an album (once per album — e.g. a brand-new
         album). Uploads to the artist repo and rebuilds the site.</div>
         <label>Album</label>
         <select id="exAlbumCoverSel"></select>
@@ -417,12 +417,12 @@
         <input id="asAudio" type="text" placeholder="https://www.dropbox.com/scl/fi/...">
         <label>Song cover PNG (uploads to the artist repo)</label>
         <input id="asCover" type="file" accept="image/png">
-        <label>Album cover PNG (only for a NEW album ÃÂ¢ÃÂÃÂ skip for Singles or if it already exists)</label>
+        <label>Album cover PNG (only for a NEW album — skip for Singles or if it already exists)</label>
         <input id="asAlbumCover" type="file" accept="image/png">
-        <label>Suno style prompt (stored with the song ÃÂ¢ÃÂÃÂ used by video + lyric generators)</label>
-        <textarea id="asSuno" rows="2" placeholder="Female alternative rock, mid-tempo 96 BPM, emotional and restrainedÃÂ¢ÃÂÃÂ¦"></textarea>
-        <label>Lyrics ÃÂ¢ÃÂÃÂ Suno lyric sheet (stored with the song; feeds the Timestamp Editor)</label>
-        <textarea id="asLyrics" rows="8" placeholder="[Verse 1]&#10;First line&#10;ÃÂ¢ÃÂÃÂ¦"></textarea>
+        <label>Suno style prompt (stored with the song — used by video + lyric generators)</label>
+        <textarea id="asSuno" rows="2" placeholder="Female alternative rock, mid-tempo 96 BPM, emotional and restrained…"></textarea>
+        <label>Lyrics — Suno lyric sheet (stored with the song; feeds the Timestamp Editor)</label>
+        <textarea id="asLyrics" rows="8" placeholder="[Verse 1]&#10;First line&#10;…"></textarea>
         <div class="toggles">
           <label class="chk"><input type="checkbox" id="asLatest" checked> Latest / featured</label>
           <label class="chk"><input type="checkbox" id="asRadio" checked> Include on HTR Radio</label>
@@ -449,18 +449,18 @@
         <button class="btn btn-red" id="radioSaveBtn" onclick="window.saveRadio()" disabled>Save changes</button>
       </div>
       <div class="radio-toolbar">
-        <input id="radioFilter" type="text" placeholder="Filter by artist, title, or albumÃÂ¢ÃÂÃÂ¦" style="max-width:340px">
+        <input id="radioFilter" type="text" placeholder="Filter by artist, title, or album…" style="max-width:340px">
         <label class="chk"><input type="checkbox" id="radioOnlyChanged"> Show only changed rows</label>
         <span id="radioMsg" style="color:var(--muted);font-size:13px"></span>
       </div>
       <div class="radio-wrap" id="radioWrap">
-        <div style="padding:20px;color:var(--muted)">LoadingÃÂ¢ÃÂÃÂ¦</div>
+        <div style="padding:20px;color:var(--muted)">Loading…</div>
       </div>
       <div class="after-save hidden" id="radioAfter">
         <p>Saved to master data. Publish it to the live radio site + homepage player:</p>
         <button class="btn btn-blue" onclick="window.radioPublish()">Publish HTR Radio</button>
       </div>
-      <div class="dry-note">Gold cell = song is ON that station ÃÂ¢ÃÂÃÂ click to toggle. Faded columns
+      <div class="dry-note">Gold cell = song is ON that station — click to toggle. Faded columns
       (Open Road, Top&nbsp;20) are automatic and can't be toggled here (Top 20 has its own tab). Save
       writes to radio-stations.json; publish LIVE from the Dashboard when you're happy.</div>
     </section>
@@ -480,13 +480,13 @@
         <span id="t20Msg" style="color:var(--muted);font-size:13px"></span>
       </div>
       <div class="radio-wrap" id="t20Wrap" style="max-height:none">
-        <div style="padding:20px;color:var(--muted)">LoadingÃÂ¢ÃÂÃÂ¦</div>
+        <div style="padding:20px;color:var(--muted)">Loading…</div>
       </div>
       <div class="after-save hidden" id="t20After">
         <p>Saved to chart.json. Publish it to rebuild the Top 20 station on the live radio:</p>
         <button class="btn btn-blue" onclick="window.radioPublish()">Publish HTR Radio</button>
       </div>
-      <div class="dry-note">Rank is set by order ÃÂ¢ÃÂÃÂ top row is #1. Use ÃÂ¢ÃÂÃÂ ÃÂ¢ÃÂÃÂ to reorder, ÃÂ¢ÃÂÃÂ to remove,
+      <div class="dry-note">Rank is set by order — top row is #1. Use ↑ ↓ to reorder, ✕ to remove,
       the dropdown to add. Save writes chart.json; the Top 20 station rebuilds on the next radio publish.</div>
     </section>
 
@@ -494,15 +494,15 @@
     <section id="view-lyrics" class="hidden">
       <div class="card editor" style="max-width:720px">
         <h3>Lyric Timestamps</h3>
-        <div class="sub">Pick a song and paste its lyrics (Suno format is fine ÃÂ¢ÃÂÃÂ lines in
+        <div class="sub">Pick a song and paste its lyrics (Suno format is fine — lines in
         [brackets] become instrumental sections). The cloud aligns them to the audio and
         saves a <b>-timestamps.txt</b> next to the MP3 in Dropbox. Runs on CPU, so give it
         a few minutes. (At home, HTR-Menu #22 on your GPU does the same thing faster.)</div>
         <label>Source</label>
         <select id="lyrMode" onchange="window.lyrSetMode()">
           <option value="catalog">Catalog song (saves timestamps next to the MP3 in Dropbox)</option>
-          <option value="upload">Upload a file (experiment ÃÂ¢ÃÂÃÂ copy/download only, no Dropbox)</option>
-          <option value="suno">Suno link (experiment ÃÂ¢ÃÂÃÂ copy/download only, no Dropbox)</option>
+          <option value="upload">Upload a file (experiment — copy/download only, no Dropbox)</option>
+          <option value="suno">Suno link (experiment — copy/download only, no Dropbox)</option>
         </select>
         <div id="lyrCatalog">
           <label>Artist</label>
@@ -514,7 +514,7 @@
             <span class="sub" id="lyrStored">Opens the editor with the song's saved timestamps (if any).</span>
           </div>
           <label>Suno style prompt (stored with the song)</label>
-          <textarea id="lyrSunoPrompt" rows="2" placeholder="Stored with the song ÃÂ¢ÃÂÃÂ used by video + lyric generators"></textarea>
+          <textarea id="lyrSunoPrompt" rows="2" placeholder="Stored with the song — used by video + lyric generators"></textarea>
           <div style="display:flex;gap:14px;align-items:flex-start;margin-top:12px;flex-wrap:wrap">
             <div style="text-align:center"><img id="lyrCoverImg" style="width:110px;height:110px;object-fit:cover;border-radius:8px;border:1px solid #333"><div class="sub">song cover</div></div>
             <div style="text-align:center"><img id="lyrAlbumImg" style="width:110px;height:110px;object-fit:cover;border-radius:8px;border:1px solid #333"><div class="sub">album cover</div></div>
@@ -535,7 +535,7 @@
           </div>
         </div>
         <div id="lyrUpload" class="hidden">
-          <label>MP3 file (any version ÃÂ¢ÃÂÃÂ e.g. an alternate mix)</label>
+          <label>MP3 file (any version — e.g. an alternate mix)</label>
           <input type="file" id="lyrFile" accept="audio/*,.mp3">
         </div>
         <div id="lyrSunoWrap" class="hidden">
@@ -551,7 +551,7 @@
           <span id="lyrStatus" style="color:var(--muted);font-size:14px"></span>
         </div>
         <div class="sub">"Time manually" skips the cloud aligner: your pasted lyrics open in the editor
-        exactly as written (brackets become section markers), and you stamp each line against the audio ÃÂ¢ÃÂÃÂ
+        exactly as written (brackets become section markers), and you stamp each line against the audio —
         the most exact option, and the words are always right.</div>
         <div id="lyrResult" class="hidden">
           <label>Timestamps</label>
@@ -563,7 +563,7 @@
             <button class="btn btn-ghost" onclick="window.lyrDownloadSrt()">Export .srt (captions)</button>
           </div>
           <div class="sub" style="margin-top:6px">.srt imports into Filmora/CapCut/Premiere as clean, correct
-          captions ÃÂ¢ÃÂÃÂ no speech-to-text. In Filmora: delete any auto-captions, then File ÃÂ¢ÃÂÃÂ Import ÃÂ¢ÃÂÃÂ Import Media,
+          captions — no speech-to-text. In Filmora: delete any auto-captions, then File → Import → Import Media,
           pick the .srt, drag it onto the timeline.</div>
         </div>
       </div>
@@ -571,16 +571,16 @@
       <div class="card editor hidden" id="lyrEditor" style="max-width:900px;margin-top:18px">
         <h3>Timestamp Editor <span id="edSongName" style="color:var(--muted);font-weight:normal;font-size:15px"></span></h3>
         <div class="sub">Play the song, click a line to select it, and hit <b>Stamp</b> (or press
-        <b>Enter</b>) the instant it's sung ÃÂ¢ÃÂÃÂ the line takes the current playback time and selection
+        <b>Enter</b>) the instant it's sung — the line takes the current playback time and selection
         moves to the next line. <b>Space</b> = play/pause. Times are precise to a tenth of a second.
         Section markers are separators (never captions) and show how long each section runs.</div>
         <audio id="edAudio" controls preload="metadata" style="width:100%"></audio>
         <div class="save-bar" style="align-items:center;flex-wrap:wrap">
-          <button class="btn btn-ghost" onclick="window.edSeek(-5)">ÃÂ¢ÃÂÃÂ5s</button>
-          <button class="btn btn-ghost" onclick="window.edSeek(-1)">ÃÂ¢ÃÂÃÂ1s</button>
+          <button class="btn btn-ghost" onclick="window.edSeek(-5)">−5s</button>
+          <button class="btn btn-ghost" onclick="window.edSeek(-1)">−1s</button>
           <button class="btn btn-ghost" onclick="window.edSeek(1)">+1s</button>
           <button class="btn btn-ghost" onclick="window.edSeek(5)">+5s</button>
-          <button class="btn btn-ghost" id="edRateBtn" onclick="window.edRate()">1.0ÃÂÃÂ</button>
+          <button class="btn btn-ghost" id="edRateBtn" onclick="window.edRate()">1.0×</button>
           <span id="edClock" style="font-family:monospace;font-size:20px;min-width:90px">0:00.0</span>
           <button class="btn btn-red" onclick="window.edStamp()">Stamp selected (Enter)</button>
           <button class="btn btn-ghost" onclick="window.edUndo()">&#8630; Undo (Ctrl+Z)</button>
@@ -597,22 +597,22 @@
       </div>
 
       <div class="card editor" style="max-width:900px;margin-top:18px">
-        <h3>Lyric Video ÃÂ¢ÃÂÃÂ backgrounds &amp; render <span id="lvSongName" style="color:var(--muted);font-weight:normal;font-size:15px"></span>
-          <button class="btn btn-ghost" style="float:right;padding:2px 10px" title="thumbnails expire after a while on a private repo ÃÂ¢ÃÂÃÂ refresh reloads them" onclick="window.lvRefresh()">ÃÂ¢ÃÂÃÂ» Refresh</button></h3>
-        <div class="sub">Upload 4ÃÂ¢ÃÂÃÂ8 backgrounds (playback order: intro ÃÂ¢ÃÂÃÂ verse 1 block ÃÂ¢ÃÂÃÂ verse 2 ÃÂ¢ÃÂÃÂ
-        bridge ÃÂ¢ÃÂÃÂ final). They're stored with the song. Rendering runs in the cloud ÃÂ¢ÃÂÃÂ the finished
+        <h3>Lyric Video — backgrounds &amp; render <span id="lvSongName" style="color:var(--muted);font-weight:normal;font-size:15px"></span>
+          <button class="btn btn-ghost" style="float:right;padding:2px 10px" title="thumbnails expire after a while on a private repo — refresh reloads them" onclick="window.lvRefresh()">↻ Refresh</button></h3>
+        <div class="sub">Upload 4–8 backgrounds (playback order: intro → verse 1 block → verse 2 →
+        bridge → final). They're stored with the song. Rendering runs in the cloud — the finished
         <b>16:9 + 9:16 MP4s</b> land in the song's Video Files folder in Dropbox after a few minutes.
         Needs saved timestamps (use the Timestamp Editor above first).</div>
         <div id="lvThumbs" style="margin:10px 0"></div>
         <label>These backgrounds are for</label>
         <select id="lvFmt">
-          <option value="16x9">16:9 ÃÂ¢ÃÂÃÂ YouTube</option>
-          <option value="9x16">9:16 ÃÂ¢ÃÂÃÂ Shorts / Reels</option>
+          <option value="16x9">16:9 — YouTube</option>
+          <option value="9x16">9:16 — Shorts / Reels</option>
         </select>
-        <label>Add backgrounds (PNG/JPG ÃÂ¢ÃÂÃÂ appended after existing, in filename order)</label>
+        <label>Add backgrounds (PNG/JPG — appended after existing, in filename order)</label>
         <input type="file" id="lvFiles" accept="image/png,image/jpeg" multiple>
         <div style="margin-top:14px">
-          <label style="color:var(--warn)">Background cues (optional ÃÂ¢ÃÂÃÂ exact control)</label>
+          <label style="color:var(--warn)">Background cues (optional — exact control)</label>
           <div class="sub">Each cue = the moment a background starts. Images are picked by their
           number, so the same image can appear more than once (start AND end on the cover).
           Numbers refer to each format's own set. Without cues, backgrounds follow song sections
@@ -626,11 +626,11 @@
         </div>
         <div class="save-bar">
           <button class="btn btn-blue" onclick="window.lvUpload()">Upload backgrounds</button>
-          <button class="btn btn-red" onclick="window.lvRenderLocal()">ÃÂ¢ÃÂÃÂ¡ Render on THIS PC (fast 16:9 test)</button>
-          <button class="btn btn-red" onclick="window.lvRender()">Render in cloud (final, both ÃÂ¢ÃÂÃÂ Dropbox)</button>
+          <button class="btn btn-red" onclick="window.lvRenderLocal()">⚡ Render on THIS PC (fast 16:9 test)</button>
+          <button class="btn btn-red" onclick="window.lvRender()">Render in cloud (final, both → Dropbox)</button>
           <span id="lvStatus" class="sub"></span>
         </div>
-        <div class="sub">THIS PC = ~2 min, output opens in a folder ÃÂ¢ÃÂÃÂ needs the <b>Render Agent</b>
+        <div class="sub">THIS PC = ~2 min, output opens in a folder — needs the <b>Render Agent</b>
         running (double-click <b>start-render-agent.bat</b> in D:\HTR-Studio and leave the window
         open while you work). Cloud = ~15 min, both formats auto-saved to the song's Dropbox folder,
         no agent needed.</div>
@@ -656,7 +656,7 @@
           <label class="chk"><input type="checkbox" id="naRadio" checked> Include on HTR Radio</label>
         </div>
 
-        <label style="margin-top:22px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Images (PNG) ÃÂ¢ÃÂÃÂ</label>
+        <label style="margin-top:22px;color:var(--warn)">— Images (PNG) —</label>
         <div class="sub">Logo is required; the rest are recommended. Anything missing can be added later.</div>
         <label>Logo (transparent PNG)</label>
         <input type="file" id="na-file-logo" accept="image/png">
@@ -690,14 +690,14 @@
       <div class="card editor" style="max-width:720px">
         <h3>Edit Artist</h3>
         <div class="sub">Resize the hero logo on an existing artist's landing page and swap out any of
-        their images. Changes go live on the artist's site within a minute ÃÂ¢ÃÂÃÂ no full rebuild needed.</div>
+        their images. Changes go live on the artist's site within a minute — no full rebuild needed.</div>
 
         <label>Artist</label>
         <select id="eaArtist" onchange="window.eaSelect()"></select>
         <div class="sub" id="eaRepoLine"></div>
 
-        <label style="margin-top:22px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Hero logo size ÃÂ¢ÃÂÃÂ</label>
-        <div class="sub">The landing-page logo. Base size is 820px desktop / 300px mobile ÃÂ¢ÃÂÃÂ lower the number
+        <label style="margin-top:22px;color:var(--warn)">— Hero logo size —</label>
+        <div class="sub">The landing-page logo. Base size is 820px desktop / 300px mobile — lower the number
         to shrink an oversized logo. Offset: negative moves it up, positive moves it down.</div>
         <label>Desktop max height (px)</label>
         <input id="eaLogoDesktop" type="number" min="40" max="1200" step="10">
@@ -711,7 +711,7 @@
         </div>
         <div class="sub" id="eaLogoStatus"></div>
 
-        <label style="margin-top:26px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Replace images (PNG) ÃÂ¢ÃÂÃÂ</label>
+        <label style="margin-top:26px;color:var(--warn)">— Replace images (PNG) —</label>
         <div class="sub">Upload a new PNG to replace any of these. Each overwrites the file at its fixed
         path, so it updates live immediately (hard-refresh the site to see it).</div>
         <label>Logo (transparent PNG)</label>
@@ -740,10 +740,10 @@
         <button class="btn btn-blue" onclick="window.eaReplaceAsset('photo-3')">Replace promo 3</button>
         <div class="sub" id="eaAssetStatus"></div>
 
-        <label style="margin-top:26px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Album &amp; song cover art ÃÂ¢ÃÂÃÂ</label>
+        <label style="margin-top:26px;color:var(--warn)">— Album &amp; song cover art —</label>
         <div class="sub">Covers live in the artist's <code>images/covers/</code> folder and the same file is
         shared by everything that shows it (the site, radio, homepage, Top 20). Replacing one overwrites the
-        image in place, so it updates everywhere within a minute ÃÂ¢ÃÂÃÂ no rebuild.</div>
+        image in place, so it updates everywhere within a minute — no rebuild.</div>
         <label>Album</label>
         <select id="eaAlbum"></select>
         <label class="chk" style="margin-top:8px"><input type="checkbox" id="eaAlbumApplyTracks" checked> Also set every track in the album to this cover</label>
@@ -758,7 +758,7 @@
         <div class="save-bar" style="margin-top:22px">
           <button class="btn" onclick="window.eaRebuild()">Full rebuild (optional)</button>
         </div>
-        <div class="sub">A full rebuild regenerates the whole page from the catalog ÃÂ¢ÃÂÃÂ only needed if you
+        <div class="sub">A full rebuild regenerates the whole page from the catalog — only needed if you
         changed songs or albums. The logo-size and image edits above are already live, and your logo-size
         override is preserved across rebuilds.</div>
       </div>
@@ -767,14 +767,14 @@
     <!-- ============ VIDEO ============ -->
     <section id="view-video" class="hidden">
       <div class="card editor" style="max-width:900px">
-        <h3>Video ÃÂ¢ÃÂÃÂ Lyric Video Director</h3>
-        <div class="sub">Paste a song's timestamped lyrics, trim scenes to your 6ÃÂ¢ÃÂÃÂ10s pacing, then let the
+        <h3>Video — Lyric Video Director</h3>
+        <div class="sub">Paste a song's timestamped lyrics, trim scenes to your 6–10s pacing, then let the
         AI creative director build a unifying visual story + per-scene prompts you edit as Producer. Copy each
         prompt into ChatGPT (free) or generate with gpt-image-1 (needs an OpenAI key).</div>
 
         <label>Artist</label>
         <select id="vidArtist" onchange="window.vidArtistChange()"></select>
-        <label>Song <span style="color:var(--muted);font-weight:400">ÃÂ¢ÃÂÃÂ pick from the catalog so exports auto-save to its Dropbox ÃÂ¢ÃÂÃÂVideo FilesÃÂ¢ÃÂÃÂ folder</span></label>
+        <label>Song <span style="color:var(--muted);font-weight:400">— pick from the catalog so exports auto-save to its Dropbox “Video Files” folder</span></label>
         <select id="vidSong" onchange="window.vidSongChange()"></select>
         <div class="sub" id="vidSongNote" style="margin-top:4px"></div>
         <label>Song title</label>
@@ -782,10 +782,10 @@
         <label>Genre</label>
         <input id="vidGenre" type="text">
         <label>Suno style prompt (the sonic vibe to translate visually)</label>
-        <textarea id="vidSuno" rows="3" placeholder="Female alternative rock, mid-tempo, emotional and restrainedÃÂ¢ÃÂÃÂ¦"></textarea>
+        <textarea id="vidSuno" rows="3" placeholder="Female alternative rock, mid-tempo, emotional and restrained…"></textarea>
         <label>Timestamped lyrics (paste the sheet)</label>
-        <textarea id="vidTimes" rows="8" placeholder="0:22&#9;Here late again on a Friday night&#10;0:23&#9;They all head out, right on time&#10;ÃÂ¢ÃÂÃÂ¦"></textarea>
-        <label>Total song length (M:SS) ÃÂ¢ÃÂÃÂ so scenes cover 0:00 to the very end</label>
+        <textarea id="vidTimes" rows="8" placeholder="0:22&#9;Here late again on a Friday night&#10;0:23&#9;They all head out, right on time&#10;…"></textarea>
+        <label>Total song length (M:SS) — so scenes cover 0:00 to the very end</label>
         <input id="vidLength" type="text" placeholder="3:21" style="max-width:160px">
         <div class="save-bar">
           <button class="btn btn-blue" onclick="window.vidLoadScenes()">Load scenes (raw)</button>
@@ -794,10 +794,10 @@
         </div>
 
         <div id="vidSceneWrap" class="radio-wrap" style="max-height:46vh;margin-top:8px"></div>
-        <div class="sub" style="margin-top:8px">Trim to taste: ÃÂ¢ÃÂÃÂ deletes a scene, ÃÂ¢ÃÂ¤ÃÂµ merges it into the next. Rows under 6s are flagged.</div>
+        <div class="sub" style="margin-top:8px">Trim to taste: ✕ deletes a scene, ⤵ merges it into the next. Rows under 6s are flagged.</div>
 
-        <label style="margin-top:14px">Producer notes (direction the AI must obey ÃÂ¢ÃÂÃÂ story beats, the arc, the climax)</label>
-        <textarea id="vidNotes" rows="3" placeholder="e.g. Transformation good-girl ÃÂ¢ÃÂÃÂ cutting-edge. Office lighting ÃÂ¢ÃÂÃÂ explosive color. Her anger boils into an EXPLOSION at the bridge. 'I'll walk out and flip the bird' = she physically walks out of work."></textarea>
+        <label style="margin-top:14px">Producer notes (direction the AI must obey — story beats, the arc, the climax)</label>
+        <textarea id="vidNotes" rows="3" placeholder="e.g. Transformation good-girl → cutting-edge. Office lighting → explosive color. Her anger boils into an EXPLOSION at the bridge. 'I'll walk out and flip the bird' = she physically walks out of work."></textarea>
         <div class="save-bar" style="margin-top:6px">
           <button class="btn btn-red" id="vidBibleBtn" onclick="window.vidGenerateBible()">Generate Creative Bible</button>
           <span id="vidBibleStatus" style="color:var(--muted);font-size:13px"></span>
@@ -806,7 +806,7 @@
         <div id="vidBible" class="hidden" style="margin-top:16px">
           <label>Logline</label>
           <textarea id="vbLogline" rows="2"></textarea>
-          <label>Concept (world ÃÂÃÂ· protagonist ÃÂÃÂ· arc)</label>
+          <label>Concept (world · protagonist · arc)</label>
           <textarea id="vbConcept" rows="4"></textarea>
           <label>Throughline (the one visual idea)</label>
           <textarea id="vbThrough" rows="2"></textarea>
@@ -816,7 +816,7 @@
             <button class="btn btn-red" onclick="window.vidSaveBible()">Save bible</button>
             <span id="vbSaveMsg" style="color:var(--muted);font-size:13px"></span>
           </div>
-          <label style="margin-top:14px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Scenes (edit Setting / Lighting / Scene, then Copy) ÃÂ¢ÃÂÃÂ</label>
+          <label style="margin-top:14px;color:var(--warn)">— Scenes (edit Setting / Lighting / Scene, then Copy) —</label>
           <div id="vbScenes"></div>
         </div>
       </div>
@@ -825,7 +825,7 @@
     <!-- ============ SONG POLLS ============ -->
     <section id="view-polls" class="hidden">
       <div class="card editor" style="max-width:720px">
-        <h3>Song Polls ÃÂ¢ÃÂÃÂ Your Vote Shapes the Music</h3>
+        <h3>Song Polls — Your Vote Shapes the Music</h3>
         <div class="sub">Create a poll for a song with any number of versions. Fans vote at
           <a href="https://hellotexasrecords.com/htr-vote.html" target="_blank" rel="noreferrer">the vote page</a>.
           Load each version's audio from a Dropbox link.</div>
@@ -846,10 +846,10 @@
           <h3 id="pollFormTitle">New poll</h3>
           <input type="hidden" id="pollEditId">
           <label>Poll title / song</label>
-          <input id="pollSong" type="text" placeholder="e.g. People Pleaser (Rest In Peace) ÃÂ¢ÃÂÃÂ or 'Next Single?'">
+          <input id="pollSong" type="text" placeholder="e.g. People Pleaser (Rest In Peace) — or 'Next Single?'">
           <label>Grouping on the vote page</label>
           <select id="pollArtist"></select>
-          <div class="sub" style="margin-top:2px">Pick one artist for a normal poll, or ÃÂ¢ÃÂÃÂVarious ArtistsÃÂ¢ÃÂÃÂ when the versions are by different artists. Credit each version to its own artist below.</div>
+          <div class="sub" style="margin-top:2px">Pick one artist for a normal poll, or “Various Artists” when the versions are by different artists. Credit each version to its own artist below.</div>
           <label>Question shown to fans</label>
           <input id="pollQuestion" type="text" value="Which version should we release?">
           <div class="row" style="gap:18px;flex-wrap:wrap">
@@ -860,7 +860,7 @@
             <label class="chk" style="margin-top:26px"><input type="checkbox" id="pollActive" checked> Active (show on vote page)</label>
           </div>
 
-          <label style="margin-top:22px;color:var(--warn)">ÃÂ¢ÃÂÃÂ Versions ÃÂ¢ÃÂÃÂ</label>
+          <label style="margin-top:22px;color:var(--warn)">— Versions —</label>
           <div class="sub">Each version is a choice fans can play and vote for. Paste the Dropbox
             file link (/scl/fi/...) for each.</div>
           <div id="pollVersions"></div>
@@ -877,7 +877,7 @@
           <div class="radio-head"><h2 style="margin:0">Existing polls</h2><span class="spacer"></span>
             <button class="btn btn-ghost" onclick="window.loadPolls(true)">Reload</button></div>
           <div id="pollList" class="radio-wrap" style="max-height:none">
-            <div style="padding:16px;color:var(--muted)">LoadingÃÂ¢ÃÂÃÂ¦</div></div>
+            <div style="padding:16px;color:var(--muted)">Loading…</div></div>
         </div>
       </div>
     </section>
@@ -904,7 +904,7 @@
             <div>
               <label style="font-size:11px;color:var(--muted)">BAND / ARTIST</label>
               <select id="bmiAddArtist" style="width:100%;margin-top:3px" onchange="window.bmiAddFillAlbums()">
-                <option value="">ÃÂ¢ÃÂÃÂ select artist ÃÂ¢ÃÂÃÂ</option>
+                <option value="">— select artist —</option>
               </select>
             </div>
           </div>
@@ -912,7 +912,7 @@
             <div style="grid-column:1/3">
               <label style="font-size:11px;color:var(--muted)">ALBUM</label>
               <select id="bmiAddAlbumSel" style="width:100%;margin-top:3px" onchange="window.bmiAddAlbumChange()">
-                <option value="">ÃÂ¢ÃÂÃÂ select album ÃÂ¢ÃÂÃÂ</option>
+                <option value="">— select album —</option>
                 <option value="__new__">+ New album...</option>
               </select>
               <input id="bmiAddAlbumNew" style="width:100%;margin-top:4px;display:none" placeholder="Type new album name exactly">
@@ -1011,7 +1011,7 @@
             </div>
             <div>
               <label style="font-size:11px;color:var(--muted)">SUNO LINK</label>
-              <input id="bmiAddSunoLink" style="width:100%;margin-top:3px" placeholder="https://suno.com/ÃÂ¢ÃÂÃÂ¦">
+              <input id="bmiAddSunoLink" style="width:100%;margin-top:3px" placeholder="https://suno.com/…">
             </div>
           </div>
           <div style="margin-bottom:16px">
@@ -1027,7 +1027,7 @@
             </label>
           </div>
           <div style="display:flex;gap:10px;align-items:center">
-            <button class="btn btn-blue" onclick="window.bmiAddSave()">ÃÂ°ÃÂÃÂÃÂ¾ Save to catalog</button>
+            <button class="btn btn-blue" onclick="window.bmiAddSave()">💾 Save to catalog</button>
             <button class="btn btn-ghost" onclick="window.bmiAddClose()">Cancel</button>
             <span id="bmiAddMsg" style="font-size:12px;color:var(--ok)"></span>
           </div>
@@ -1039,12 +1039,12 @@
         <select id="bmiArtistF" style="width:auto" onchange="window.bmiRender()"><option value="">All artists</option></select>
         <select id="bmiUnqF" style="width:auto" onchange="window.bmiRender()">
           <option value="">All types</option>
-          <option value="X">X ÃÂ¢ÃÂÃÂ Unique</option>
-          <option value="V">V ÃÂ¢ÃÂÃÂ Version</option>
-          <option value="C">C ÃÂ¢ÃÂÃÂ Copy</option>
-          <option value="D">D ÃÂ¢ÃÂÃÂ In development</option>
-          <option value="R">R ÃÂ¢ÃÂÃÂ Retired</option>
-          <option value="N">N ÃÂ¢ÃÂÃÂ Research</option>
+          <option value="X">X — Unique</option>
+          <option value="V">V — Version</option>
+          <option value="C">C — Copy</option>
+          <option value="D">D — In development</option>
+          <option value="R">R — Retired</option>
+          <option value="N">N — Research</option>
         </select>
         <select id="bmiIssueF" style="width:auto" onchange="window.bmiRender()">
           <option value="">Everything</option>
@@ -1105,8 +1105,8 @@
 
         <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:6px">Audio Files</div>
         <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-          <div><label>Dropbox MP3 link (raw=1)</label><input id="bmiEdMp3" placeholder="https://www.dropbox.com/ÃÂ¢ÃÂÃÂ¦?raw=1" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)"></div>
-          <div><label>Dropbox WAV link (master file)</label><input id="bmiEdWav" placeholder="https://www.dropbox.com/ÃÂ¢ÃÂÃÂ¦?raw=1" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)"></div>
+          <div><label>Dropbox MP3 link (raw=1)</label><input id="bmiEdMp3" placeholder="https://www.dropbox.com/…?raw=1" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)"></div>
+          <div><label>Dropbox WAV link (master file)</label><input id="bmiEdWav" placeholder="https://www.dropbox.com/…?raw=1" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)"></div>
         </div>
         <div style="display:flex;gap:20px;margin-bottom:14px;font-size:13px">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
@@ -1130,16 +1130,16 @@
           <div><label>Release ID</label><input id="bmiEdRel"></div>
           <div><label>UPC</label><input id="bmiEdUpc"></div>
           <div><label>ISRC</label><input id="bmiEdIsrc"></div>
-          <div><label>Spotify URL</label><input id="bmiEdSpotify" placeholder="https://open.spotify.com/ÃÂ¢ÃÂÃÂ¦"></div>
-          <div><label>Apple Music URL</label><input id="bmiEdApple" placeholder="https://music.apple.com/ÃÂ¢ÃÂÃÂ¦"></div>
-          <div><label>YouTube Music URL</label><input id="bmiEdYtMusic" placeholder="https://music.youtube.com/ÃÂ¢ÃÂÃÂ¦"></div>
+          <div><label>Spotify URL</label><input id="bmiEdSpotify" placeholder="https://open.spotify.com/…"></div>
+          <div><label>Apple Music URL</label><input id="bmiEdApple" placeholder="https://music.apple.com/…"></div>
+          <div><label>YouTube Music URL</label><input id="bmiEdYtMusic" placeholder="https://music.youtube.com/…"></div>
         </div>
 
         <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:6px">Videos</div>
         <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-          <div><label>YouTube URL (horizontal)</label><input id="bmiEdYt" placeholder="https://youtu.be/ÃÂ¢ÃÂÃÂ¦"></div>
-          <div><label>TikTok URL (vertical)</label><input id="bmiEdTiktok" placeholder="https://www.tiktok.com/ÃÂ¢ÃÂÃÂ¦"></div>
-          <div><label>SRT/Timestamps file (Dropbox)</label><input id="bmiEdSrt" placeholder="https://www.dropbox.com/ÃÂ¢ÃÂÃÂ¦?raw=1"></div>
+          <div><label>YouTube URL (horizontal)</label><input id="bmiEdYt" placeholder="https://youtu.be/…"></div>
+          <div><label>TikTok URL (vertical)</label><input id="bmiEdTiktok" placeholder="https://www.tiktok.com/…"></div>
+          <div><label>SRT/Timestamps file (Dropbox)</label><input id="bmiEdSrt" placeholder="https://www.dropbox.com/…?raw=1"></div>
           <div style="display:flex;align-items:center;gap:6px;padding-top:22px;font-size:13px">
             <input type="checkbox" id="bmiEdHasSrt"> Timestamps exist
           </div>
@@ -1152,7 +1152,7 @@
         </div>
         <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div><label>Suno generation date</label><input id="bmiEdSunoDate" placeholder="MM/DD/YYYY"></div>
-          <div><label>Suno link</label><input id="bmiEdSunoLink" placeholder="https://suno.com/ÃÂ¢ÃÂÃÂ¦"></div>
+          <div><label>Suno link</label><input id="bmiEdSunoLink" placeholder="https://suno.com/…"></div>
         </div>
         <div style="margin-bottom:14px">
           <label>Lyrics</label>
@@ -1178,7 +1178,7 @@
           <button class="btn btn-blue" onclick="window.bmiEdApply()">Apply to row</button>
           <button class="btn btn-ghost" onclick="window.bmiEdClose()">Close</button>
           <button class="btn btn-ghost" style="color:var(--err)" onclick="window.bmiEdDelete()">Delete row</button>
-          <span style="color:var(--muted);font-size:13px">Applies locally ÃÂ¢ÃÂÃÂ hit "Save changes" up top to write to the catalog.</span>
+          <span style="color:var(--muted);font-size:13px">Applies locally — hit "Save changes" up top to write to the catalog.</span>
         </div>
       </div>
 
@@ -1189,16 +1189,16 @@
 
       <div class="card" style="margin-top:20px">
         <h3>Roster &amp; catalog notes</h3>
-        <div class="sub">Type an entry, then hit Save changes below ÃÂ¢ÃÂÃÂ it files to the list and the box clears,
+        <div class="sub">Type an entry, then hit Save changes below — it files to the list and the box clears,
         so your next note starts fresh. Nothing here is tied to a row.</div>
 
-        <label style="margin-top:10px">Unregistered artists ÃÂ¢ÃÂÃÂ need adding to the roster</label>
+        <label style="margin-top:10px">Unregistered artists — need adding to the roster</label>
         <div id="bmiUnregList" style="white-space:pre-wrap;font-size:13px;color:var(--muted);border:1px solid var(--line,#333);border-radius:6px;padding:8px;max-height:130px;overflow:auto"></div>
-        <textarea id="bmiUnreg" rows="2" placeholder="Add an artist that needs adding to the rosterÃÂ¢ÃÂÃÂ¦" oninput="window.bmiNoteTyping()" style="width:100%;box-sizing:border-box;margin-top:8px"></textarea>
+        <textarea id="bmiUnreg" rows="2" placeholder="Add an artist that needs adding to the roster…" oninput="window.bmiNoteTyping()" style="width:100%;box-sizing:border-box;margin-top:8px"></textarea>
 
-        <label style="margin-top:16px">Notes ÃÂ¢ÃÂÃÂ typos, re-records, moves, to-dos</label>
+        <label style="margin-top:16px">Notes — typos, re-records, moves, to-dos</label>
         <div id="bmiNotesList" style="white-space:pre-wrap;font-size:13px;color:var(--muted);border:1px solid var(--line,#333);border-radius:6px;padding:8px;max-height:180px;overflow:auto"></div>
-        <textarea id="bmiNotes" rows="3" placeholder="Add a note ÃÂ¢ÃÂÃÂ e.g. Promises I Broke: fix title typoÃÂ¢ÃÂÃÂ¦" oninput="window.bmiNoteTyping()" style="width:100%;box-sizing:border-box;margin-top:8px"></textarea>
+        <textarea id="bmiNotes" rows="3" placeholder="Add a note — e.g. Promises I Broke: fix title typo…" oninput="window.bmiNoteTyping()" style="width:100%;box-sizing:border-box;margin-top:8px"></textarea>
       </div>
 
       <div class="save-bar" style="margin-top:14px">
@@ -1209,8 +1209,8 @@
       <div class="card" style="margin-top:20px">
         <h3>Reconcile with BMI</h3>
         <div class="sub">Drop in the <b>CatalogExport CSV</b> you download from bmi.com (Works Catalog &rarr; Export).
-          I match by BMI Work #, then show what changed ÃÂ¢ÃÂÃÂ new ISWC numbers, Songview status flips,
-          registration dates ÃÂ¢ÃÂÃÂ before anything is written. This replaces the manual re-keying.</div>
+          I match by BMI Work #, then show what changed — new ISWC numbers, Songview status flips,
+          registration dates — before anything is written. This replaces the manual re-keying.</div>
         <div class="row" style="flex-wrap:wrap">
           <input type="file" id="bmiCsvFile" accept=".csv,text/csv" style="width:auto" onchange="window.bmiCsvPick(event)">
           <span style="color:var(--muted);font-size:13px">or paste the CSV text below</span>
@@ -1241,7 +1241,7 @@
       <div class="grid">
         <div class="card">
           <h3>HTR Video Maker</h3>
-          <div class="sub">Lyric-video and background rendering. Runs locally on this PC only ÃÂ¢ÃÂÃÂ
+          <div class="sub">Lyric-video and background rendering. Runs locally on this PC only —
           it needs FFmpeg and your Dropbox files on disk, so it can't run from the cloud or another device.</div>
           <div class="dry-note" style="margin:10px 0">Start it first: double-click <code>HTR-VIDEO-MAKER.bat</code>
           in D:\HTR-Studio (or run <code>HTR-Service.vbs</code> to start it silently in the background).
@@ -1250,7 +1250,7 @@
         </div>
         <div class="card">
           <h3>HTR Mastering Engine</h3>
-          <div class="sub">Two-pass loudness mastering (FFmpeg loudnorm) for your mixed WAVs ÃÂ¢ÃÂÃÂ album-at-once
+          <div class="sub">Two-pass loudness mastering (FFmpeg loudnorm) for your mixed WAVs — album-at-once
           or single-track. Never modifies your source files. Same local-only rule as the Video Maker.</div>
           <div class="dry-note" style="margin:10px 0">Start it first: double-click <code>HTR-MASTERING.bat</code>
           in D:\HTR-Studio\modules\mastering (or run <code>HTR-Mastering-Service.vbs</code> from that same folder to start it silently in the background).
@@ -1260,7 +1260,7 @@
       </div>
       <div class="dry-note" style="margin-top:14px">Both tools only work while you're using this admin page on the
       same PC where D:\HTR-Studio lives, and only after you've started their local service. From your phone or
-      another computer these buttons won't connect ÃÂ¢ÃÂÃÂ that's expected, not broken.</div>
+      another computer these buttons won't connect — that's expected, not broken.</div>
     </section>
 
   </main>
@@ -1479,14 +1479,14 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const hint = document.createElement('div');
     hint.className = 'sub';
     hint.style.marginBottom = '6px';
-    hint.textContent = 'Drag to reorder ÃÂ¢ÃÂÃÂ list order = homepage order. ÃÂ¢ÃÂÃÂ live ÃÂÃÂ· H homepage ÃÂÃÂ· R radio';
+    hint.textContent = 'Drag to reorder — list order = homepage order. ● live · H homepage · R radio';
     list.appendChild(hint);
     artists.forEach((a, i) => {
       const btn = document.createElement('button');
       btn.draggable = true;
       const badges = (a.active === false
-          ? ' <span style="color:#e05252;font-size:11px">ÃÂ¢ÃÂÃÂoff</span>'
-          : ' <span style="color:#5bbf6a;font-size:11px">ÃÂ¢ÃÂÃÂ</span>')
+          ? ' <span style="color:#e05252;font-size:11px">●off</span>'
+          : ' <span style="color:#5bbf6a;font-size:11px">●</span>')
         + (a.includeOnLabelHome !== false ? ' <span style="color:#e0a952;font-size:11px">H</span>' : '')
         + (a.includeOnRadio !== false ? ' <span style="color:#5aa7e0;font-size:11px">R</span>' : '');
       btn.innerHTML = (i + 1) + '. ' + a.name + badges;
@@ -1518,7 +1518,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       artistsSha = out.content.sha;
       rosterDirty = false;
       renderRoster();
-      toast('Roster order saved ÃÂ¢ÃÂÃÂ rebuild the homepage to publish it');
+      toast('Roster order saved — rebuild the homepage to publish it');
     } catch (e) { toast('Order save failed: ' + e.message, true); }
   };
 
@@ -1531,7 +1531,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const a = artists.find((x) => x.id === id);
     if (!a) return;
     $('edName').textContent = a.name;
-    $('edMeta').textContent = a.id + '  ÃÂÃÂ·  ' + (a.githubRepo || '') + '  ÃÂÃÂ·  ' + (a.siteUrl || '');
+    $('edMeta').textContent = a.id + '  ·  ' + (a.githubRepo || '') + '  ·  ' + (a.siteUrl || '');
     $('edFields').classList.remove('hidden');
     $('edTagline').value = a.tagline || '';
     $('edGenre').value = a.genre || '';
@@ -1558,9 +1558,9 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   async function renderMusic(a) {
     const box = $('edMusic');
-    box.innerHTML = '<div class="sub">Loading musicÃÂ¢ÃÂÃÂ¦</div>';
+    box.innerHTML = '<div class="sub">Loading music…</div>';
     try {
-      // Always reload fresh from GitHub ÃÂ¢ÃÂÃÂ never use stale cache when switching artists
+      // Always reload fresh from GitHub — never use stale cache when switching artists
       const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
       msCache = JSON.parse(b64decode(sf.content));
       const SITE_VISIBLE = s => (s.unique||s.reg||'REG').toUpperCase() !== 'RET';
@@ -1568,21 +1568,21 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         .sort((x,y) => (x.albumOrder||x.trackNumber||99) - (y.albumOrder||y.trackNumber||99));
       const albums = {};
       mine.forEach(s => { const k = s.album||'Singles'; (albums[k]=albums[k]||[]).push(s); });
-      // All album names for this artist ÃÂ¢ÃÂÃÂ used in song card dropdowns
+      // All album names for this artist — used in song card dropdowns
       const allAlbums = Object.keys(albums);
 
-      box.innerHTML = '<label style="color:var(--warn)">ÃÂ¢ÃÂÃÂ Music (' + mine.length + ' songs) ÃÂ¢ÃÂÃÂ</label>'
+      box.innerHTML = '<label style="color:var(--warn)">— Music (' + mine.length + ' songs) —</label>'
         + '<div class="save-bar" style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">'
         + '<button class="btn btn-blue" onclick="window.artAddSong()">+ Add song</button>'
-        + '<button class="btn btn-ghost" onclick="window.artRefreshMusic()">ÃÂ¢ÃÂÃÂ» Refresh</button>'
-        + '<button class="btn" id="saveOrderBtn" style="display:none;background:var(--ok);color:#000;padding:4px 14px" onclick="window.artSaveOrder(\'' + a.id + '\')">ÃÂ°ÃÂÃÂÃÂ¾ Save Order</button>'
+        + '<button class="btn btn-ghost" onclick="window.artRefreshMusic()">↻ Refresh</button>'
+        + '<button class="btn" id="saveOrderBtn" style="display:none;background:var(--ok);color:#000;padding:4px 14px" onclick="window.artSaveOrder(\'' + a.id + '\')">💾 Save Order</button>'
         + '</div>';
 
       Object.keys(albums).forEach(alb => {
         const songs = albums[alb];
         const albSlug = alb.replace(/[^a-z0-9]/gi,'_');
 
-        // Album header ÃÂ¢ÃÂÃÂ click to edit album name and cover
+        // Album header — click to edit album name and cover
         const head = document.createElement('div');
         head.style.cssText = 'display:flex;align-items:center;gap:10px;margin:14px 0 4px;padding:6px 8px;background:#1a150e;border-radius:6px;border:1px solid #2e261b';
         const albCover = songs[0].albumCover||songs[0].coverImage||'';
@@ -1590,7 +1590,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
           + '<img src="'+albCover+'" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #333" onerror="this.style.display=\'none\'" id="albthumb-'+albSlug+'">'
           + '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);border-radius:4px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:14px;cursor:pointer" '
           + 'onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0" '
-          + 'onclick="document.getElementById(\'albfile-'+albSlug+'\').click()" title="Replace album art">ÃÂ°ÃÂÃÂÃÂ¼'
+          + 'onclick="document.getElementById(\'albfile-'+albSlug+'\').click()" title="Replace album art">🖼'
           + '<input id="albfile-'+albSlug+'" type="file" accept="image/png,image/jpeg" style="display:none" '
           + 'onchange="window.artUploadAlbumCover(this.files[0],\''+alb+'\',\''+a.id+'\',\''+albSlug+'\')"></div>'
           + '</div>'
@@ -1599,7 +1599,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
           + 'onblur="window.artRenameAlbum(this.value,\''+alb+'\',\''+a.id+'\')" onkeydown="if(event.key===\'Enter\')this.blur()">'
           + '</div>'
           + '<span class="sub">'+songs.length+' track'+(songs.length!==1?'s':'')+'</span>'
-          + ('<button onclick="window.artDeleteAlbum(\''+alb+'\',\''+a.id+'\','+songs.length+')" style="margin-left:8px;padding:2px 8px;background:#5a1010;color:#ffaaaa;border:1px solid #8b2020;font-size:11px;cursor:pointer">ÃÂ¢ÃÂÃÂ Delete album'+(songs.length>0?(' ('+songs.length+' songs)'):' (empty)')+'</button>');
+          + ('<button onclick="window.artDeleteAlbum(\''+alb+'\',\''+a.id+'\','+songs.length+')" style="margin-left:8px;padding:2px 8px;background:#5a1010;color:#ffaaaa;border:1px solid #8b2020;font-size:11px;cursor:pointer">✕ Delete album'+(songs.length>0?(' ('+songs.length+' songs)'):' (empty)')+'</button>');
         box.appendChild(head);
 
         // Draggable song list
@@ -1660,12 +1660,12 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
     card.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 10px" onclick="window.artToggleSong('${detId}')">
-        <span style="color:var(--muted);font-size:16px;cursor:grab;flex-shrink:0">ÃÂ¢ÃÂ ÃÂ¿</span>
+        <span style="color:var(--muted);font-size:16px;cursor:grab;flex-shrink:0">⠿</span>
         <img src="${coverSrc}" style="width:32px;height:32px;object-fit:cover;border-radius:3px;flex-shrink:0" onerror="this.style.display='none'">
         <span style="flex:1;font-size:14px">${s.title}</span>
         <span style="font-size:11px;color:var(--muted);margin-right:4px">click to manage</span>
         <button class="btn" style="padding:2px 10px;background:#5a1010;color:#ffaaaa;font-size:12px;border:1px solid #8b2020;flex-shrink:0"
-          onclick="event.stopPropagation();window.artDeleteSong('${artistId}','${s.id}','${safeTitle}')">ÃÂ¢ÃÂÃÂ Delete</button>
+          onclick="event.stopPropagation();window.artDeleteSong('${artistId}','${s.id}','${safeTitle}')">✕ Delete</button>
       </div>
       <div id="${detId}" style="display:none;padding:14px;background:#100d08;border-top:1px solid #2e261b">
         <div style="display:grid;grid-template-columns:200px 1fr;gap:14px;margin-bottom:14px;align-items:start">
@@ -1702,35 +1702,35 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
           <div>
             <label style="font-size:11px;color:var(--muted)">SPOTIFY</label>
-            <input id="sspot-${s.id}" value="${sp}" placeholder="https://open.spotify.com/ÃÂ¢ÃÂÃÂ¦" style="width:100%;margin-top:3px;font-size:11px">
+            <input id="sspot-${s.id}" value="${sp}" placeholder="https://open.spotify.com/…" style="width:100%;margin-top:3px;font-size:11px">
           </div>
           <div>
             <label style="font-size:11px;color:var(--muted)">APPLE MUSIC</label>
-            <input id="sapple-${s.id}" value="${am}" placeholder="https://music.apple.com/ÃÂ¢ÃÂÃÂ¦" style="width:100%;margin-top:3px;font-size:11px">
+            <input id="sapple-${s.id}" value="${am}" placeholder="https://music.apple.com/…" style="width:100%;margin-top:3px;font-size:11px">
           </div>
           <div>
             <label style="font-size:11px;color:var(--muted)">YOUTUBE MUSIC</label>
-            <input id="sytm-${s.id}" value="${yt}" placeholder="https://music.youtube.com/ÃÂ¢ÃÂÃÂ¦" style="width:100%;margin-top:3px;font-size:11px">
+            <input id="sytm-${s.id}" value="${yt}" placeholder="https://music.youtube.com/…" style="width:100%;margin-top:3px;font-size:11px">
           </div>
         </div>
         <div style="margin-bottom:12px">
           <label style="font-size:11px;color:var(--muted)">VIDEO URL (YouTube)</label>
-          <input id="svid-${s.id}" value="${videoUrl}" placeholder="https://youtu.be/ÃÂ¢ÃÂÃÂ¦" style="width:100%;margin-top:3px;font-size:11px">
+          <input id="svid-${s.id}" value="${videoUrl}" placeholder="https://youtu.be/…" style="width:100%;margin-top:3px;font-size:11px">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
           <div>
             <label style="font-size:11px;color:var(--muted)">TIKTOK URL (vertical)</label>
-            <input id="stiktok-${s.id}" value="${s.tiktokUrl||''}" placeholder="https://www.tiktok.com/ÃÂ¢ÃÂÃÂ¦" style="width:100%;margin-top:3px;font-size:11px">
+            <input id="stiktok-${s.id}" value="${s.tiktokUrl||''}" placeholder="https://www.tiktok.com/…" style="width:100%;margin-top:3px;font-size:11px">
           </div>
           <div>
             <label style="font-size:11px;color:var(--muted)">SRT / TIMESTAMPS FILE (Dropbox)</label>
-            <input id="ssrt-${s.id}" value="${s.srtUrl||''}" placeholder="https://www.dropbox.com/ÃÂ¢ÃÂÃÂ¦?raw=1" style="width:100%;margin-top:3px;font-size:11px">
+            <input id="ssrt-${s.id}" value="${s.srtUrl||''}" placeholder="https://www.dropbox.com/…?raw=1" style="width:100%;margin-top:3px;font-size:11px">
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
           <div>
             <label style="font-size:11px;color:var(--muted)">WAV URL (master file)</label>
-            <input id="swav-${s.id}" value="${s.wavUrl||''}" placeholder="https://www.dropbox.com/ÃÂ¢ÃÂÃÂ¦?raw=1" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)" style="width:100%;margin-top:3px;font-size:11px">
+            <input id="swav-${s.id}" value="${s.wavUrl||''}" placeholder="https://www.dropbox.com/…?raw=1" onblur="window.fixDropbox(this)" onchange="window.fixDropbox(this)" style="width:100%;margin-top:3px;font-size:11px">
           </div>
           <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:6px;padding-bottom:3px">
             <label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer">
@@ -1755,7 +1755,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
           </div>
           <div>
             <label style="font-size:11px;color:var(--muted)">SUNO LINK</label>
-            <input id="ssunolink-${s.id}" value="${s.sunoLink||''}" placeholder="https://suno.com/ÃÂ¢ÃÂÃÂ¦" style="width:100%;margin-top:3px;font-size:11px">
+            <input id="ssunolink-${s.id}" value="${s.sunoLink||''}" placeholder="https://suno.com/…" style="width:100%;margin-top:3px;font-size:11px">
           </div>
         </div>
         <div style="margin-bottom:12px">
@@ -1826,8 +1826,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
           </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-blue" style="padding:4px 16px;font-size:12px" onclick="window.artSaveSong('${s.id}','${artistId}')">ÃÂ°ÃÂÃÂÃÂ¾ Save</button>
-          <button class="btn btn-ghost" style="padding:4px 12px;font-size:12px" onclick="window.artOpenWorkshop('${artistId}','${s.id}')">Lyrics / Timestamps ÃÂ¢ÃÂÃÂ</button>
+          <button class="btn btn-blue" style="padding:4px 16px;font-size:12px" onclick="window.artSaveSong('${s.id}','${artistId}')">💾 Save</button>
+          <button class="btn btn-ghost" style="padding:4px 12px;font-size:12px" onclick="window.artOpenWorkshop('${artistId}','${s.id}')">Lyrics / Timestamps →</button>
           <span id="smsg-${s.id}" style="font-size:12px;color:var(--ok)"></span>
         </div>
       </div>`;
@@ -1854,7 +1854,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   window.artSaveOrder = async function(artistId) {
     const btn = $('saveOrderBtn');
-    if (btn) { btn.textContent = 'SavingÃÂ¢ÃÂÃÂ¦'; btn.disabled = true; }
+    if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
     try {
       // Collect new order from DOM
       const lists = document.querySelectorAll('[id^="alb-list-"]');
@@ -1884,19 +1884,19 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
       msCache = null;
       toast('Order saved');
-      if (btn) { btn.textContent = 'ÃÂ°ÃÂÃÂÃÂ¾ Save Order'; btn.disabled = false; btn.style.display = 'none'; }
+      if (btn) { btn.textContent = '💾 Save Order'; btn.disabled = false; btn.style.display = 'none'; }
       const aObj = artists.find(x => x.id === artistId);
       if (aObj && aObj.githubRepo) syncIndexHtml(aObj.githubRepo.replace('SteveP999/',''));
     } catch(e) {
       toast('Save order failed: '+e.message, true);
-      if (btn) { btn.textContent = 'ÃÂ°ÃÂÃÂÃÂ¾ Save Order'; btn.disabled = false; }
+      if (btn) { btn.textContent = '💾 Save Order'; btn.disabled = false; }
     }
   };
 
   window.artUploadCover = async function(file, songId, artistId) {
     if (!file) return;
     const msg = $('smsg-'+songId);
-    if (msg) msg.textContent = 'Uploading coverÃÂ¢ÃÂÃÂ¦';
+    if (msg) msg.textContent = 'Uploading cover…';
     try {
       const b64 = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
       const artist = artists.find(x => x.id === artistId);
@@ -1919,9 +1919,9 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       const si = msData.findIndex(s => s.id === songId);
       if (si !== -1) { msData[si].coverImage = rawUrl; await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {method:'PUT', body:{message:'HTR Studio: update cover for '+songId, content:b64encode(JSON.stringify(msData,null,2)), sha:sf.sha}}); }
       msCache = null;
-      if (msg) msg.textContent = 'ÃÂ¢ÃÂÃÂ Cover uploaded';
+      if (msg) msg.textContent = '✓ Cover uploaded';
     } catch(e) {
-      if (msg) msg.textContent = 'ÃÂ¢ÃÂÃÂ Upload failed: '+e.message;
+      if (msg) msg.textContent = '✗ Upload failed: '+e.message;
     }
   };
 
@@ -2016,7 +2016,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   window.artSaveSong = async function(songId, artistId) {
     const msg = $('smsg-'+songId);
-    if (msg) msg.textContent = 'SavingÃÂ¢ÃÂÃÂ¦';
+    if (msg) msg.textContent = 'Saving…';
     try {
       const title  = $('stitle-'+songId)?.value?.trim();
       const album  = $('salbum-'+songId)?.value;
@@ -2100,21 +2100,21 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
             asData[ai].videos = vidUrl ? [{youtube:vidUrl, title:'Official Video', order:1}] : [];
             await gh('/repos/SteveP999/'+repoName+'/contents/songs.json', {method:'PUT', body:{message:'HTR Studio: update '+songId, content:b64encode(JSON.stringify(asData,null,2)), sha:asf.sha}});
           }
-        } catch(e2) { toast('master saved ÃÂ¢ÃÂÃÂ artist repo failed: '+e2.message, true); }
+        } catch(e2) { toast('master saved — artist repo failed: '+e2.message, true); }
       }
 
       msCache = null;
-      if (msg) { msg.textContent = 'ÃÂ¢ÃÂÃÂ Saved'; setTimeout(()=>{ if(msg) msg.textContent=''; },3000); }
+      if (msg) { msg.textContent = '✓ Saved'; setTimeout(()=>{ if(msg) msg.textContent=''; },3000); }
       // Sync index.html so the live site reflects the change immediately
       const a = artists.find(x => x.id === artistId);
       if (a && a.githubRepo) syncIndexHtml(a.githubRepo.replace('SteveP999/',''));
       if (a) setTimeout(()=>renderMusic(a), 800);
     } catch(e) {
-      if (msg) msg.textContent = 'ÃÂ¢ÃÂÃÂ ' + e.message;
+      if (msg) msg.textContent = '✗ ' + e.message;
     }
   };
 
-  // Syncs the songs array in index.html from songs.json ÃÂ¢ÃÂÃÂ called after every song save
+  // Syncs the songs array in index.html from songs.json — called after every song save
   async function syncIndexHtml(repoName) {
     try {
       const SITE_VISIBLE = s => (s.unique||s.reg||'REG').toUpperCase() !== 'RET';
@@ -2151,7 +2151,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         body:{message:'HTR Studio: sync songs to index.html', content:b64encode(newHtml), sha:hf.sha}
       });
     } catch(e) {
-      // Silent ÃÂ¢ÃÂÃÂ index.html sync is best-effort, songs.json is already saved
+      // Silent — index.html sync is best-effort, songs.json is already saved
       console.warn('syncIndexHtml failed for '+repoName+':', e.message);
     }
   }
@@ -2196,7 +2196,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       if (a) setTimeout(() => renderMusic(a), 800);
     } catch (e) {
       toast('Delete failed: ' + e.message, true);
-      if (btn) { btn.textContent = 'ÃÂ¢ÃÂÃÂ Delete'; btn.disabled = false; }
+      if (btn) { btn.textContent = '✕ Delete'; btn.disabled = false; }
     }
   };
   window.artAddSong = function () {
@@ -2252,8 +2252,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         + '<td style="padding:4px 4px;text-align:center;color:'+uniqColor+';font-weight:bold">'+uniq+'</td>'
         + '<td style="padding:4px 4px;text-align:center;color:var(--muted)">'+((s.radio||'').toUpperCase())+'</td>'
         + '<td style="padding:4px 4px;text-align:center;color:var(--muted)">'+((s.writer||'').toUpperCase())+'</td>'
-        + '<td style="padding:4px 8px;color:'+(noWork?'var(--err)':'var(--cream)')+';white-space:nowrap">'+(s.workNo||'ÃÂ¢ÃÂÃÂ')+'</td>'
-        + '<td style="padding:4px 8px;color:var(--muted);white-space:nowrap">'+(s.iswc||'ÃÂ¢ÃÂÃÂ')+'</td>'
+        + '<td style="padding:4px 8px;color:'+(noWork?'var(--err)':'var(--cream)')+';white-space:nowrap">'+(s.workNo||'—')+'</td>'
+        + '<td style="padding:4px 8px;color:var(--muted);white-space:nowrap">'+(s.iswc||'—')+'</td>'
         + '<td style="padding:4px 8px;color:var(--muted);white-space:nowrap">'+(s.songview||'')+'</td>'
         + '<td style="padding:4px 4px;text-align:center;color:var(--muted)">'+(s.trackTime||'')+'</td>'
         + '</tr>';
@@ -2272,11 +2272,11 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     workNo = (workNo||'').trim();
     if (!workNo || !msCache) { el.innerHTML = ''; return; }
     const matches = msCache.filter(s => s.id !== songId && s.workNo === workNo);
-    if (!matches.length) { el.innerHTML = '<span style="color:var(--ok)">ÃÂ¢ÃÂÃÂ No other songs share this Work #</span>'; return; }
+    if (!matches.length) { el.innerHTML = '<span style="color:var(--ok)">✓ No other songs share this Work #</span>'; return; }
     el.innerHTML = '<div style="margin-top:4px;padding:6px 8px;background:#1a150e;border-radius:4px;border:1px solid #2e261b">'
       + '<div style="color:var(--warn);margin-bottom:4px">Also using Work # ' + workNo + ':</div>'
       + matches.map(s => '<div style="padding:2px 0">'
-          + '<span style="color:var(--cream)">' + s.artist + ' ÃÂ¢ÃÂÃÂ ' + s.title + '</span>'
+          + '<span style="color:var(--cream)">' + s.artist + ' — ' + s.title + '</span>'
           + ' <span style="color:var(--muted)">(' + (s.unique||'?') + ')</span>'
           + ' <span style="color:var(--muted)">Radio: ' + (s.radio||'?') + '</span>'
           + '</div>').join('')
@@ -2406,19 +2406,19 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         if (missing.length > 0) {
           totalMissing += missing.length;
           html += '<div style="margin-bottom:8px;padding:8px;background:#1a0a0a;border:1px solid #8b2020;border-radius:4px">'
-            + '<b style="color:#ffaaaa">' + a.name + '</b> ÃÂ¢ÃÂÃÂ ' + missing.length + ' song(s) on live site but not in master:<br>'
+            + '<b style="color:#ffaaaa">' + a.name + '</b> — ' + missing.length + ' song(s) on live site but not in master:<br>'
             + missing.map(id => {
                 const s = liveSongs.find(x => x.id === id);
-                return '<span style="color:var(--muted);padding-left:12px">ÃÂ¢ÃÂÃÂ¢ ' + (s ? s.title : id) + '</span>';
+                return '<span style="color:var(--muted);padding-left:12px">• ' + (s ? s.title : id) + '</span>';
               }).join('<br>')
             + '</div>';
         }
       }
 
       if (totalMissing === 0) {
-        out.innerHTML = '<div style="color:#3fa15c;font-weight:bold">ÃÂ¢ÃÂÃÂ All artists in sync. No missing songs.</div>';
+        out.innerHTML = '<div style="color:#3fa15c;font-weight:bold">✓ All artists in sync. No missing songs.</div>';
       } else {
-        out.innerHTML = '<div style="color:#ffaaaa;font-weight:bold;margin-bottom:8px">ÃÂ¢ÃÂÃÂ  ' + totalMissing + ' song(s) found on live sites but missing from master. Contact support.</div>' + html;
+        out.innerHTML = '<div style="color:#ffaaaa;font-weight:bold;margin-bottom:8px">⚠ ' + totalMissing + ' song(s) found on live sites but missing from master. Contact support.</div>' + html;
       }
     } catch(e) {
       out.innerHTML = '<span style="color:var(--err)">Check failed: ' + e.message + '</span>';
@@ -2475,7 +2475,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   function slugify(text) {
     return String(text || '').toLowerCase()
-      .replace(/&/g, 'and').replace(/['ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ]/g, '')
+      .replace(/&/g, 'and').replace(/['’‘]/g, '')
       .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   }
 
@@ -2517,7 +2517,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const audioIn = $('asAudio').value.trim();
     if (!title) return toast('Song title required', true);
     if (audioIn.indexOf('/scl/fi/') === -1) {
-      return toast('That is not a file link ÃÂ¢ÃÂÃÂ right-click the MP3 itself in Dropbox and copy ITS link (/scl/fi/...)', true);
+      return toast('That is not a file link — right-click the MP3 itself in Dropbox and copy ITS link (/scl/fi/...)', true);
     }
     btn.disabled = true;
     $('asMsg').textContent = 'Working...';
@@ -2603,7 +2603,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         body: { message: 'HTR Studio: latestTitle for ' + artistId, content: b64encode(JSON.stringify(artistsData, null, 2)), sha: af.sha }
       });
 
-      // Step 2: Write directly to artist repo songs.json ÃÂ¢ÃÂÃÂ no Publish required
+      // Step 2: Write directly to artist repo songs.json — no Publish required
       $('asMsg').textContent = 'Saving to artist site...';
       try {
         const repoName = repoFull.replace('SteveP999/', '');
@@ -2643,8 +2643,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         if (artistSongsSha) asBody.sha = artistSongsSha;
         await gh('/repos/SteveP999/' + repoName + '/contents/songs.json', { method: 'PUT', body: asBody });
       } catch(artistRepoErr) {
-        // Don't fail the whole add ÃÂ¢ÃÂÃÂ master is saved. Log the error clearly.
-        toast('Song saved to master ÃÂ¢ÃÂÃÂ artist repo write failed: ' + artistRepoErr.message + '. Run Publish to sync.', true);
+        // Don't fail the whole add — master is saved. Log the error clearly.
+        toast('Song saved to master — artist repo write failed: ' + artistRepoErr.message + '. Run Publish to sync.', true);
       }
 
       lastAddedArtistId = artistId;
@@ -2691,7 +2691,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       mine.forEach((s) => {
         const o = document.createElement('option');
         o.value = s.id;
-        o.textContent = (s.album || '?') + ' ÃÂ¢ÃÂÃÂ ' + s.title;
+        o.textContent = (s.album || '?') + ' — ' + s.title;
         sel.appendChild(o);
       });
       // populate the "move to album" target dropdown with this artist's albums (+ Singles)
@@ -2728,7 +2728,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     }
   };
 
-  // Reload the form for whichever song is selected ÃÂ¢ÃÂÃÂ streaming links come from
+  // Reload the form for whichever song is selected — streaming links come from
   // that song's own data; one-shot "add" fields are cleared so nothing carries over.
   window.exSelectSong = function () {
     const s = exSongs.find((x) => x.id === $('exSong').value);
@@ -2848,7 +2848,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       $('exMsg').textContent = 'Video removed.';
       $('exAfter').classList.remove('hidden');
       window.exRenderVideos();
-      toast('Video removed ÃÂ¢ÃÂÃÂ publish to update the live site');
+      toast('Video removed — publish to update the live site');
     } catch (e) {
       $('exMsg').textContent = '';
       toast('Failed: ' + e.message, true);
@@ -3020,7 +3020,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const songId = $('exSong').value;
     const url = $('exNewAudio').value.trim();
     if (url.indexOf('/scl/fi/') === -1) {
-      return toast('Need the FILE link (/scl/fi/...) ÃÂ¢ÃÂÃÂ right-click the MP3 in Dropbox', true);
+      return toast('Need the FILE link (/scl/fi/...) — right-click the MP3 in Dropbox', true);
     }
     if (!confirm('Replace the audio for this song with the new link?')) return;
     $('exMsg').textContent = 'Replacing audio...';
@@ -3037,7 +3037,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       $('exMsg').textContent = 'Audio replaced.';
       $('exAfter').classList.remove('hidden');
       $('exNewAudio').value = '';
-      toast('Audio replaced ÃÂ¢ÃÂÃÂ publish to go live');
+      toast('Audio replaced — publish to go live');
     } catch (e) {
       $('exMsg').textContent = '';
       toast('Failed: ' + e.message, true);
@@ -3110,8 +3110,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     exOrder.forEach((s, i) => {
       html += '<tr><td class="t20-pos">' + (i + 1) + '</td><td>' + esc(s.title || s.id) + '</td>' +
         '<td class="t20-actions">' +
-        '<button onclick="window.exOrderMove(' + i + ',-1)"' + (i === 0 ? ' disabled' : '') + '>ÃÂ¢ÃÂÃÂ</button>' +
-        '<button onclick="window.exOrderMove(' + i + ',1)"' + (i === exOrder.length - 1 ? ' disabled' : '') + '>ÃÂ¢ÃÂÃÂ</button>' +
+        '<button onclick="window.exOrderMove(' + i + ',-1)"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+        '<button onclick="window.exOrderMove(' + i + ',1)"' + (i === exOrder.length - 1 ? ' disabled' : '') + '>↓</button>' +
         '</td></tr>';
     });
     html += '</tbody></table>';
@@ -3128,7 +3128,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.exSaveOrder = async function () {
     if (!exOrder.length) return toast('Nothing to reorder', true);
     const album = $('exReorderAlbum').value;
-    $('exOrderMsg').textContent = 'Saving orderÃÂ¢ÃÂÃÂ¦';
+    $('exOrderMsg').textContent = 'Saving order…';
     try {
       const idOrder = exOrder.map((s) => s.id);
       await exUpdateSongs((songs) => {
@@ -3149,7 +3149,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       exOrder.forEach((s, idx) => { s.trackNumber = idx + 1; s.albumOrder = idx + 1; s.num = String(idx + 1).padStart(2, '0'); });
       $('exOrderMsg').textContent = 'Order saved.';
       $('exAfter').classList.remove('hidden');
-      toast('Track order saved ÃÂ¢ÃÂÃÂ publish to update the site');
+      toast('Track order saved — publish to update the site');
     } catch (e) {
       $('exOrderMsg').textContent = '';
       toast('Save failed: ' + e.message, true);
@@ -3175,7 +3175,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const albumName = $('exAlbumTarget').value;
     if (!songId || !albumName) return toast('Pick a song and a target album', true);
     if (!confirm('Move this song onto album "' + albumName + '"?')) return;
-    $('exMoveMsg').textContent = 'MovingÃÂ¢ÃÂÃÂ¦';
+    $('exMoveMsg').textContent = 'Moving…';
     try {
       await exUpdateSongs((songs) => {
         const s = songs.find((x) => x.id === songId);
@@ -3189,7 +3189,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       exLastArtist = $('exArtist').value;
       $('exMoveMsg').textContent = 'Moved to ' + albumName + '.';
       $('exAfter').classList.remove('hidden');
-      toast('Song moved ÃÂ¢ÃÂÃÂ publish to update the site');
+      toast('Song moved — publish to update the site');
       window.exLoadSongs();
     } catch (e) {
       $('exMoveMsg').textContent = '';
@@ -3207,12 +3207,12 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (!artist || !artist.githubRepo) return toast('Artist repo not found', true);
     const path = 'images/covers/' + artistId + '-' + slugify(album) + '-ALBUM-cover.png';
     if (!confirm('Upload album cover for "' + album + '"?\n(' + path + ')')) return;
-    $('exAlbumCoverMsg').textContent = 'UploadingÃÂ¢ÃÂÃÂ¦';
+    $('exAlbumCoverMsg').textContent = 'Uploading…';
     try {
       const b64 = await fileToBase64(file);
       await putFile(artist.githubRepo, path, b64, 'HTR Studio: album cover for ' + album);
       await dispatch('build-artist.yml', { artist_id: artistId, dry_run: 'false' });
-      $('exAlbumCoverMsg').textContent = 'Uploaded ÃÂ¢ÃÂÃÂ site rebuilding.';
+      $('exAlbumCoverMsg').textContent = 'Uploaded — site rebuilding.';
       $('exAlbumCoverFile').value = '';
       toast('Album cover uploaded; site rebuilding (image cache may take a few min)');
     } catch (e) {
@@ -3232,12 +3232,12 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (!m) return toast('This song has no repo cover URL to replace', true);
     const repo = m[1], path = m[2];
     if (!confirm('Replace the cover for "' + song.title + '"? (' + path + ')')) return;
-    $('exCoverMsg').textContent = 'Uploading new coverÃÂ¢ÃÂÃÂ¦';
+    $('exCoverMsg').textContent = 'Uploading new cover…';
     try {
       const b64 = await fileToBase64(file);
       await putFile(repo, path, b64, 'HTR Studio: replace cover for ' + songId);
       await dispatch('build-artist.yml', { artist_id: song.artistId, dry_run: 'false' });
-      $('exCoverMsg').textContent = 'Replaced ÃÂ¢ÃÂÃÂ site rebuilding.';
+      $('exCoverMsg').textContent = 'Replaced — site rebuilding.';
       $('exCoverFile').value = '';
       toast('Cover replaced; site rebuilding (image cache may take a few minutes)');
     } catch (e) {
@@ -3277,7 +3277,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   function audioOf(s) { return s.audioFile || s.audioSrc || s.audio || ''; }
 
   // Toggleable = hand-curated by a song list. open-road (auto-everything),
-  // new-releases (auto-latest) and htr-top-20 (chart) are computed ÃÂ¢ÃÂÃÂ read-only.
+  // new-releases (auto-latest) and htr-top-20 (chart) are computed → read-only.
   function stationToggleable(st) {
     return (st.type === 'genre' && st.id !== 'open-road') || st.source === 'manual';
   }
@@ -3306,7 +3306,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.loadRadio = async function (force) {
     if (radioLoaded && !force) return;
     const wrap = $('radioWrap');
-    wrap.innerHTML = '<div style="padding:20px;color:var(--muted)">Loading songs and stationsÃÂ¢ÃÂÃÂ¦</div>';
+    wrap.innerHTML = '<div style="padding:20px;color:var(--muted)">Loading songs and stations…</div>';
     try {
       const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
       const rf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/radio-stations.json');
@@ -3383,8 +3383,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   function updateRadioCount() {
     const n = radioDirty.size;
-    $('radioStats').textContent = radioSongs.length + ' songs ÃÂÃÂ· ' + radioStations.length +
-      ' stations ÃÂÃÂ· ' + n + ' unsaved change' + (n === 1 ? '' : 's');
+    $('radioStats').textContent = radioSongs.length + ' songs · ' + radioStations.length +
+      ' stations · ' + n + ' unsaved change' + (n === 1 ? '' : 's');
     $('radioSaveBtn').disabled = n === 0;
   }
 
@@ -3414,7 +3414,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (radioDirty.size === 0) return toast('No changes to save');
     const btn = $('radioSaveBtn');
     btn.disabled = true;
-    $('radioMsg').textContent = 'SavingÃÂ¢ÃÂÃÂ¦';
+    $('radioMsg').textContent = 'Saving…';
     try {
       const body = {
         message: 'HTR Studio: radio assignments (' + radioDirty.size + ' change' + (radioDirty.size === 1 ? '' : 's') + ')',
@@ -3432,7 +3432,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     } catch (e) {
       $('radioMsg').textContent = '';
       if (String(e.message).indexOf('does not match') !== -1 || String(e.message).indexOf('409') !== -1) {
-        toast('Someone/something else changed the file. Hit Reload, then redo ÃÂ¢ÃÂÃÂ your unsaved toggles will be lost.', true);
+        toast('Someone/something else changed the file. Hit Reload, then redo — your unsaved toggles will be lost.', true);
       } else {
         toast('Save failed: ' + e.message, true);
       }
@@ -3445,7 +3445,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (!confirm('This will publish HTR Radio LIVE. Continue?')) return;
     try {
       await dispatch('publish-radio.yml', { dry_run: 'false' });
-      toast('Publish HTR Radio (LIVE) started ÃÂ¢ÃÂÃÂ check Recent runs.');
+      toast('Publish HTR Radio (LIVE) started — check Recent runs.');
       $('radioAfter').classList.add('hidden');
       $('t20After') && $('t20After').classList.add('hidden');
       showTab('dashboard');
@@ -3465,7 +3465,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   window.loadTop20 = async function (force) {
     if (t20Loaded && !force) return;
-    $('t20Wrap').innerHTML = '<div style="padding:20px;color:var(--muted)">LoadingÃÂ¢ÃÂÃÂ¦</div>';
+    $('t20Wrap').innerHTML = '<div style="padding:20px;color:var(--muted)">Loading…</div>';
     try {
       const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
       const cf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/chart.json');
@@ -3473,13 +3473,13 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       t20Chart = JSON.parse(b64decode(cf.content));
       t20Sha = cf.sha;
       const sel = $('t20AddSel');
-      sel.innerHTML = '<option value="">ÃÂ¢ÃÂÃÂ pick a song to add ÃÂ¢ÃÂÃÂ</option>';
+      sel.innerHTML = '<option value="">— pick a song to add —</option>';
       t20Songs.slice().sort((a, b) =>
         (a.artist || '').localeCompare(b.artist || '') || (a.title || '').localeCompare(b.title || ''))
         .forEach((s) => {
           const o = document.createElement('option');
           o.value = s.id;
-          o.textContent = (s.artist || '?') + ' ÃÂ¢ÃÂÃÂ ' + (s.title || s.id);
+          o.textContent = (s.artist || '?') + ' — ' + (s.title || s.id);
           sel.appendChild(o);
         });
       t20Dirty = false;
@@ -3496,7 +3496,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     let html = '<table class="t20grid"><thead><tr><th class="t20-pos">#</th><th>Song</th><th>Move</th><th></th></tr></thead><tbody>';
     t20Chart.forEach((e, i) => {
       const s = map[e.songId];
-      const label = s ? (esc(s.artist) + ' ÃÂ¢ÃÂÃÂ ' + esc(s.title))
+      const label = s ? (esc(s.artist) + ' — ' + esc(s.title))
         : '<span style="color:var(--err)">' + esc(e.songId) + ' (not in master)</span>';
       const cur = (e.movement || '').toUpperCase();
       const opts = T20_MOVES.map((m) => '<option' + (cur === m ? ' selected' : '') + '>' + m + '</option>').join('');
@@ -3504,9 +3504,9 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         '<td>' + label + '</td>' +
         '<td class="t20-move"><select onchange="window.t20SetMove(' + i + ',this.value)">' + opts + '</select></td>' +
         '<td class="t20-actions">' +
-        '<button onclick="window.t20Move(' + i + ',-1)"' + (i === 0 ? ' disabled' : '') + '>ÃÂ¢ÃÂÃÂ</button>' +
-        '<button onclick="window.t20Move(' + i + ',1)"' + (i === t20Chart.length - 1 ? ' disabled' : '') + '>ÃÂ¢ÃÂÃÂ</button>' +
-        '<button onclick="window.t20Remove(' + i + ')">ÃÂ¢ÃÂÃÂ</button>' +
+        '<button onclick="window.t20Move(' + i + ',-1)"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+        '<button onclick="window.t20Move(' + i + ',1)"' + (i === t20Chart.length - 1 ? ' disabled' : '') + '>↓</button>' +
+        '<button onclick="window.t20Remove(' + i + ')">✕</button>' +
         '</td></tr>';
     });
     html += '</tbody></table>';
@@ -3515,7 +3515,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   }
 
   function updateT20() {
-    $('t20Stats').textContent = t20Chart.length + ' songs in chart ÃÂÃÂ· ' + (t20Dirty ? 'unsaved changes' : 'saved');
+    $('t20Stats').textContent = t20Chart.length + ' songs in chart · ' + (t20Dirty ? 'unsaved changes' : 'saved');
     $('t20SaveBtn').disabled = !t20Dirty;
   }
 
@@ -3545,7 +3545,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (!t20Dirty) return toast('No changes to save');
     const btn = $('t20SaveBtn');
     btn.disabled = true;
-    $('t20Msg').textContent = 'SavingÃÂ¢ÃÂÃÂ¦';
+    $('t20Msg').textContent = 'Saving…';
     try {
       t20Chart.forEach((e, i) => { e.position = i + 1; if (e.introAudio === undefined) e.introAudio = ''; });
       const body = {
@@ -3563,7 +3563,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     } catch (e) {
       $('t20Msg').textContent = '';
       if (String(e.message).indexOf('does not match') !== -1) {
-        toast('Chart changed elsewhere ÃÂ¢ÃÂÃÂ hit Reload, then redo.', true);
+        toast('Chart changed elsewhere — hit Reload, then redo.', true);
       } else {
         toast('Save failed: ' + e.message, true);
       }
@@ -3596,7 +3596,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.lyrLoadSongs = async function () {
     const artistId = $('lyrArtist').value;
     if (!artistId) return;
-    $('lyrSong').innerHTML = '<option>LoadingÃÂ¢ÃÂÃÂ¦</option>';
+    $('lyrSong').innerHTML = '<option>Loading…</option>';
     try {
       const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
       lyrSongs = JSON.parse(b64decode(sf.content));
@@ -3605,7 +3605,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       sel.innerHTML = '';
       mine.forEach((s) => {
         const o = document.createElement('option');
-        o.value = s.id; o.textContent = (s.album || '?') + ' ÃÂ¢ÃÂÃÂ ' + s.title;
+        o.value = s.id; o.textContent = (s.album || '?') + ' — ' + s.title;
         sel.appendChild(o);
       });
       window.lyrSongChange();
@@ -3646,7 +3646,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     } catch (e) { /* none */ }
     $('lyrStored').textContent = stored.length
       ? ('Stored for this song: ' + stored.join(' + ') + '.')
-      : 'Nothing stored yet ÃÂ¢ÃÂÃÂ paste lyrics below and Save to catalog.';
+      : 'Nothing stored yet — paste lyrics below and Save to catalog.';
     window.lvRefresh();
   };
 
@@ -3656,8 +3656,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (!song) return toast('Pick a catalog song first', true);
     const lyrics = $('lyrText').value.trim();
     const suno = $('lyrSunoPrompt').value.trim();
-    if (!lyrics && !suno) return toast('Nothing to save ÃÂ¢ÃÂÃÂ paste lyrics and/or a Suno prompt', true);
-    $('lyrStatus').textContent = 'SavingÃÂ¢ÃÂÃÂ¦';
+    if (!lyrics && !suno) return toast('Nothing to save — paste lyrics and/or a Suno prompt', true);
+    $('lyrStatus').textContent = 'Saving…';
     try {
       if (lyrics) await lyrCommitFile('data/lyrics/' + song.id + '-sheet.txt', lyrics + '\n', 'Lyric sheet: ' + song.id);
       const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
@@ -3689,7 +3689,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (audioIn && audioIn.indexOf('/scl/fi/') === -1 && audioIn.indexOf('dropbox.com') !== -1) {
       return toast('That is not a Dropbox FILE link (/scl/fi/...)', true);
     }
-    $('lyrStatus').textContent = 'Saving song infoÃÂ¢ÃÂÃÂ¦';
+    $('lyrStatus').textContent = 'Saving song info…';
     try {
       const songSlug = slugify(song.title);
       const albumSlug = slugify(album);
@@ -3768,16 +3768,16 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
     btn.disabled = true;
     $('lyrResult').classList.add('hidden');
-    $('lyrStatus').textContent = 'Submitting jobÃÂ¢ÃÂÃÂ¦';
+    $('lyrStatus').textContent = 'Submitting job…';
     try {
       if (mode === 'upload') {
-        $('lyrStatus').textContent = 'Uploading MP3ÃÂ¢ÃÂÃÂ¦';
+        $('lyrStatus').textContent = 'Uploading MP3…';
         const b64 = await fileToBase64($('lyrFile').files[0]);
         await putFile(OWNER + '/' + REPO, mp3, b64, 'Lyric upload: ' + songId);
       }
       await lyrCommitFile('data/lyric-jobs/' + songId + '.txt', lyrics, 'Lyric job: ' + songId);
       await dispatch('align-lyrics.yml', { song_id: songId, mp3_url: mp3 });
-      $('lyrStatus').textContent = 'Aligning in the cloud (CPU) ÃÂ¢ÃÂÃÂ a few minutes. Leave this open; the result appears below'
+      $('lyrStatus').textContent = 'Aligning in the cloud (CPU) — a few minutes. Leave this open; the result appears below'
         + (mode === 'catalog' ? ' and saves next to the MP3 in Dropbox.' : ' to copy/download.');
       lyrStartPoll(songId, mode !== 'catalog');
     } catch (e) {
@@ -3799,13 +3799,13 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         $('lyrOut').value = txt;
         $('lyrResult').classList.remove('hidden');
         $('lyrStatus').textContent = isUpload
-          ? 'Done ÃÂ¢ÃÂÃÂ copy or download below.'
-          : 'Done ÃÂ¢ÃÂÃÂ also saved next to the MP3 in Dropbox.';
+          ? 'Done — copy or download below.'
+          : 'Done — also saved next to the MP3 in Dropbox.';
         $('lyrGenBtn').disabled = false;
       } catch (e) {
         if (Date.now() > until) {
           clearInterval(lyrPoll); lyrPoll = null;
-          $('lyrStatus').textContent = 'Still running or failed ÃÂ¢ÃÂÃÂ check the run on the Dashboard.';
+          $('lyrStatus').textContent = 'Still running or failed — check the run on the Dashboard.';
           $('lyrGenBtn').disabled = false;
         }
       }
@@ -3888,7 +3888,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     return out;
   }
 
-  // Open the editor straight from a pasted lyric sheet (Suno format) ÃÂ¢ÃÂÃÂ no aligner.
+  // Open the editor straight from a pasted lyric sheet (Suno format) — no aligner.
   // Lines get placeholder times in order; you stamp the real times against the audio.
   window.edFromLyrics = function () {
     const raw = $('lyrText').value.trim();
@@ -3912,7 +3912,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     // placeholder times keep the sheet order until you stamp the real ones
     const text = lines.map((l, i) => '0:' + String((i * 0.1).toFixed(1)).padStart(4, '0') + '\t' + l).join('\n');
     window.edOpen(text, src, songId, canSave, name);
-    toast('Stamp each line as itÃÂ¢ÃÂÃÂs sung ÃÂ¢ÃÂÃÂ times are placeholders until you do');
+    toast('Stamp each line as it’s sung — times are placeholders until you do');
   };
   function edFmt(t) {
     const m = Math.floor(t / 60), s = t - m * 60;
@@ -3936,7 +3936,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     edLines = edParseTs(text);
     edHistory = [];
     edSongId = songId || ''; edCanSave = !!canSave; edSel = -1;
-    $('edSongName').textContent = name ? ('ÃÂ¢ÃÂÃÂ ' + name) : '';
+    $('edSongName').textContent = name ? ('— ' + name) : '';
     $('edSaveBtn').style.display = canSave ? '' : 'none';
     const au = $('edAudio');
     au.src = audioSrc || '';
@@ -3965,7 +3965,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
       window.edOpen(b64decode(f.content), audioOf(song), song.id, true, song.title);
     } catch (e) {
-      toast('No saved timestamps for this song yet ÃÂ¢ÃÂÃÂ generate them first', true);
+      toast('No saved timestamps for this song yet — generate them first', true);
     }
   };
 
@@ -3990,19 +3990,19 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         if (nx) {
           const d = nx.t - l.t;
           const col = d < 2 ? '#e05252' : (d < 3 ? '#e0a952' : (d > 8 ? '#e05252' : '#8a8f98'));
-          const hint = d > 8 ? ' title="this caption holds ' + d.toFixed(0) + 's ÃÂ¢ÃÂÃÂ likely an interlude. Add a section where the singing stops to cut it."' : '';
-          lineDur = '<span' + hint + ' style="color:' + col + ';font-family:monospace;min-width:46px;text-align:right">' + d.toFixed(1) + 's' + (d > 8 ? ' ÃÂ¢ÃÂÃÂ ' : '') + '</span>';
+          const hint = d > 8 ? ' title="this caption holds ' + d.toFixed(0) + 's — likely an interlude. Add a section where the singing stops to cut it."' : '';
+          lineDur = '<span' + hint + ' style="color:' + col + ';font-family:monospace;min-width:46px;text-align:right">' + d.toFixed(1) + 's' + (d > 8 ? ' ⚠' : '') + '</span>';
         }
       }
       row.innerHTML =
         '<input value="' + edFmt(l.t) + '" style="width:64px;font-family:monospace;text-align:right" onchange="window.edSetTime(' + i + ',this.value)">'
         + '<button class="btn btn-ghost" style="padding:2px 8px" title="jump audio here" onclick="window.edJump(' + i + ')">&#9658;</button>'
-        + '<button class="btn btn-ghost" style="padding:2px 6px" onclick="window.edNudge(' + i + ',-0.5)">ÃÂ¢ÃÂÃÂ.5</button>'
+        + '<button class="btn btn-ghost" style="padding:2px 6px" onclick="window.edNudge(' + i + ',-0.5)">−.5</button>'
         + '<button class="btn btn-ghost" style="padding:2px 6px" onclick="window.edNudge(' + i + ',0.5)">+.5</button>'
         + '<span style="flex:1;color:' + (l.marker ? '#e0a952' : '#e8e8e8') + '" ondblclick="window.edEditText(' + i + ')">' + l.text.replace(/</g, '&lt;') + '</span>'
         + lineDur
-        + (l.marker ? '<button class="btn btn-ghost" style="padding:2px 6px" title="insert another section marker at the midpoint (more photo slots for music videos)" onclick="window.edSplitSection(' + i + ')">ÃÂÃÂ· split</button>' : '<button class="btn btn-ghost" style="padding:2px 6px" title="merge with next line" onclick="window.edCombine(' + i + ')">ÃÂ¢ÃÂÃÂ© merge</button>')
-        + '<button class="btn btn-ghost" style="padding:2px 6px" title="remove" onclick="window.edRemove(' + i + ')">ÃÂ¢ÃÂÃÂ</button>'
+        + (l.marker ? '<button class="btn btn-ghost" style="padding:2px 6px" title="insert another section marker at the midpoint (more photo slots for music videos)" onclick="window.edSplitSection(' + i + ')">÷ split</button>' : '<button class="btn btn-ghost" style="padding:2px 6px" title="merge with next line" onclick="window.edCombine(' + i + ')">⇩ merge</button>')
+        + '<button class="btn btn-ghost" style="padding:2px 6px" title="remove" onclick="window.edRemove(' + i + ')">✕</button>'
         + (l.marker ? dur : '');
       box.appendChild(row);
     });
@@ -4064,7 +4064,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (edSel < 0) return;
     edPush();
     edLines[edSel].t = Math.round($('edAudio').currentTime * 10) / 10;
-    // advance to the next line ÃÂ¢ÃÂÃÂ markers included, so sections get stamped
+    // advance to the next line — markers included, so sections get stamped
     // in the same flow (skip only the [Start]/[End] anchors)
     let n = edSel + 1;
     while (n < edLines.length && /^\[(start|end)\]$/i.test(edLines[n].text)) n++;
@@ -4077,7 +4077,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.edRate = function () {
     const au = $('edAudio');
     au.playbackRate = au.playbackRate === 1 ? 0.75 : 1;
-    $('edRateBtn').textContent = au.playbackRate.toFixed(2).replace(/0+$/, '') + 'ÃÂÃÂ';
+    $('edRateBtn').textContent = au.playbackRate.toFixed(2).replace(/0+$/, '') + '×';
   };
 
   document.addEventListener('keydown', function (e) {
@@ -4105,7 +4105,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.edSave = async function () {
     if (!edCanSave || !edSongId) return toast('Catalog songs only', true);
     // unstamped section markers (placeholder times before the first lyric)
-    // would sort to the top as 0:00 junk ÃÂ¢ÃÂÃÂ offer to sweep them
+    // would sort to the top as 0:00 junk — offer to sweep them
     const firstLyric = edLines.filter((l) => !l.marker).sort((a, b) => a.t - b.t)[0];
     if (firstLyric) {
       const junk = edLines.filter((l) => l.marker
@@ -4119,7 +4119,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     }
     edLines.sort((a, b) => a.t - b.t);
     edRender();
-    $('edStatus').textContent = 'SavingÃÂ¢ÃÂÃÂ¦';
+    $('edStatus').textContent = 'Saving…';
     try {
       await lyrCommitFile('data/lyrics/' + edSongId + '-timestamps.txt', edSerialize(),
         'Timestamps edited: ' + edSongId);
@@ -4146,7 +4146,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     let prevEnd = 0;
     for (let i = 0; i < lines.length; i++) {
       const start = Math.max(lines[i].t, prevEnd);
-      // caption ends at the NEXT event ÃÂ¢ÃÂÃÂ lyric OR section marker (so captions
+      // caption ends at the NEXT event — lyric OR section marker (so captions
       // never linger through a musical interlude / solo)
       const nxtEv = all.find((x) => x.t > start && x !== lines[i]);
       let nxt = nxtEv ? nxtEv.t : (endMark ? endMark.t : lines[i].t + 4);
@@ -4180,12 +4180,12 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const box = $('lvThumbs');
     if (!song) { box.innerHTML = ''; return; }
     const seq = ++lvRefreshSeq;   // only the latest refresh may touch the page
-    $('lvSongName').textContent = 'ÃÂ¢ÃÂÃÂ ' + song.title;
-    box.innerHTML = '<span class="sub">LoadingÃÂ¢ÃÂÃÂ¦</span>';
+    $('lvSongName').textContent = '— ' + song.title;
+    box.innerHTML = '<span class="sub">Loading…</span>';
     const base = 'data/video-assets/' + song.id;
     const groups = [
-      { label: '16:9 ÃÂ¢ÃÂÃÂ YouTube', fmt: '16x9', items: await lvList(base + '/16x9'), tw: 150, th: 84 },
-      { label: '9:16 ÃÂ¢ÃÂÃÂ Shorts / Reels', fmt: '9x16', items: await lvList(base + '/9x16'), tw: 84, th: 150 },
+      { label: '16:9 — YouTube', fmt: '16x9', items: await lvList(base + '/16x9'), tw: 150, th: 84 },
+      { label: '9:16 — Shorts / Reels', fmt: '9x16', items: await lvList(base + '/9x16'), tw: 84, th: 150 },
       { label: 'Both formats (auto-cropped)', fmt: '', items: await lvList(base), tw: 150, th: 84 }
     ];
     if (seq !== lvRefreshSeq) return;   // a newer refresh took over
@@ -4208,8 +4208,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         const d = document.createElement('div');
         d.style.cssText = 'position:relative;width:' + g.tw + 'px';
         d.innerHTML = '<img src="' + f.download_url + '" style="width:' + g.tw + 'px;height:' + g.th + 'px;object-fit:cover;border-radius:6px;border:1px solid #333">'
-          + '<div class="sub" style="text-align:center;font-size:11px"><b>#' + (k + 1) + '</b> ÃÂÃÂ· ' + f.name + '</div>'
-          + '<button class="btn btn-ghost" style="position:absolute;top:2px;right:2px;padding:0 6px" title="delete" onclick="window.lvDelete(' + gi + ')">ÃÂ¢ÃÂÃÂ</button>';
+          + '<div class="sub" style="text-align:center;font-size:11px"><b>#' + (k + 1) + '</b> · ' + f.name + '</div>'
+          + '<button class="btn btn-ghost" style="position:absolute;top:2px;right:2px;padding:0 6px" title="delete" onclick="window.lvDelete(' + gi + ')">✕</button>';
         row.appendChild(d);
       });
       box.appendChild(row);
@@ -4243,30 +4243,30 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   function lvCueRender() {
     const box = $('lvCueRows');
-    box.innerHTML = lvCues.length ? '' : '<div class="sub">No cues ÃÂ¢ÃÂÃÂ backgrounds follow song sections automatically.</div>';
+    box.innerHTML = lvCues.length ? '' : '<div class="sub">No cues — backgrounds follow song sections automatically.</div>';
     lvCues.forEach((c, i) => {
       const opts = lvCueImgs.map((f, k) =>
-        '<option value="' + (k + 1) + '"' + (c.idx === k + 1 ? ' selected' : '') + '>#' + (k + 1) + ' ÃÂÃÂ· ' + f.name + '</option>').join('');
+        '<option value="' + (k + 1) + '"' + (c.idx === k + 1 ? ' selected' : '') + '>#' + (k + 1) + ' · ' + f.name + '</option>').join('');
       const img = lvCueImgs[c.idx - 1];
       // how long this background stays on screen (until the next cue)
       let dur = '';
       const s0 = lvSec(c.t), s1 = (i + 1 < lvCues.length) ? lvSec(lvCues[i + 1].t) : null;
       if (s0 !== null) dur = s1 !== null
-        ? '<span class="sub" style="min-width:86px">ÃÂ¢ÃÂÃÂ ' + lvCues[i + 1].t + ' (' + (s1 - s0).toFixed(1) + 's)</span>'
-        : '<span class="sub" style="min-width:86px">ÃÂ¢ÃÂÃÂ song end</span>';
+        ? '<span class="sub" style="min-width:86px">→ ' + lvCues[i + 1].t + ' (' + (s1 - s0).toFixed(1) + 's)</span>'
+        : '<span class="sub" style="min-width:86px">→ song end</span>';
       const d = document.createElement('div');
       d.style.cssText = 'display:flex;gap:8px;align-items:center;margin:4px 0';
       d.innerHTML = '<input value="' + c.t + '" style="width:70px;font-family:monospace;text-align:right" onchange="window.lvCues_t(' + i + ',this.value)">'
         + (img ? '<img src="' + img.download_url + '" style="width:46px;height:26px;object-fit:cover;border-radius:4px;border:1px solid #333">' : '')
         + '<select style="flex:1" onchange="window.lvCues_i(' + i + ',this.value)">' + opts + '</select>'
         + dur
-        + '<button class="btn btn-ghost" style="padding:2px 8px" onclick="window.lvCueDel(' + i + ')">ÃÂ¢ÃÂÃÂ</button>';
+        + '<button class="btn btn-ghost" style="padding:2px 8px" onclick="window.lvCueDel(' + i + ')">✕</button>';
       box.appendChild(d);
     });
     if (lvCuesDirty) {
       const w = document.createElement('div');
       w.style.cssText = 'color:#e05252;font-size:13px;margin-top:4px';
-      w.textContent = 'ÃÂ¢ÃÂÃÂ  Unsaved cue changes ÃÂ¢ÃÂÃÂ hit Save cues or the render will use the OLD cues.';
+      w.textContent = '⚠ Unsaved cue changes — hit Save cues or the render will use the OLD cues.';
       box.appendChild(w);
     }
   }
@@ -4289,12 +4289,12 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       const s = (x) => { const m = x.t.split(':'); return (+m[0]) * 60 + parseFloat(m[1]); };
       return s(a) - s(b);
     }).map((c) => c.t + '\t' + c.idx).join('\n') + '\n';
-    $('lvCueStatus').textContent = 'SavingÃÂ¢ÃÂÃÂ¦';
+    $('lvCueStatus').textContent = 'Saving…';
     try {
       await lyrCommitFile('data/video-assets/' + song.id + '/cues.txt', body, 'Background cues: ' + song.id);
       lvCuesDirty = false;
       lvCueRender();
-      $('lvCueStatus').textContent = 'Saved ÃÂ¢ÃÂÃÂ renders now follow these cues.';
+      $('lvCueStatus').textContent = 'Saved — renders now follow these cues.';
       toast('Cues saved');
     } catch (e) { $('lvCueStatus').textContent = ''; toast('Save failed: ' + e.message, true); }
   };
@@ -4307,7 +4307,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     files.sort((a, b) => a.name.localeCompare(b.name));
     const fmt = $('lvFmt').value;
     let idx = lvItems.filter((x) => x.fmt === fmt).length;
-    $('lvStatus').textContent = 'UploadingÃÂ¢ÃÂÃÂ¦';
+    $('lvStatus').textContent = 'Uploading…';
     try {
       for (const f of files) {
         idx++;
@@ -4342,17 +4342,17 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
     if (!song) return toast('Pick a catalog song first', true);
     if (!lvItems.length) return toast('Upload at least one background first', true);
-    if (lvCuesDirty) return toast('You have UNSAVED cue changes ÃÂ¢ÃÂÃÂ hit Save cues first (renders read the saved file)', true);
+    if (lvCuesDirty) return toast('You have UNSAVED cue changes — hit Save cues first (renders read the saved file)', true);
     try {
       await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
     } catch (e) {
-      return toast('No saved timestamps for this song ÃÂ¢ÃÂÃÂ stamp them in the Timestamp Editor and Save to catalog first', true);
+      return toast('No saved timestamps for this song — stamp them in the Timestamp Editor and Save to catalog first', true);
     }
     try {
       await lyrCommitFile('data/render-requests/' + song.id + '.json',
         JSON.stringify({ song_id: song.id, formats: '16x9', requested: new Date().toISOString() }) + '\n',
         'Render request: ' + song.id);
-      $('lvStatus').textContent = 'Queued for your PC ÃÂ¢ÃÂÃÂ the Render Agent picks it up within ~10s and renders in ~2 min. '
+      $('lvStatus').textContent = 'Queued for your PC — the Render Agent picks it up within ~10s and renders in ~2 min. '
         + '(Agent not running? Double-click start-render-agent.bat in D:\\HTR-Studio and leave it open.)';
       toast('Local render queued');
     } catch (e) { toast('Could not queue: ' + e.message, true); }
@@ -4362,15 +4362,15 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
     if (!song) return toast('Pick a catalog song first', true);
     if (!lvItems.length) return toast('Upload at least one background first', true);
-    if (lvCuesDirty) return toast('You have UNSAVED cue changes ÃÂ¢ÃÂÃÂ hit Save cues first (renders read the saved file)', true);
+    if (lvCuesDirty) return toast('You have UNSAVED cue changes — hit Save cues first (renders read the saved file)', true);
     try {
       await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
     } catch (e) {
-      return toast('No saved timestamps for this song ÃÂ¢ÃÂÃÂ stamp them in the Timestamp Editor and Save to catalog first', true);
+      return toast('No saved timestamps for this song — stamp them in the Timestamp Editor and Save to catalog first', true);
     }
     try {
       await dispatch('lyric-video.yml', { song_id: song.id });
-      $('lvStatus').textContent = 'Rendering in the cloud ÃÂ¢ÃÂÃÂ the MP4s land in the songÃÂ¢ÃÂÃÂs Video Files folder in Dropbox in a few minutes. (Progress: Dashboard ÃÂ¢ÃÂÃÂ Recent runs.)';
+      $('lvStatus').textContent = 'Rendering in the cloud — the MP4s land in the song’s Video Files folder in Dropbox in a few minutes. (Progress: Dashboard → Recent runs.)';
       toast('Render started');
     } catch (e) { toast('Could not start render: ' + e.message, true); }
   };
@@ -4409,9 +4409,9 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.eaSelect = function () {
     const a = eaArtistObj();
     if (!a) return;
-    $('eaRepoLine').textContent = 'repo: ' + a.githubRepo + '   ÃÂÃÂ·   site: ' + (a.siteUrl || ('https://' + a.id + '.hellotexasrecords.com'));
+    $('eaRepoLine').textContent = 'repo: ' + a.githubRepo + '   ·   site: ' + (a.siteUrl || ('https://' + a.id + '.hellotexasrecords.com'));
     $('eaAssetStatus').textContent = '';
-    $('eaLogoStatus').textContent = 'Loading current logo sizeÃÂ¢ÃÂÃÂ¦';
+    $('eaLogoStatus').textContent = 'Loading current logo size…';
     window.eaLoadLogoSize();
     window.eaFillCovers();
   };
@@ -4438,7 +4438,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       $('eaLogoOffset').value = off;
       $('eaLogoStatus').textContent = has
         ? ('Current override: desktop ' + d + 'px / mobile ' + mob + 'px' + (off ? (' / offset ' + off + 'px') : '') + '.')
-        : 'No override yet ÃÂ¢ÃÂÃÂ logo is at default size. Lower the numbers to shrink it.';
+        : 'No override yet — logo is at default size. Lower the numbers to shrink it.';
     } catch (e) {
       $('eaLogoStatus').textContent = 'Could not read the site index.html: ' + e.message;
     }
@@ -4460,8 +4460,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const mob = parseInt($('eaLogoMobile').value, 10);
     const off = parseInt($('eaLogoOffset').value, 10) || 0;
     if (isNaN(d) || isNaN(mob) || d < 40 || d > 1200 || mob < 40 || mob > 1200)
-      return toast('Enter sensible pixel heights (40ÃÂ¢ÃÂÃÂ1200).', true);
-    $('eaLogoStatus').textContent = 'SavingÃÂ¢ÃÂÃÂ¦';
+      return toast('Enter sensible pixel heights (40–1200).', true);
+    $('eaLogoStatus').textContent = 'Saving…';
     try {
       const f = await gh('/repos/' + a.githubRepo + '/contents/index.html');
       let html = eaB64Decode(f.content);
@@ -4488,7 +4488,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     try {
       const f = await gh('/repos/' + a.githubRepo + '/contents/index.html');
       let html = eaB64Decode(f.content);
-      if (!EA_OVERRIDE_RE.test(html)) { toast('No override to remove ÃÂ¢ÃÂÃÂ already default.'); return; }
+      if (!EA_OVERRIDE_RE.test(html)) { toast('No override to remove — already default.'); return; }
       html = html.replace(EA_OVERRIDE_RE, '').replace('\n\n</style>', '\n</style>');
       await gh('/repos/' + a.githubRepo + '/contents/index.html', {
         method: 'PUT',
@@ -4508,7 +4508,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const spec = NA_ASSETS.find(function (s) { return s[0] === key; });
     if (!spec) return;
     const dir = spec[1], suffix = spec[2], roster = spec[3];
-    $('eaAssetStatus').textContent = 'Uploading ' + key + 'ÃÂ¢ÃÂÃÂ¦';
+    $('eaAssetStatus').textContent = 'Uploading ' + key + '…';
     try {
       const b64 = await fileToBase64(file);
       await putFile(a.githubRepo, dir + a.id + suffix, b64, 'HTR Studio: replace ' + key + ' for ' + a.id);
@@ -4534,7 +4534,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.eaFillCovers = async function () {
     const a = eaArtistObj();
     if (!a) return;
-    $('eaCoverStatus').textContent = 'Loading catalogÃÂ¢ÃÂÃÂ¦';
+    $('eaCoverStatus').textContent = 'Loading catalog…';
     try {
       const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
       eaSongsAll = JSON.parse(b64decode(sf.content));
@@ -4551,12 +4551,12 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     mine.slice().sort(function (x, y) { return (x.title || '').localeCompare(y.title || ''); }).forEach(function (s) {
       const o = document.createElement('option');
       o.value = s.id;
-      o.textContent = (s.title || s.id) + (s.album ? ('  ÃÂÃÂ·  ' + s.album) : '');
+      o.textContent = (s.title || s.id) + (s.album ? ('  ·  ' + s.album) : '');
       songSel.appendChild(o);
     });
     $('eaCoverStatus').textContent = mine.length
-      ? (mine.length + ' songs ÃÂÃÂ· ' + albums.length + ' album(s) in the catalog.')
-      : 'This artist has no songs in the catalog yet ÃÂ¢ÃÂÃÂ nothing to change here until you load their tracks.';
+      ? (mine.length + ' songs · ' + albums.length + ' album(s) in the catalog.')
+      : 'This artist has no songs in the catalog yet — nothing to change here until you load their tracks.';
   };
 
   window.eaReplaceAlbumArt = async function () {
@@ -4575,8 +4575,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       if (applyTracks) { const cc = eaCoverTarget(s.coverImage); if (cc) targets[cc.repo + '/' + cc.path] = cc; }
     });
     const keys = Object.keys(targets);
-    if (!keys.length) return toast('These songs have no GitHub-hosted cover files I can overwrite ÃÂ¢ÃÂÃÂ tell me and I will wire it another way.', true);
-    $('eaCoverStatus').textContent = 'Uploading album art to ' + keys.length + ' image file(s)ÃÂ¢ÃÂÃÂ¦';
+    if (!keys.length) return toast('These songs have no GitHub-hosted cover files I can overwrite — tell me and I will wire it another way.', true);
+    $('eaCoverStatus').textContent = 'Uploading album art to ' + keys.length + ' image file(s)…';
     try {
       const b64 = await fileToBase64(file);
       for (let i = 0; i < keys.length; i++) {
@@ -4584,7 +4584,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         await putFile(t.repo, t.path, b64, 'HTR Studio: album art for ' + album);
       }
       $('ea-file-album-art').value = '';
-      $('eaCoverStatus').textContent = 'Album art replaced across ' + keys.length + ' image(s). Live within a minute (raw CDN cache) ÃÂ¢ÃÂÃÂ hard-refresh to see it.';
+      $('eaCoverStatus').textContent = 'Album art replaced across ' + keys.length + ' image(s). Live within a minute (raw CDN cache) — hard-refresh to see it.';
       toast('Album art updated for ' + album);
     } catch (e) { $('eaCoverStatus').textContent = ''; toast('Failed: ' + e.message, true); }
   };
@@ -4597,7 +4597,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const file = $('ea-file-song-art').files[0];
     if (!file) return toast('Choose a PNG for the song art.', true);
     const tgt = eaCoverTarget(song.coverImage);
-    if (!tgt) return toast('This song has no GitHub-hosted cover file I can overwrite ÃÂ¢ÃÂÃÂ tell me and I will wire it another way.', true);
+    if (!tgt) return toast('This song has no GitHub-hosted cover file I can overwrite — tell me and I will wire it another way.', true);
     let shared = 0;
     eaSongsAll.forEach(function (s) {
       if (s.artistId !== a.id) return;
@@ -4605,14 +4605,14 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       const ac = eaCoverTarget(s.albumCover); if (ac && ac.path === tgt.path) shared++;
     });
     if (shared > 0) {
-      if (!confirm('This track shares its cover file with ' + shared + ' other item(s) ÃÂ¢ÃÂÃÂ its album and/or other tracks ÃÂ¢ÃÂÃÂ so replacing it changes those too. Continue?\n\n(Cancel if you want this one track to have its own distinct art instead ÃÂ¢ÃÂÃÂ tell me and I will set that up.)')) return;
+      if (!confirm('This track shares its cover file with ' + shared + ' other item(s) — its album and/or other tracks — so replacing it changes those too. Continue?\n\n(Cancel if you want this one track to have its own distinct art instead — tell me and I will set that up.)')) return;
     }
-    $('eaCoverStatus').textContent = 'Uploading song artÃÂ¢ÃÂÃÂ¦';
+    $('eaCoverStatus').textContent = 'Uploading song art…';
     try {
       const b64 = await fileToBase64(file);
       await putFile(tgt.repo, tgt.path, b64, 'HTR Studio: song art for ' + (song.title || song.id));
       $('ea-file-song-art').value = '';
-      $('eaCoverStatus').textContent = 'Song art replaced. Live within a minute ÃÂ¢ÃÂÃÂ hard-refresh to see it.';
+      $('eaCoverStatus').textContent = 'Song art replaced. Live within a minute — hard-refresh to see it.';
       toast('Song art updated for ' + (song.title || song.id));
     } catch (e) { $('eaCoverStatus').textContent = ''; toast('Failed: ' + e.message, true); }
   };
@@ -4626,7 +4626,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.naPreview = function () {
     const id = slugify($('naName').value.trim());
     $('naPreviewLine').textContent = id
-      ? ('id: ' + id + '   ÃÂÃÂ·   site: https://' + id + '.hellotexasrecords.com   ÃÂÃÂ·   repo: ' + OWNER + '/' + id)
+      ? ('id: ' + id + '   ·   site: https://' + id + '.hellotexasrecords.com   ·   repo: ' + OWNER + '/' + id)
       : '';
   };
 
@@ -4648,32 +4648,32 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     $('naLog').textContent = '';
     $('naAfter').classList.add('hidden');
     try {
-      naLog('Creating repo ' + repo + ' ÃÂ¢ÃÂÃÂ¦');
+      naLog('Creating repo ' + repo + ' …');
       try {
-        await gh('/user/repos', { method: 'POST', body: { name: id, private: false, auto_init: true, description: 'HTR artist site ÃÂ¢ÃÂÃÂ ' + name } });
+        await gh('/user/repos', { method: 'POST', body: { name: id, private: false, auto_init: true, description: 'HTR artist site — ' + name } });
         naLog('  repo created.');
       } catch (e) {
-        if (String(e.message).toLowerCase().indexOf('already exists') !== -1) naLog('  repo already exists ÃÂ¢ÃÂÃÂ continuing.');
+        if (String(e.message).toLowerCase().indexOf('already exists') !== -1) naLog('  repo already exists — continuing.');
         else throw e;
       }
       await new Promise((r) => setTimeout(r, 1500)); // let auto-init settle
 
       for (const [key, dir, suffix, roster] of NA_ASSETS) {
         const f = $('na-file-' + key).files[0];
-        if (!f) { naLog('  (skip ' + key + ' ÃÂ¢ÃÂÃÂ none provided)'); continue; }
+        if (!f) { naLog('  (skip ' + key + ' — none provided)'); continue; }
         const b64 = await fileToBase64(f);
-        naLog('  uploading ' + key + ' ÃÂ¢ÃÂÃÂ¦');
+        naLog('  uploading ' + key + ' …');
         await putFile(repo, dir + id + suffix, b64, 'HTR: ' + key + ' for ' + id);
         if (roster) {
           await putFile(OWNER + '/' + LABEL_REPO_NAME, 'Roster Photos/' + id + '/' + id + '-' + key + '.png', b64, 'HTR roster: ' + id + ' ' + key);
         }
       }
 
-      naLog('Writing CNAME + .nojekyll ÃÂ¢ÃÂÃÂ¦');
+      naLog('Writing CNAME + .nojekyll …');
       await putFile(repo, 'CNAME', b64encode(id + '.hellotexasrecords.com\n'), 'HTR: CNAME');
       await putFile(repo, '.nojekyll', b64encode(''), 'HTR: nojekyll');
 
-      naLog('Adding the artist to master data ÃÂ¢ÃÂÃÂ¦');
+      naLog('Adding the artist to master data …');
       const af = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/artists.json');
       const list = JSON.parse(b64decode(af.content));
       if (!list.some((a) => a.id === id)) {
@@ -4696,28 +4696,28 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         });
         naLog('  artist added to artists.json.');
       } else {
-        naLog('  artist already in artists.json ÃÂ¢ÃÂÃÂ continuing.');
+        naLog('  artist already in artists.json — continuing.');
       }
 
-      naLog('Enabling GitHub Pages ÃÂ¢ÃÂÃÂ¦');
+      naLog('Enabling GitHub Pages …');
       try {
         await gh('/repos/' + repo + '/pages', { method: 'POST', body: { source: { branch: 'main', path: '/' } } });
         naLog('  Pages enabled.');
       } catch (e) {
         if (String(e.message).toLowerCase().indexOf('already') !== -1) naLog('  Pages already enabled.');
-        else naLog('  Pages note: ' + e.message + ' (enable in the repo Settings ÃÂ¢ÃÂÃÂ Pages if the site is blank).');
+        else naLog('  Pages note: ' + e.message + ' (enable in the repo Settings → Pages if the site is blank).');
       }
 
-      naLog('Building the site + refreshing homepage ÃÂ¢ÃÂÃÂ¦');
+      naLog('Building the site + refreshing homepage …');
       await dispatch('build-artist.yml', { artist_id: id, dry_run: 'false' });
       await dispatch('publish-homepage.yml', { dry_run: 'false' });
-      naLog('  build + homepage dispatched ÃÂ¢ÃÂÃÂ watch Recent runs on the Dashboard.');
+      naLog('  build + homepage dispatched — watch Recent runs on the Dashboard.');
 
       $('naDone').innerHTML = 'Artist created. <b>Last step (manual):</b> in Namecheap DNS for ' +
-        'hellotexasrecords.com, add a CNAME record ÃÂ¢ÃÂÃÂ Host: <b>' + id + '</b> ÃÂ¢ÃÂÃÂ Value: ' +
+        'hellotexasrecords.com, add a CNAME record — Host: <b>' + id + '</b> → Value: ' +
         '<b>stevep999.github.io</b>. Once DNS + Pages propagate, ' + siteUrl + ' is live.';
       $('naAfter').classList.remove('hidden');
-      toast('Artist created ÃÂ¢ÃÂÃÂ see the Namecheap step below');
+      toast('Artist created — see the Namecheap step below');
       await loadArtists();
     } catch (e) {
       naLog('ERROR: ' + e.message);
@@ -4758,17 +4758,17 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (a && !$('vidGenre').value) $('vidGenre').value = a.genre || '';
     // load this artist's catalog songs into the picker (mirrors the Lyrics tab)
     const sel = $('vidSong');
-    sel.innerHTML = '<option value="">LoadingÃÂ¢ÃÂÃÂ¦</option>';
+    sel.innerHTML = '<option value="">Loading…</option>';
     try {
       if (!vidSongsAll.length) {
         const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
         vidSongsAll = JSON.parse(b64decode(sf.content));
       }
       const mine = vidSongsAll.filter((s) => s.artistId === $('vidArtist').value);
-      sel.innerHTML = '<option value="">ÃÂ¢ÃÂÃÂ pick a song (optional) ÃÂ¢ÃÂÃÂ</option>';
+      sel.innerHTML = '<option value="">— pick a song (optional) —</option>';
       mine.forEach((s) => {
         const o = document.createElement('option');
-        o.value = s.id; o.textContent = (s.album || '?') + ' ÃÂ¢ÃÂÃÂ ' + s.title;
+        o.value = s.id; o.textContent = (s.album || '?') + ' — ' + s.title;
         sel.appendChild(o);
       });
     } catch (e) {
@@ -4787,9 +4787,9 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const note = $('vidSongNote');
     if (note) note.textContent = vidMp3Url
       ? (vidMp3Url.indexOf('dropbox.com') !== -1
-          ? 'ÃÂ¢ÃÂÃÂ Exports will auto-save to this songÃÂ¢ÃÂÃÂs Video Files folder in Dropbox.'
-          : 'This songÃÂ¢ÃÂÃÂs audio link isnÃÂ¢ÃÂÃÂt a Dropbox link ÃÂ¢ÃÂÃÂ exports wonÃÂ¢ÃÂÃÂt auto-save (download them instead).')
-      : 'No audio link on this song ÃÂ¢ÃÂÃÂ exports wonÃÂ¢ÃÂÃÂt auto-save.';
+          ? '✓ Exports will auto-save to this song’s Video Files folder in Dropbox.'
+          : 'This song’s audio link isn’t a Dropbox link — exports won’t auto-save (download them instead).')
+      : 'No audio link on this song — exports won’t auto-save.';
   };
 
   function mmssToSec(s) {
@@ -4861,7 +4861,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     }
     vidScenes = out;
     vidRenderScenes();
-    toast('Auto-trimmed ÃÂ¢ÃÂÃÂ fine-tune with ÃÂ¢ÃÂ¤ÃÂµ / ÃÂ¢ÃÂÃÂ');
+    toast('Auto-trimmed — fine-tune with ⤵ / ✕');
   };
 
   function vidRecalcDurations() {
@@ -4874,25 +4874,25 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   function vidRenderScenes() {
     vidRecalcDurations();
     const wrap = $('vidSceneWrap');
-    if (!vidScenes.length) { wrap.innerHTML = '<div style="padding:14px;color:var(--muted)">No scenes ÃÂ¢ÃÂÃÂ paste a sheet and Load.</div>'; $('vidSceneStats').textContent = ''; return; }
+    if (!vidScenes.length) { wrap.innerHTML = '<div style="padding:14px;color:var(--muted)">No scenes — paste a sheet and Load.</div>'; $('vidSceneStats').textContent = ''; return; }
     let html = '<table class="t20grid"><thead><tr><th>#</th><th>Time</th><th>Dur</th><th>Section</th><th>Lyric / Beat</th><th></th></tr></thead><tbody>';
     vidScenes.forEach((s, i) => {
-      const dur = s.dur === '' ? 'ÃÂ¢ÃÂÃÂ' : s.dur + 's';
+      const dur = s.dur === '' ? '—' : s.dur + 's';
       const shortFlag = (typeof s.dur === 'number' && s.dur < 6) ? ' style="color:var(--warn)"' : '';
       const label = s.kind === 'section' ? ('<i>[' + esc(s.section) + ']</i>') : esc(s.lyric);
       html += '<tr><td class="t20-pos">' + (i + 1) + '</td><td>' + esc(s.tsLabel) + '</td>' +
         '<td' + shortFlag + '>' + dur + '</td><td style="color:var(--muted)">' + esc(s.section) + '</td>' +
         '<td>' + label + '</td>' +
         '<td class="t20-actions">' +
-        '<button onclick="window.vidMergeScene(' + i + ')"' + (i === vidScenes.length - 1 ? ' disabled' : '') + ' title="merge into next">ÃÂ¢ÃÂ¤ÃÂµ</button>' +
-        '<button onclick="window.vidDeleteScene(' + i + ')">ÃÂ¢ÃÂÃÂ</button>' +
+        '<button onclick="window.vidMergeScene(' + i + ')"' + (i === vidScenes.length - 1 ? ' disabled' : '') + ' title="merge into next">⤵</button>' +
+        '<button onclick="window.vidDeleteScene(' + i + ')">✕</button>' +
         '</td></tr>';
     });
     html += '</tbody></table>';
     wrap.innerHTML = html;
     const durs = vidScenes.map((s) => s.dur).filter((d) => typeof d === 'number');
     const avg = durs.length ? (durs.reduce((a, b) => a + b, 0) / durs.length).toFixed(1) : '0';
-    $('vidSceneStats').textContent = vidScenes.length + ' scenes ÃÂÃÂ· avg ' + avg + 's/scene';
+    $('vidSceneStats').textContent = vidScenes.length + ' scenes · avg ' + avg + 's/scene';
   }
 
   window.vidDeleteScene = function (i) { vidScenes.splice(i, 1); vidRenderScenes(); };
@@ -4923,12 +4923,12 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const jobId = slugify(artistId + '-' + title) + '-' + Date.now().toString(36);
     vidJobId = jobId;
     const btn = $('vidBibleBtn'); btn.disabled = true;
-    $('vidBibleStatus').textContent = 'SubmittingÃÂ¢ÃÂÃÂ¦';
+    $('vidBibleStatus').textContent = 'Submitting…';
     $('vidBible').classList.add('hidden');
     try {
       await lyrCommitFile('data/video-jobs/' + jobId + '.json', JSON.stringify(job, null, 2), 'Video job: ' + jobId);
       await dispatch('video-bible.yml', { job_id: jobId });
-      $('vidBibleStatus').textContent = 'The director is working (cloud, ~1 min)ÃÂ¢ÃÂÃÂ¦ editable draft appears below.';
+      $('vidBibleStatus').textContent = 'The director is working (cloud, ~1 min)… editable draft appears below.';
       vidStartBiblePoll(jobId);
     } catch (e) {
       $('vidBibleStatus').textContent = '';
@@ -4947,13 +4947,13 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         clearInterval(vidPoll); vidPoll = null;
         const bible = JSON.parse(b64decode(f.content));
         vidRenderBible(bible);
-        const c = bible._meta ? (' ÃÂÃÂ· this bible cost $' + bible._meta.est_cost_usd + ' (' + bible._meta.model + ')') : '';
-        $('vidBibleStatus').textContent = 'Draft ready ÃÂ¢ÃÂÃÂ youÃÂ¢ÃÂÃÂre the Producer now.' + c;
+        const c = bible._meta ? (' · this bible cost $' + bible._meta.est_cost_usd + ' (' + bible._meta.model + ')') : '';
+        $('vidBibleStatus').textContent = 'Draft ready — you’re the Producer now.' + c;
         $('vidBibleBtn').disabled = false;
       } catch (e) {
         if (Date.now() > until) {
           clearInterval(vidPoll); vidPoll = null;
-          $('vidBibleStatus').textContent = 'Timed out ÃÂ¢ÃÂÃÂ check the run on the Dashboard (is the OPENAI_API_KEY secret set?).';
+          $('vidBibleStatus').textContent = 'Timed out — check the run on the Dashboard (is the OPENAI_API_KEY secret set?).';
           $('vidBibleBtn').disabled = false;
         }
       }
@@ -4970,18 +4970,18 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     let html = '';
     if (Array.isArray(bible.acts) && bible.acts.length) {
       html += '<div class="card" style="padding:12px;margin-bottom:10px"><b>Acts</b><ul style="margin:6px 0 0 18px">' +
-        bible.acts.map((a) => '<li><b>' + esc(a.name || '') + '</b>' + (a.sections ? ' <span style="color:var(--muted)">(' + esc(a.sections) + ')</span>' : '') + ' ÃÂ¢ÃÂÃÂ ' + esc(a.beat || '') + '</li>').join('') +
+        bible.acts.map((a) => '<li><b>' + esc(a.name || '') + '</b>' + (a.sections ? ' <span style="color:var(--muted)">(' + esc(a.sections) + ')</span>' : '') + ' — ' + esc(a.beat || '') + '</li>').join('') +
         '</ul></div>';
     }
     if (Array.isArray(bible.anchor_locations) && bible.anchor_locations.length) {
       html += '<div class="card" style="padding:12px;margin-bottom:10px"><b>Anchor locations</b><ul style="margin:6px 0 0 18px">' +
-        bible.anchor_locations.map((a) => '<li><b>' + esc(a.name || '') + '</b> ÃÂ¢ÃÂÃÂ ' + esc(a.look || '') + (a.wardrobe ? ' <span style="color:var(--muted)">[' + esc(a.wardrobe) + ']</span>' : '') + '</li>').join('') +
+        bible.anchor_locations.map((a) => '<li><b>' + esc(a.name || '') + '</b> — ' + esc(a.look || '') + (a.wardrobe ? ' <span style="color:var(--muted)">[' + esc(a.wardrobe) + ']</span>' : '') + '</li>').join('') +
         '</ul></div>';
     }
     (bible.scenes || []).forEach((sc, i) => {
       html += '<div class="card" style="margin-top:10px;padding:14px">' +
-        '<div class="sub" style="margin-bottom:8px"><b>#' + (sc.n || i + 1) + '</b> ÃÂÃÂ· ' + esc(sc.timestamp || '') +
-        ' ÃÂÃÂ· ' + esc(sc.section || '') + (sc.lyric ? ' ÃÂÃÂ· ÃÂ¢ÃÂÃÂ' + esc(sc.lyric) + 'ÃÂ¢ÃÂÃÂ' : ' ÃÂÃÂ· (instrumental)') + '</div>' +
+        '<div class="sub" style="margin-bottom:8px"><b>#' + (sc.n || i + 1) + '</b> · ' + esc(sc.timestamp || '') +
+        ' · ' + esc(sc.section || '') + (sc.lyric ? ' · “' + esc(sc.lyric) + '”' : ' · (instrumental)') + '</div>' +
         '<label>Setting</label><textarea id="vb-set-' + i + '" rows="2">' + esc(sc.setting || '') + '</textarea>' +
         '<label>Lighting</label><textarea id="vb-lit-' + i + '" rows="2">' + esc(sc.lighting || '') + '</textarea>' +
         '<label>Scene</label><textarea id="vb-scn-' + i + '" rows="2">' + esc(sc.scene || '') + '</textarea>' +
@@ -5020,7 +5020,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         sc.full_prompt = [sc.setting, sc.lighting, sc.scene].filter(Boolean).join(' ');
       }
     });
-    $('vbSaveMsg').textContent = 'SavingÃÂ¢ÃÂÃÂ¦';
+    $('vbSaveMsg').textContent = 'Saving…';
     try {
       await lyrCommitFile('data/video-bibles/' + vidJobId + '.json', JSON.stringify(vidBibleData, null, 2), 'Video bible edit: ' + vidJobId);
       $('vbSaveMsg').textContent = 'Saved.';
@@ -5041,7 +5041,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   });
   $('radioOnlyChanged').addEventListener('change', renderRadio);
 
-  // private-repo image links expire ÃÂ¢ÃÂÃÂ refresh thumbnails when returning to the tab
+  // private-repo image links expire — refresh thumbnails when returning to the tab
   window.addEventListener('focus', function () {
     if (!$('view-lyrics').classList.contains('hidden') && !lvCuesDirty) {
       try { window.lvRefresh(); } catch (e) { }
@@ -5070,7 +5070,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   };
 
   function pollArtistOptions(selName) {
-    let opts = '<option value="">ÃÂ¢ÃÂÃÂ artist (optional) ÃÂ¢ÃÂÃÂ</option>';
+    let opts = '<option value="">— artist (optional) —</option>';
     (artists || []).slice().sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); })
       .forEach(function (a) {
         opts += '<option value="' + esc(a.name) + '"' + (a.name === selName ? ' selected' : '') + '>' + esc(a.name) + '</option>';
@@ -5081,7 +5081,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   function fillPollArtists() {
     const sel = $('pollArtist'); if (!sel) return;
     const cur = sel.value;
-    sel.innerHTML = '<option value="">ÃÂ¢ÃÂÃÂ pick artist ÃÂ¢ÃÂÃÂ</option><option value="Various Artists">Various Artists</option>';
+    sel.innerHTML = '<option value="">— pick artist —</option><option value="Various Artists">Various Artists</option>';
     (artists || []).slice().sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); })
       .forEach(function (a) {
         const o = document.createElement('option');
@@ -5102,15 +5102,15 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   }
 
   window.pollSignIn = async function () {
-    $('pollAuthMsg').textContent = 'Opening Google sign-inÃÂ¢ÃÂÃÂ¦';
+    $('pollAuthMsg').textContent = 'Opening Google sign-in…';
     try {
       await window.HTRPoll.signInGoogle();
       $('pollAuthMsg').textContent = '';
     } catch (e) {
       const code = e && e.code ? e.code.replace('auth/', '') : ((e && e.message) || 'error');
       $('pollAuthMsg').textContent = code === 'unauthorized-domain'
-        ? 'This app domain is not authorized in Firebase yet ÃÂ¢ÃÂÃÂ add stevep999.github.io under Authentication ÃÂ¢ÃÂÃÂ Settings ÃÂ¢ÃÂÃÂ Authorized domains.'
-        : (code === 'popup-blocked' ? 'Your browser blocked the popup ÃÂ¢ÃÂÃÂ allow popups and try again.' : 'Sign in failed: ' + code);
+        ? 'This app domain is not authorized in Firebase yet — add stevep999.github.io under Authentication → Settings → Authorized domains.'
+        : (code === 'popup-blocked' ? 'Your browser blocked the popup — allow popups and try again.' : 'Sign in failed: ' + code);
     }
   };
 
@@ -5118,7 +5118,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   async function refreshPollList() {
     const box = $('pollList'); if (!box) return;
-    box.innerHTML = '<div style="padding:16px;color:var(--muted)">LoadingÃÂ¢ÃÂÃÂ¦</div>';
+    box.innerHTML = '<div style="padding:16px;color:var(--muted)">Loading…</div>';
     try { pollsCache = await window.HTRPoll.listPolls(); renderPollList(); }
     catch (e) { box.innerHTML = '<div style="padding:16px;color:var(--warn)">Could not load polls: ' + esc(e.message) + '</div>'; }
   }
@@ -5134,7 +5134,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)">'
         + '<div style="flex:1;min-width:0">'
         + '<div style="color:var(--cream)">' + esc(p.song || '(untitled)') + ' ' + badge + '</div>'
-        + '<div style="font-size:12px;color:var(--muted)">' + esc(p.artist || 'ÃÂ¢ÃÂÃÂ') + ' ÃÂÃÂ· ' + opts + ' version' + (opts !== 1 ? 's' : '') + '</div>'
+        + '<div style="font-size:12px;color:var(--muted)">' + esc(p.artist || '—') + ' · ' + opts + ' version' + (opts !== 1 ? 's' : '') + '</div>'
         + '</div>'
         + '<button class="btn btn-ghost" onclick="window.pollEdit(\'' + p.id + '\')">Edit</button>'
         + '<button class="btn btn-ghost" onclick="window.pollDelete(\'' + p.id + '\')">&#10005;</button>'
@@ -5151,7 +5151,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (pollPreviewAudio) pollPreviewAudio.pause();
     pollPreviewAudio = new Audio(normalizeDropbox(v.audioUrl.trim()));
     pollPreviewAudio.removeAttribute('crossorigin');
-    pollPreviewAudio.play().catch(function () { toast('Could not play ÃÂ¢ÃÂÃÂ check the link', true); });
+    pollPreviewAudio.play().catch(function () { toast('Could not play — check the link', true); });
   };
 
   function renderPollVersions() {
@@ -5224,7 +5224,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       deadline: $('pollDeadline').value || null,
       _order: existing && existing._order != null ? existing._order : Date.now()
     };
-    $('pollMsg').textContent = 'SavingÃÂ¢ÃÂÃÂ¦';
+    $('pollMsg').textContent = 'Saving…';
     try {
       await window.HTRPoll.savePoll(id, data);
       $('pollMsg').textContent = 'Saved.';
@@ -5257,7 +5257,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   let bmiDirty = false;
   let bmiChanges = [];
 
-  // Publishing reads from master-songs.json ÃÂ¢ÃÂÃÂ single source of truth
+  // Publishing reads from master-songs.json — single source of truth
   // bmiData.songs maps master fields to the Publishing table format
 
   function masterToBmi(s) {
@@ -5334,7 +5334,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (bmiLoaded && !force) return;
     $('bmiBody').innerHTML = '<tr><td colspan="17" style="color:var(--muted);padding:14px">Loading catalog...</td></tr>';
     try {
-      // Read from master-songs.json ÃÂ¢ÃÂÃÂ single source of truth
+      // Read from master-songs.json — single source of truth
       const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
       bmiSha = f.sha;
       const masterSongs = JSON.parse(b64decode(f.content));
@@ -5418,8 +5418,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const reg = songs.filter(function (s) { return s.workNo; }).length;
     const noIswc = songs.filter(function (s) { return bmiIssues(s).indexOf('noiswc') >= 0; }).length;
     const unrec = songs.filter(function (s) { return bmiIssues(s).indexOf('unrec') >= 0; }).length;
-    $('bmiStats').textContent = total + ' rows ÃÂÃÂ· ' + uniq + ' unique ÃÂÃÂ· ' + onRadio + ' on radio ÃÂÃÂ· ' +
-      reg + ' registered ÃÂÃÂ· ' + noIswc + ' missing ISWC ÃÂÃÂ· ' + unrec + ' not reconciled';
+    $('bmiStats').textContent = total + ' rows · ' + uniq + ' unique · ' + onRadio + ' on radio · ' +
+      reg + ' registered · ' + noIswc + ' missing ISWC · ' + unrec + ' not reconciled';
 
     const idxs = [];
     songs.forEach(function (s, i) {
@@ -5442,7 +5442,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       const s = songs[i];
       const iss = bmiIssues(s);
       const svCls = /^reconciled$/i.test(s.songview || '') ? 'ok' : (s.songview ? 'bad' : 'other');
-      const iswcCell = s.iswc ? bmiEsc(s.iswc) : (s.workNo ? '<span style="color:var(--warn)">ÃÂ¢ÃÂÃÂ</span>' : '');
+      const iswcCell = s.iswc ? bmiEsc(s.iswc) : (s.workNo ? '<span style="color:var(--warn)">—</span>' : '');
       const mism = iss.indexOf('mismatch') >= 0 ? ' style="color:var(--err)"' : '';
       return '<tr onclick="window.bmiEdOpen(' + i + ')" style="cursor:pointer">' +
         '<td class="stick s0">' + bmiEsc(s.title) + '</td>' +
@@ -5465,7 +5465,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const s = bmiData.songs[i];
     if (!s) return;
     $('bmiEdIdx').value = i;
-    $('bmiEdTitle').textContent = 'Edit: ' + s.title + (s.artist ? ' ÃÂ¢ÃÂÃÂ ' + s.artist : '');
+    $('bmiEdTitle').textContent = 'Edit: ' + s.title + (s.artist ? ' — ' + s.artist : '');
     $('bmiEdSong').value = s.title || ''; $('bmiEdArtist').value = s.artist || '';
     $('bmiEdAlbum').value = s.album || ''; $('bmiEdTrack').value = s.track || '';
     $('bmiEdUnq').value = s.unique || ''; $('bmiEdRadio').value = s.radio || '';
@@ -5507,7 +5507,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (!s) { toast('No row selected'); return; }
     const artist = artists.find(a => a.id === s.artistId);
     const repoName = artist && artist.githubRepo;
-    if (!repoName) { toast('No linked artist repo for this song Ã¢ÂÂ set Artist first'); return; }
+    if (!repoName) { toast('No linked artist repo for this song — set Artist first'); return; }
     const ext = (file.type && file.type.includes('png')) ? 'png' : 'jpg';
     const filename = `${s.id || s._masterId || i}-${type === 'album' ? 'album' : 'cover'}.${ext}`;
     toast('Uploading ' + (type === 'album' ? 'album cover' : 'cover') + '...');
@@ -5520,7 +5520,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         window._bmiEdCoverUrl = url;
         if ($('bmiEdCoverThumb')) { $('bmiEdCoverThumb').src = url; $('bmiEdCoverThumb').style.display = 'block'; }
       }
-      toast('Image uploaded Ã¢ÂÂ remember to Apply and Save changes');
+      toast('Image uploaded — remember to Apply and Save changes');
     } catch (e) {
       toast('Upload failed: ' + (e && e.message ? e.message : e));
     }
@@ -5560,7 +5560,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (s.youtubeUrl) s.videos = [{ youtube: s.youtubeUrl, title: 'Official Video', order: 1 }];
     bmiMarkDirty();
     window.bmiRender();
-    toast('Row updated ÃÂ¢ÃÂÃÂ remember to Save changes');
+    toast('Row updated — remember to Save changes');
   };
 
   window.bmiEdClose = function () { $('bmiEditor').classList.add('hidden'); };
@@ -5579,7 +5579,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.bmiAddNew = function () {
     // Populate artist dropdown from roster
     const sel = $('bmiAddArtist');
-    sel.innerHTML = '<option value="">ÃÂ¢ÃÂÃÂ select artist ÃÂ¢ÃÂÃÂ</option>';
+    sel.innerHTML = '<option value="">— select artist —</option>';
     [...artists].sort((a,b) => a.name.localeCompare(b.name)).forEach(a => {
       const o = document.createElement('option');
       o.value = a.id; o.textContent = a.name; sel.appendChild(o);
@@ -5595,7 +5595,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     $('bmiAddWriter').value = 'P';
     if ($('bmiAddIsLatest')) $('bmiAddIsLatest').checked = true;
     if ($('bmiAddNeedsWav')) $('bmiAddNeedsWav').checked = false;
-    $('bmiAddAlbumSel').innerHTML = '<option value="">ÃÂ¢ÃÂÃÂ select album ÃÂ¢ÃÂÃÂ</option><option value="__new__">+ New album...</option>';
+    $('bmiAddAlbumSel').innerHTML = '<option value="">— select album —</option><option value="__new__">+ New album...</option>';
     $('bmiAddAlbumNew').style.display = 'none';
     $('bmiAddMsg').textContent = '';
     // Reset cover art previews
@@ -5634,17 +5634,17 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.bmiAddFillAlbums = async function() {
     const artistId = $('bmiAddArtist').value;
     const sel = $('bmiAddAlbumSel');
-    sel.innerHTML = '<option value="">ÃÂ¢ÃÂÃÂ loading albums ÃÂ¢ÃÂÃÂ</option>';
-    if (!artistId) { sel.innerHTML = '<option value="">ÃÂ¢ÃÂÃÂ select artist first ÃÂ¢ÃÂÃÂ</option><option value="__new__">+ New album...</option>'; return; }
+    sel.innerHTML = '<option value="">— loading albums —</option>';
+    if (!artistId) { sel.innerHTML = '<option value="">— select artist first —</option><option value="__new__">+ New album...</option>'; return; }
     // Load msCache if not already loaded
     if (!msCache) {
       try {
         const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
         msCache = JSON.parse(b64decode(sf.content));
-      } catch(e) { sel.innerHTML = '<option value="">ÃÂ¢ÃÂÃÂ could not load albums ÃÂ¢ÃÂÃÂ</option><option value="__new__">+ New album...</option>'; return; }
+      } catch(e) { sel.innerHTML = '<option value="">— could not load albums —</option><option value="__new__">+ New album...</option>'; return; }
     }
     const albums = [...new Set(msCache.filter(s => s.artistId === artistId && s.album).map(s => s.album))].sort();
-    sel.innerHTML = '<option value="">ÃÂ¢ÃÂÃÂ select album ÃÂ¢ÃÂÃÂ</option>';
+    sel.innerHTML = '<option value="">— select album —</option>';
     albums.forEach(alb => { const o = document.createElement('option'); o.value = alb; o.textContent = alb; sel.appendChild(o); });
     const newOpt = document.createElement('option'); newOpt.value = '__new__'; newOpt.textContent = '+ New album...'; sel.appendChild(newOpt);
     $('bmiAddAlbumNew').style.display = 'none';
@@ -5668,8 +5668,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const track = $('bmiAddTrack').value.trim();
     const mp3 = $('bmiAddMp3').value.trim();
 
-    if (!title) { msg.textContent = 'ÃÂ¢ÃÂÃÂ Song title required'; msg.style.color='var(--err)'; return; }
-    if (!artistId) { msg.textContent = 'ÃÂ¢ÃÂÃÂ Artist required'; msg.style.color='var(--err)'; return; }
+    if (!title) { msg.textContent = '✗ Song title required'; msg.style.color='var(--err)'; return; }
+    if (!artistId) { msg.textContent = '✗ Artist required'; msg.style.color='var(--err)'; return; }
 
     msg.textContent = 'Saving...'; msg.style.color='var(--muted)';
 
@@ -5677,14 +5677,14 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       // Build ID
       const newId = (artistId + '-' + title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')).substring(0,80);
 
-      // Check for duplicate ÃÂ¢ÃÂÃÂ same title + artist already exists
+      // Check for duplicate — same title + artist already exists
       const sf0 = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
       const existingMs = JSON.parse(b64decode(sf0.content));
       const duplicate = existingMs.find(s => s.artistId === artistId &&
         s.title.trim().toLowerCase() === title.toLowerCase() &&
         s.id !== newId);
       if (duplicate) {
-        msg.textContent = 'ÃÂ¢ÃÂÃÂ "'+title+'" already exists for this artist (id: '+duplicate.id+')';
+        msg.textContent = '✗ "'+title+'" already exists for this artist (id: '+duplicate.id+')';
         msg.style.color='var(--err)';
         return;
       }
@@ -5789,7 +5789,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
             method:'PUT',
             body:{message:'HTR Studio: add song '+title, content:b64encode(JSON.stringify(asSongs,null,2)), sha:asf.sha}
           });
-        } catch(e2) { /* artist repo update failed ÃÂ¢ÃÂÃÂ master is saved */ }
+        } catch(e2) { /* artist repo update failed — master is saved */ }
       }
 
       msCache = null;
@@ -5798,10 +5798,10 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         const repoName = artist.githubRepo.replace('SteveP999/','');
         syncIndexHtml(repoName);
       }
-      msg.textContent = 'ÃÂ¢ÃÂÃÂ Saved! Site will update in ~1 minute.'; msg.style.color='var(--ok)';
+      msg.textContent = '✓ Saved! Site will update in ~1 minute.'; msg.style.color='var(--ok)';
       setTimeout(() => { window.bmiAddClose(); window.loadBmi(true); }, 2000);
     } catch(e) {
-      msg.textContent = 'ÃÂ¢ÃÂÃÂ '+e.message; msg.style.color='var(--err)';
+      msg.textContent = '✗ '+e.message; msg.style.color='var(--err)';
     }
   };
 
@@ -5818,7 +5818,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         const mid = row._masterId || row.id;
         let ms = masterSongs.find(function(s) { return s.id === mid; });
         if (!ms) {
-          // Song doesn't exist in master yet ÃÂ¢ÃÂÃÂ create it
+          // Song doesn't exist in master yet — create it
           const newId = mid || (row.artist + '-' + row.title).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
           ms = {
             id: newId, artistId: row.artistId||'', artist: row.artist, title: row.title,
@@ -5941,7 +5941,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const file = ev.target.files && ev.target.files[0];
     if (!file) return;
     const rd = new FileReader();
-    rd.onload = function () { $('bmiCsvPaste').value = rd.result; $('bmiRevMsg').textContent = file.name + ' loaded ÃÂ¢ÃÂÃÂ hit Review changes.'; };
+    rd.onload = function () { $('bmiCsvPaste').value = rd.result; $('bmiRevMsg').textContent = file.name + ' loaded — hit Review changes.'; };
     rd.readAsText(file);
   };
 
@@ -5995,16 +5995,16 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         '<td>' + bmiEsc(s.workNo) + '</td><td>' + bmiEsc(c.label) + '</td>' +
         '<td style="color:var(--muted)">' + (bmiEsc(c.from) || '<i>empty</i>') + '</td>' +
         '<td style="color:var(--ok)">' + bmiEsc(c.to) + '</td></tr>';
-    }).join('') || '<tr><td colspan="6" style="color:var(--muted);padding:12px">Everything matches ÃÂ¢ÃÂÃÂ nothing to update.</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="color:var(--muted);padding:12px">Everything matches — nothing to update.</td></tr>';
 
     let extra = '';
     if (inBmiOnly.length) {
       extra += '<div class="sub" style="color:var(--warn)"><b>Registered with BMI but not in your catalog:</b> ' +
-        inBmiOnly.map(function (wn) { return bmiEsc(works[wn].title) + ' (#' + wn + ')'; }).join(' ÃÂÃÂ· ') + '</div>';
+        inBmiOnly.map(function (wn) { return bmiEsc(works[wn].title) + ' (#' + wn + ')'; }).join(' · ') + '</div>';
     }
     if (inCatOnly.length) {
       extra += '<div class="sub" style="margin-top:6px"><b>In your catalog but not in this export:</b> ' +
-        inCatOnly.map(function (s) { return bmiEsc(s.title) + ' (#' + s.workNo + ')'; }).join(' ÃÂÃÂ· ') + '</div>';
+        inCatOnly.map(function (s) { return bmiEsc(s.title) + ' (#' + s.workNo + ')'; }).join(' · ') + '</div>';
     }
     $('bmiRevUnmatched').innerHTML = extra;
     $('bmiRevPanel').classList.remove('hidden');
@@ -6023,7 +6023,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (applied) bmiMarkDirty();
     $('bmiRevPanel').classList.add('hidden');
     window.bmiRender();
-    toast(applied + ' change' + (applied === 1 ? '' : 's') + ' applied ÃÂ¢ÃÂÃÂ hit Save changes to write to the catalog');
+    toast(applied + ' change' + (applied === 1 ? '' : 's') + ' applied — hit Save changes to write to the catalog');
   };
 
   const saved = localStorage.getItem(PAT_KEY);
@@ -6034,7 +6034,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 })();
 </script>
 
-<!-- Firebase (Song Polls) ÃÂ¢ÃÂÃÂ separate ES module; bridges to window.HTRPoll -->
+<!-- Firebase (Song Polls) — separate ES module; bridges to window.HTRPoll -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
