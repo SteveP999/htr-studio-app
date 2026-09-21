@@ -1570,6 +1570,15 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       mine.forEach(s => { const k = s.album||'Singles'; (albums[k]=albums[k]||[]).push(s); });
       // All album names for this artist — used in song card dropdowns
       const allAlbums = Object.keys(albums);
+      // Album display order: driven by albumSortOrder (set by the ▲/▼ buttons below),
+      // falling back to first-appearance order for albums that have never been moved.
+      const albumFallbackRank = {};
+      allAlbums.forEach((k, i) => { albumFallbackRank[k] = i; });
+      const albumRankOf = k => {
+        const withOrder = albums[k].find(s => typeof s.albumSortOrder === 'number');
+        return withOrder ? withOrder.albumSortOrder : (9999 + albumFallbackRank[k]);
+      };
+      const orderedAlbumKeys = allAlbums.slice().sort((x, y) => albumRankOf(x) - albumRankOf(y));
 
       box.innerHTML = '<label style="color:var(--warn)">— Music (' + mine.length + ' songs) —</label>'
         + '<div class="save-bar" style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">'
@@ -1578,7 +1587,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         + '<button class="btn" id="saveOrderBtn" style="display:none;background:var(--ok);color:#000;padding:4px 14px" onclick="window.artSaveOrder(\'' + a.id + '\')">💾 Save Order</button>'
         + '</div>';
 
-      Object.keys(albums).forEach(alb => {
+      orderedAlbumKeys.forEach((alb, albIdx) => {
         const songs = albums[alb];
         const albSlug = alb.replace(/[^a-z0-9]/gi,'_');
 
@@ -1599,6 +1608,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
           + 'onblur="window.artRenameAlbum(this.value,\''+alb+'\',\''+a.id+'\')" onkeydown="if(event.key===\'Enter\')this.blur()">'
           + '</div>'
           + '<span class="sub">'+songs.length+' track'+(songs.length!==1?'s':'')+'</span>'
+          + '<button onclick="window.artMoveAlbum(\''+alb+'\',\''+a.id+'\',-1)" title="Move album up"'+(albIdx===0?' disabled':'')+' style="margin-left:8px;padding:2px 6px;font-size:12px;cursor:pointer">▲</button>'
+          + '<button onclick="window.artMoveAlbum(\''+alb+'\',\''+a.id+'\',1)" title="Move album down"'+(albIdx===orderedAlbumKeys.length-1?' disabled':'')+' style="padding:2px 6px;font-size:12px;cursor:pointer">▼</button>'
           + ('<button onclick="window.artDeleteAlbum(\''+alb+'\',\''+a.id+'\','+songs.length+')" style="margin-left:8px;padding:2px 8px;background:#5a1010;color:#ffaaaa;border:1px solid #8b2020;font-size:11px;cursor:pointer">✕ '+(songs.length>0?'Retire album':'Delete album')+(songs.length>0?(' ('+songs.length+' songs)'):' (empty)')+'</button>');
         box.appendChild(head);
 
@@ -1953,6 +1964,41 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     toast('Operation failed: ' + e.message, true);
   }
 };
+
+  // Move an album up/down in display order. Persists as albumSortOrder (multiples of
+  // 10) on every song for this artist, the same field the site build already sorts by,
+  // so Publish picks it up with no other changes needed.
+  window.artMoveAlbum = async function(albumName, artistId, direction) {
+    try {
+      const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
+      const msData = JSON.parse(b64decode(sf.content));
+      const SITE_VISIBLE = s => (s.unique||s.reg||'REG').toUpperCase() !== 'RET';
+      const mine = msData.filter(s => s.artistId === artistId && SITE_VISIBLE(s));
+      const seen = [];
+      mine.forEach(s => { const k = s.album||'Singles'; if (seen.indexOf(k) === -1) seen.push(k); });
+      const fallbackRank = {};
+      seen.forEach((k, i) => { fallbackRank[k] = i; });
+      const rankOf = k => {
+        const withOrder = mine.find(s => (s.album||'Singles') === k && typeof s.albumSortOrder === 'number');
+        return withOrder ? withOrder.albumSortOrder : (9999 + fallbackRank[k]);
+      };
+      const order = seen.slice().sort((x, y) => rankOf(x) - rankOf(y));
+      const i = order.indexOf(albumName);
+      const j = i + direction;
+      if (i === -1 || j < 0 || j >= order.length) return;
+      const tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+      const rank = {};
+      order.forEach((k, idx) => { rank[k] = (idx + 1) * 10; });
+      msData.forEach(s => { if (s.artistId === artistId) { const k = s.album||'Singles'; if (k in rank) s.albumSortOrder = rank[k]; } });
+      await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {method:'PUT', body:{message:'HTR Studio: move album "'+albumName+'" '+(direction<0?'up':'down')+' for '+artistId, content:b64encode(JSON.stringify(msData,null,2)), sha:sf.sha}});
+      toast('Album order updated — publish the artist to update the live site');
+      msCache = null;
+      const a = artists.find(x => x.id === artistId);
+      if (a) setTimeout(() => renderMusic(a), 500);
+    } catch(e) {
+      toast('Move failed: ' + e.message, true);
+    }
+  };
 
   window.artRenameAlbum = async function(newName, oldName, artistId) {
     newName = newName.trim();
