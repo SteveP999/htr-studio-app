@@ -1556,6 +1556,16 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   };
   let msCache = null;
 
+  // Single invalidation point for every cache derived from master-songs.json.
+  // Call this (not `msCache = null` directly) anywhere master-songs.json is written,
+  // so every view sourced from it -- the Artist tab AND the Publishing/BMI tab --
+  // is guaranteed to reload fresh data instead of showing what it had in memory
+  // before the edit.
+  function invalidateCatalogCaches() {
+    msCache = null;
+    bmiLoaded = false;
+  }
+
   async function renderMusic(a) {
     const box = $('edMusic');
     box.innerHTML = '<div class="sub">Loading music…</div>';
@@ -1565,7 +1575,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       msCache = JSON.parse(b64decode(sf.content));
       const SITE_VISIBLE = s => (s.unique||s.reg||'REG').toUpperCase() !== 'RET';
       const mine = msCache.filter(s => s.artistId === a.id && SITE_VISIBLE(s))
-        .sort((x,y) => (x.albumOrder||x.trackNumber||99) - (y.albumOrder||y.trackNumber||99));
+        .sort((x,y) => (x.trackNumber||x.albumOrder||99) - (y.trackNumber||y.albumOrder||99));
       const albums = {};
       mine.forEach(s => { const k = s.album||'Singles'; (albums[k]=albums[k]||[]).push(s); });
       // All album names for this artist — used in song card dropdowns
@@ -1893,7 +1903,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         await gh('/repos/SteveP999/'+repoName+'/contents/songs.json', {method:'PUT', body:{message:'HTR Studio: reorder songs', content:b64encode(JSON.stringify(asData,null,2)), sha:asf.sha}});
       }
 
-      msCache = null;
+      invalidateCatalogCaches();
       toast('Order saved');
       if (btn) { btn.textContent = '💾 Save Order'; btn.disabled = false; btn.style.display = 'none'; }
       const aObj = artists.find(x => x.id === artistId);
@@ -1929,7 +1939,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       const msData = JSON.parse(b64decode(sf.content));
       const si = msData.findIndex(s => s.id === songId);
       if (si !== -1) { msData[si].coverImage = rawUrl; await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {method:'PUT', body:{message:'HTR Studio: update cover for '+songId, content:b64encode(JSON.stringify(msData,null,2)), sha:sf.sha}}); }
-      msCache = null;
+      invalidateCatalogCaches();
       if (msg) msg.textContent = '✓ Cover uploaded';
     } catch(e) {
       if (msg) msg.textContent = '✗ Upload failed: '+e.message;
@@ -1949,7 +1959,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const remaining = msData.filter(s => s.artistId === artistId && s.album === albumName);
     if (remaining.length === 0) {
       toast('Album "' + albumName + '" removed');
-      msCache = null;
+      invalidateCatalogCaches();
       const a = artists.find(x => x.id === artistId);
       if (a) setTimeout(() => renderMusic(a), 500);
       return;
@@ -1957,7 +1967,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     remaining.forEach(s => { s.unique = 'RET'; });
     await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {method:'PUT', body:{message:'HTR Studio: retire '+remaining.length+' song(s) from album "'+albumName+'" for '+artistId, content:b64encode(JSON.stringify(msData,null,2)), sha:sf.sha}});
     toast('Retired ' + remaining.length + ' song(s) from "' + albumName + '" \u2014 kept in Publishing');
-    msCache = null;
+    invalidateCatalogCaches();
     const a = artists.find(x => x.id === artistId);
     if (a) setTimeout(() => renderMusic(a), 500);
   } catch(e) {
@@ -1992,7 +2002,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       msData.forEach(s => { if (s.artistId === artistId) { const k = s.album||'Singles'; if (k in rank) s.albumSortOrder = rank[k]; } });
       await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json', {method:'PUT', body:{message:'HTR Studio: move album "'+albumName+'" '+(direction<0?'up':'down')+' for '+artistId, content:b64encode(JSON.stringify(msData,null,2)), sha:sf.sha}});
       toast('Album order updated — publish the artist to update the live site');
-      msCache = null;
+      invalidateCatalogCaches();
       const a = artists.find(x => x.id === artistId);
       if (a) setTimeout(() => renderMusic(a), 500);
     } catch(e) {
@@ -2020,7 +2030,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         asData.forEach(s => { if (s.album === oldName) s.album = newName; });
         await gh('/repos/SteveP999/'+repoName+'/contents/songs.json', {method:'PUT', body:{message:'HTR Studio: rename album', content:b64encode(JSON.stringify(asData,null,2)), sha:asf.sha}});
       }
-      msCache = null;
+      invalidateCatalogCaches();
       toast('Album renamed to "'+newName+'"');
       const a = artists.find(x => x.id === artistId);
       if (a) setTimeout(()=>renderMusic(a), 800);
@@ -2054,7 +2064,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       const asData = JSON.parse(b64decode(asf.content));
       asData.forEach(s => { if (s.album === albumName) s.albumCover = 'images/covers/'+fname; });
       await gh('/repos/SteveP999/'+repoName+'/contents/songs.json', {method:'PUT', body:{message:'HTR Studio: update album cover', content:b64encode(JSON.stringify(asData,null,2)), sha:asf.sha}});
-      msCache = null;
+      invalidateCatalogCaches();
       toast('Album cover updated');
     } catch(e) { toast('Album cover upload failed: '+e.message, true); }
   };
@@ -2148,7 +2158,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         } catch(e2) { toast('master saved — artist repo failed: '+e2.message, true); }
       }
 
-      msCache = null;
+      invalidateCatalogCaches();
       if (msg) { msg.textContent = '✓ Saved'; setTimeout(()=>{ if(msg) msg.textContent=''; },3000); }
       // Sync index.html so the live site reflects the change immediately
       const a = artists.find(x => x.id === artistId);
@@ -2235,7 +2245,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       }
 
       toast('"' + songTitle + '" deleted.');
-      msCache = null;
+      invalidateCatalogCaches();
       const a = artists.find(x => x.id === artistId);
       if (a && a.githubRepo) syncIndexHtml(a.githubRepo.replace('SteveP999/',''));
       if (a) setTimeout(() => renderMusic(a), 800);
@@ -2250,7 +2260,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   };
 
   window.artRefreshMusic = function () {
-    msCache = null;
+    invalidateCatalogCaches();
     const a = artists.find((x) => x.id === selectedId);
     if (a) renderMusic(a).then(() => window.renderCatalog());
   };
@@ -5837,7 +5847,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         } catch(e2) { /* artist repo update failed — master is saved */ }
       }
 
-      msCache = null;
+      invalidateCatalogCaches();
       // Sync index.html so live site updates immediately
       if (artist && artist.githubRepo) {
         const repoName = artist.githubRepo.replace('SteveP999/','');
@@ -5921,7 +5931,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       $('bmiUnreg').value = '';
       $('bmiNotes').value = '';
       bmiRenderNotes();
-      msCache = null; // clear artist page cache so it picks up changes
+      invalidateCatalogCaches(); // clear artist page cache so it picks up changes
       toast('Publishing catalog saved');
     } catch (e) {
       $('bmiSaveBtn').disabled = false;
