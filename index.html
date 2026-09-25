@@ -5116,7 +5116,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.loadPolls = function (force) {
     pollsLoaded = true;
     fillPollArtists();
-    if (!pollVersions.length) pollVersions = [{ label: '', audioUrl: '', desc: '' }, { label: '', audioUrl: '', desc: '' }];
+    if (!pollVersions.length) pollVersions = [{ label: '', audioUrl: '', sunoEmbed: '', desc: '' }, { label: '', audioUrl: '', sunoEmbed: '', desc: '' }];
     renderPollVersions();
     whenHTRPoll(function () {
       if (!pollAuthWired) { pollAuthWired = true; window.HTRPoll.onChange = renderPollAuth; }
@@ -5197,9 +5197,19 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     }).join('');
   }
 
-  window.pollAddVersion = function () { pollVersions.push({ label: '', audioUrl: '', desc: '' }); renderPollVersions(); };
+  window.pollAddVersion = function () { pollVersions.push({ label: '', audioUrl: '', sunoEmbed: '', desc: '' }); renderPollVersions(); };
   window.pollVerSet = function (i, field, val) { if (pollVersions[i]) pollVersions[i][field] = val; };
-  window.pollVerDel = function (i) { pollVersions.splice(i, 1); if (!pollVersions.length) pollVersions.push({ label: '', audioUrl: '', desc: '' }); renderPollVersions(); };
+  function extractEmbedSrc(raw) {
+    raw = (raw || '').trim();
+    const m = raw.match(/src\s*=\s*["']([^"']+)["']/i);
+    return m ? m[1] : raw;
+  }
+  window.pollVerOpenEmbed = function (i) {
+    const v = pollVersions[i]; const url = extractEmbedSrc(v && v.sunoEmbed);
+    if (!url) { toast('Add a Suno embed link first', true); return; }
+    window.open(url, '_blank');
+  };
+  window.pollVerDel = function (i) { pollVersions.splice(i, 1); if (!pollVersions.length) pollVersions.push({ label: '', audioUrl: '', sunoEmbed: '', desc: '' }); renderPollVersions(); };
 
   window.pollVerPlay = function (i) {
     const v = pollVersions[i]; if (!v || !v.audioUrl.trim()) { toast('Add a Dropbox link first', true); return; }
@@ -5221,7 +5231,11 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         + '</div>'
         + '<input type="text" placeholder="Label (e.g. Rock mix / Version A / a song name)" value="' + esc(v.label || '') + '" oninput="window.pollVerSet(' + i + ',\'label\',this.value)">'
         + '<select onchange="window.pollVerSet(' + i + ',\'artist\',this.value)" style="margin-top:6px">' + pollArtistOptions(v.artist || '') + '</select>'
-        + '<input type="text" placeholder="Dropbox audio link (/scl/fi/...)" value="' + esc(v.audioUrl || '') + '" oninput="window.pollVerSet(' + i + ',\'audioUrl\',this.value)" style="margin-top:6px">'
+        + '<input type="text" placeholder="Dropbox audio link (/scl/fi/...) -- leave blank if using Suno embed below" value="' + esc(v.audioUrl || '') + '" oninput="window.pollVerSet(' + i + ',\'audioUrl\',this.value)" style="margin-top:6px">'
+        + '<div style="display:flex;gap:6px;margin-top:6px">'
+        + '<input type="text" placeholder="Suno embed -- paste the <iframe> code or link from Suno\'s Share/Embed button" value="' + esc(v.sunoEmbed || '') + '" oninput="window.pollVerSet(' + i + ',\'sunoEmbed\',this.value)" style="flex:1">'
+        + '<button class="btn btn-ghost" style="padding:2px 10px" onclick="window.pollVerOpenEmbed(' + i + ')">Open &#8599;</button>'
+        + '</div>'
         + '<input type="text" placeholder="Optional note shown to fans" value="' + esc(v.desc || '') + '" oninput="window.pollVerSet(' + i + ',\'desc\',this.value)" style="margin-top:6px">'
         + '</div>';
     }).join('');
@@ -5235,7 +5249,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     $('pollQuestion').value = 'Which version should we release?';
     $('pollDeadline').value = '';
     $('pollActive').checked = true;
-    pollVersions = [{ label: '', audioUrl: '', desc: '' }, { label: '', audioUrl: '', desc: '' }];
+    pollVersions = [{ label: '', audioUrl: '', sunoEmbed: '', desc: '' }, { label: '', audioUrl: '', sunoEmbed: '', desc: '' }];
     renderPollVersions();
     $('pollMsg').textContent = '';
   };
@@ -5251,9 +5265,9 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     $('pollDeadline').value = p.deadline ? String(p.deadline).slice(0, 10) : '';
     $('pollActive').checked = p.active !== false;
     pollVersions = (Array.isArray(p.options) ? p.options : []).map(function (o) {
-      return { label: o.label || '', audioUrl: o.audioUrl || '', desc: o.desc || '', artist: o.artist || '' };
+      return { label: o.label || '', audioUrl: o.audioUrl || '', sunoEmbed: o.sunoEmbed || '', desc: o.desc || '', artist: o.artist || '' };
     });
-    if (!pollVersions.length) pollVersions = [{ label: '', audioUrl: '', desc: '' }];
+    if (!pollVersions.length) pollVersions = [{ label: '', audioUrl: '', sunoEmbed: '', desc: '' }];
     renderPollVersions();
     $('pollMsg').textContent = '';
     window.scrollTo(0, 0);
@@ -5264,9 +5278,11 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (!song) { $('pollMsg').textContent = 'Song title required.'; return; }
     const versions = pollVersions.map(function (v) {
       const o = { label: (v.label || '').trim(), desc: (v.desc || '').trim(), audioUrl: v.audioUrl.trim() ? normalizeDropbox(v.audioUrl.trim()) : '' };
+      const embed = extractEmbedSrc(v.sunoEmbed);
+      if (embed) o.sunoEmbed = embed;
       if ((v.artist || '').trim()) o.artist = v.artist.trim();
       return o;
-    }).filter(function (v) { return v.label || v.audioUrl; });
+    }).filter(function (v) { return v.label || v.audioUrl || v.sunoEmbed; });
     if (versions.length < 2) { $('pollMsg').textContent = 'Add at least two versions to vote between.'; return; }
     const id = $('pollEditId').value || null;
     const existing = id ? pollsCache.find(function (x) { return x.id === id; }) : null;
