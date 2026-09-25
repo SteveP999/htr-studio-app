@@ -847,6 +847,15 @@
           <input type="hidden" id="pollEditId">
           <label>Poll title / song</label>
           <input id="pollSong" type="text" placeholder="e.g. People Pleaser (Rest In Peace) — or 'Next Single?'">
+          <label>Purpose</label>
+          <input id="pollPurpose" type="text" list="pollPurposeList" placeholder="e.g. Pick the Single, Rank These, Pick the Cover, Pick the Logo">
+          <datalist id="pollPurposeList">
+            <option value="Pick the Single">
+            <option value="Rank These">
+            <option value="Pick the Cover">
+            <option value="Pick the Logo">
+            <option value="Vote on This">
+          </datalist>
           <label>Grouping on the vote page</label>
           <select id="pollArtist"></select>
           <div class="sub" style="margin-top:2px">Pick one artist for a normal poll, or “Various Artists” when the versions are by different artists. Credit each version to its own artist below.</div>
@@ -858,13 +867,14 @@
               <input id="pollDeadline" type="date">
             </div>
             <label class="chk" style="margin-top:26px"><input type="checkbox" id="pollActive" checked> Active (show on vote page)</label>
+            <label class="chk" style="margin-top:26px"><input type="checkbox" id="pollRanked"> Ranked-choice (fans rank songs in order, not just pick one)</label>
           </div>
 
-          <label style="margin-top:22px;color:var(--warn)">— Versions —</label>
-          <div class="sub">Each version is a choice fans can play and vote for. Paste the Dropbox
-            file link (/scl/fi/...) for each.</div>
+          <label style="margin-top:22px;color:var(--warn)">— Songs —</label>
+          <div class="sub">Each song is a choice fans can play, view, and vote for. Paste the Dropbox
+            file link (/scl/fi/...), a Suno embed, and/or an image (logo / photo / cover art).</div>
           <div id="pollVersions"></div>
-          <div class="row"><button class="btn btn-ghost" onclick="window.pollAddVersion()">+ Add version</button></div>
+          <div class="row"><button class="btn btn-ghost" onclick="window.pollAddVersion()">+ Add Song</button></div>
 
           <div class="save-bar">
             <button class="btn btn-red" onclick="window.pollSave()">Save poll</button>
@@ -5116,7 +5126,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.loadPolls = function (force) {
     pollsLoaded = true;
     fillPollArtists();
-    if (!pollVersions.length) pollVersions = [{ label: '', audioUrl: '', sunoEmbed: '', desc: '' }, { label: '', audioUrl: '', sunoEmbed: '', desc: '' }];
+    if (!pollVersions.length) pollVersions = [{ label: '', audioUrl: '', sunoEmbed: '', imageUrl: '', desc: '' }, { label: '', audioUrl: '', sunoEmbed: '', imageUrl: '', desc: '' }];
     renderPollVersions();
     whenHTRPoll(function () {
       if (!pollAuthWired) { pollAuthWired = true; window.HTRPoll.onChange = renderPollAuth; }
@@ -5186,10 +5196,12 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     }).map(function (p) {
       const opts = Array.isArray(p.options) ? p.options.length : 0;
       const badge = p.active ? '<span class="track-badge" style="background:#1DB954;color:#031">LIVE</span>' : '<span class="track-badge">off</span>';
+      const rankBadge = p.voteType === 'rank' ? ' <span class="track-badge" style="background:#c8a84b;color:#000">RANKED</span>' : '';
+      const purposeTxt = p.purpose ? (' \u00b7 ' + esc(p.purpose)) : '';
       return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)">'
         + '<div style="flex:1;min-width:0">'
-        + '<div style="color:var(--cream)">' + esc(p.song || '(untitled)') + ' ' + badge + '</div>'
-        + '<div style="font-size:12px;color:var(--muted)">' + esc(p.artist || '—') + ' · ' + opts + ' version' + (opts !== 1 ? 's' : '') + '</div>'
+        + '<div style="color:var(--cream)">' + esc(p.song || '(untitled)') + ' ' + badge + rankBadge + '</div>'
+        + '<div style="font-size:12px;color:var(--muted)">' + esc(p.artist || '—') + ' · ' + opts + ' song' + (opts !== 1 ? 's' : '') + purposeTxt + '</div>'
         + '</div>'
         + '<button class="btn btn-ghost" onclick="window.pollEdit(\'' + p.id + '\')">Edit</button>'
         + '<button class="btn btn-ghost" onclick="window.pollDelete(\'' + p.id + '\')">&#10005;</button>'
@@ -5197,7 +5209,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     }).join('');
   }
 
-  window.pollAddVersion = function () { pollVersions.push({ label: '', audioUrl: '', sunoEmbed: '', desc: '' }); renderPollVersions(); };
+  window.pollAddVersion = function () { pollVersions.push({ label: '', audioUrl: '', sunoEmbed: '', imageUrl: '', desc: '' }); renderPollVersions(); };
   window.pollVerSet = function (i, field, val) { if (pollVersions[i]) pollVersions[i][field] = val; };
   function extractEmbedSrc(raw) {
     raw = (raw || '').trim();
@@ -5209,7 +5221,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (!url) { toast('Add a Suno embed link first', true); return; }
     window.open(url, '_blank');
   };
-  window.pollVerDel = function (i) { pollVersions.splice(i, 1); if (!pollVersions.length) pollVersions.push({ label: '', audioUrl: '', sunoEmbed: '', desc: '' }); renderPollVersions(); };
+  window.pollVerDel = function (i) { pollVersions.splice(i, 1); if (!pollVersions.length) pollVersions.push({ label: '', audioUrl: '', sunoEmbed: '', imageUrl: '', desc: '' }); renderPollVersions(); };
 
   window.pollVerPlay = function (i) {
     const v = pollVersions[i]; if (!v || !v.audioUrl.trim()) { toast('Add a Dropbox link first', true); return; }
@@ -5224,7 +5236,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     box.innerHTML = pollVersions.map(function (v, i) {
       return '<div style="border:1px solid var(--line);border-radius:6px;padding:10px;margin-bottom:10px">'
         + '<div class="row" style="align-items:center;gap:8px;margin-bottom:6px">'
-        + '<strong style="font-size:13px">Version ' + (i + 1) + '</strong>'
+        + '<strong style="font-size:13px">Song ' + (i + 1) + '</strong>'
         + '<button class="btn btn-ghost" style="padding:2px 8px" onclick="window.pollVerPlay(' + i + ')">&#9654; Preview</button>'
         + '<span class="spacer"></span>'
         + '<button class="btn btn-ghost" style="padding:2px 8px" onclick="window.pollVerDel(' + i + ')">&#10005;</button>'
@@ -5236,6 +5248,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         + '<input type="text" placeholder="Suno embed -- paste the <iframe> code or link from Suno\'s Share/Embed button" value="' + esc(v.sunoEmbed || '') + '" oninput="window.pollVerSet(' + i + ',\'sunoEmbed\',this.value)" style="flex:1">'
         + '<button class="btn btn-ghost" style="padding:2px 10px" onclick="window.pollVerOpenEmbed(' + i + ')">Open &#8599;</button>'
         + '</div>'
+        + '<input type="text" placeholder="Image link -- logo / band photo / cover art (Dropbox link or direct URL)" value="' + esc(v.imageUrl || '') + '" oninput="window.pollVerSet(' + i + ',\'imageUrl\',this.value)" style="margin-top:6px">'
+        + (v.imageUrl ? ('<img src="' + esc(v.imageUrl) + '" style="max-height:70px;max-width:100%;border-radius:4px;margin-top:6px;display:block">') : '')
         + '<input type="text" placeholder="Optional note shown to fans" value="' + esc(v.desc || '') + '" oninput="window.pollVerSet(' + i + ',\'desc\',this.value)" style="margin-top:6px">'
         + '</div>';
     }).join('');
@@ -5246,10 +5260,12 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     $('pollFormTitle').textContent = 'New poll';
     $('pollSong').value = '';
     $('pollArtist').value = '';
+    $('pollPurpose').value = '';
     $('pollQuestion').value = 'Which version should we release?';
     $('pollDeadline').value = '';
     $('pollActive').checked = true;
-    pollVersions = [{ label: '', audioUrl: '', sunoEmbed: '', desc: '' }, { label: '', audioUrl: '', sunoEmbed: '', desc: '' }];
+    $('pollRanked').checked = false;
+    pollVersions = [{ label: '', audioUrl: '', sunoEmbed: '', imageUrl: '', desc: '' }, { label: '', audioUrl: '', sunoEmbed: '', imageUrl: '', desc: '' }];
     renderPollVersions();
     $('pollMsg').textContent = '';
   };
@@ -5261,13 +5277,15 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     $('pollSong').value = p.song || '';
     fillPollArtists();
     $('pollArtist').value = p.artist || '';
+    $('pollPurpose').value = p.purpose || '';
     $('pollQuestion').value = p.question || '';
     $('pollDeadline').value = p.deadline ? String(p.deadline).slice(0, 10) : '';
     $('pollActive').checked = p.active !== false;
+    $('pollRanked').checked = p.voteType === 'rank';
     pollVersions = (Array.isArray(p.options) ? p.options : []).map(function (o) {
-      return { label: o.label || '', audioUrl: o.audioUrl || '', sunoEmbed: o.sunoEmbed || '', desc: o.desc || '', artist: o.artist || '' };
+      return { label: o.label || '', audioUrl: o.audioUrl || '', sunoEmbed: o.sunoEmbed || '', imageUrl: o.imageUrl || '', desc: o.desc || '', artist: o.artist || '' };
     });
-    if (!pollVersions.length) pollVersions = [{ label: '', audioUrl: '', sunoEmbed: '', desc: '' }];
+    if (!pollVersions.length) pollVersions = [{ label: '', audioUrl: '', sunoEmbed: '', imageUrl: '', desc: '' }];
     renderPollVersions();
     $('pollMsg').textContent = '';
     window.scrollTo(0, 0);
@@ -5277,18 +5295,21 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const song = $('pollSong').value.trim();
     if (!song) { $('pollMsg').textContent = 'Song title required.'; return; }
     const versions = pollVersions.map(function (v) {
-      const o = { label: (v.label || '').trim(), desc: (v.desc || '').trim(), audioUrl: v.audioUrl.trim() ? normalizeDropbox(v.audioUrl.trim()) : '' };
+      const o = { label: (v.label || '').trim(), desc: (v.desc || '').trim(), audioUrl: (v.audioUrl || '').trim() ? normalizeDropbox(v.audioUrl.trim()) : '' };
       const embed = extractEmbedSrc(v.sunoEmbed);
       if (embed) o.sunoEmbed = embed;
+      if ((v.imageUrl || '').trim()) o.imageUrl = normalizeDropbox(v.imageUrl.trim());
       if ((v.artist || '').trim()) o.artist = v.artist.trim();
       return o;
-    }).filter(function (v) { return v.label || v.audioUrl || v.sunoEmbed; });
-    if (versions.length < 2) { $('pollMsg').textContent = 'Add at least two versions to vote between.'; return; }
+    }).filter(function (v) { return v.label || v.audioUrl || v.sunoEmbed || v.imageUrl; });
+    if (versions.length < 2) { $('pollMsg').textContent = 'Add at least two songs to vote between.'; return; }
     const id = $('pollEditId').value || null;
     const existing = id ? pollsCache.find(function (x) { return x.id === id; }) : null;
     const data = {
       song: song,
       artist: $('pollArtist').value || 'Hello Texas Records',
+      purpose: $('pollPurpose').value.trim() || '',
+      voteType: $('pollRanked').checked ? 'rank' : 'single',
       question: $('pollQuestion').value.trim() || 'Which version should we release?',
       options: versions,
       active: $('pollActive').checked,
