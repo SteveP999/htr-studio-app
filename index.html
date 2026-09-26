@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#101014">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700;800&family=Poppins:wght@700;800&family=Teko:wght@600;700;800&family=Barlow+Condensed:wght@600;700;800&family=Fjalla+One&family=Alfa+Slab+One&family=Bungee&family=Luckiest+Guy&family=Kanit:wght@700;800&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --red: #C41A1A; --blue: #2D6CFF; --cream: #F8F2E4;
@@ -515,24 +516,6 @@
           </div>
           <label>Suno style prompt (stored with the song)</label>
           <textarea id="lyrSunoPrompt" rows="2" placeholder="Stored with the song — used by video + lyric generators"></textarea>
-          <div style="display:flex;gap:14px;align-items:flex-start;margin-top:12px;flex-wrap:wrap">
-            <div style="text-align:center"><img id="lyrCoverImg" style="width:110px;height:110px;object-fit:cover;border-radius:8px;border:1px solid #333"><div class="sub">song cover</div></div>
-            <div style="text-align:center"><img id="lyrAlbumImg" style="width:110px;height:110px;object-fit:cover;border-radius:8px;border:1px solid #333"><div class="sub">album cover</div></div>
-            <div style="flex:1;min-width:280px">
-              <label>Dropbox MP3 link</label>
-              <input type="text" id="lyrAudio" placeholder="https://www.dropbox.com/scl/fi/...">
-              <label>Album name</label>
-              <input type="text" id="lyrAlbumName" placeholder="Singles">
-              <label>Replace song cover (PNG)</label>
-              <input type="file" id="lyrCoverFile" accept="image/png">
-              <label>Replace album cover (PNG)</label>
-              <input type="file" id="lyrAlbumCoverFile" accept="image/png">
-              <div class="save-bar">
-                <button class="btn btn-blue" onclick="window.lyrSaveInfo()">Save song info</button>
-                <span class="sub">Updates master data (+ uploads covers to the artist repo). Rebuild the artist site to publish.</span>
-              </div>
-            </div>
-          </div>
         </div>
         <div id="lyrUpload" class="hidden">
           <label>MP3 file (any version — e.g. an alternate mix)</label>
@@ -573,7 +556,7 @@
         <div class="sub">Play the song, click a line to select it, and hit <b>Stamp</b> (or press
         <b>Enter</b>) the instant it's sung — the line takes the current playback time and selection
         moves to the next line. <b>Space</b> = play/pause. Times are precise to a tenth of a second.
-        Section markers are separators (never captions) and show how long each section runs.</div>
+        Section markers are separators (never captions) and show how long each section runs.<br><b>G</b> = <b>Clear screen</b>: tap it the moment the singing stops (breath, instrumental, solo) and the lyric comes off the screen right there &mdash; no more captions hanging through the gaps. It drops a <b>[gap]</b> marker at that time; Enter keeps stamping the next line as usual.</div>
         <audio id="edAudio" controls preload="metadata" style="width:100%"></audio>
         <div class="save-bar" style="align-items:center;flex-wrap:wrap">
           <button class="btn btn-ghost" onclick="window.edSeek(-5)">−5s</button>
@@ -583,6 +566,7 @@
           <button class="btn btn-ghost" id="edRateBtn" onclick="window.edRate()">1.0×</button>
           <span id="edClock" style="font-family:monospace;font-size:20px;min-width:90px">0:00.0</span>
           <button class="btn btn-red" onclick="window.edStamp()">Stamp selected (Enter)</button>
+          <button class="btn btn-blue" onclick="window.edGap()" title="Singing stopped: clear the lyrics off the screen at this moment">Clear screen (G)</button>
           <button class="btn btn-ghost" onclick="window.edUndo()">&#8630; Undo (Ctrl+Z)</button>
         </div>
         <div id="edRows" style="max-height:440px;overflow:auto;border:1px solid #333;border-radius:8px;padding:4px"></div>
@@ -596,46 +580,15 @@
         </div>
       </div>
 
-      <div class="card editor" style="max-width:900px;margin-top:18px">
-        <h3>Lyric Video — backgrounds &amp; render <span id="lvSongName" style="color:var(--muted);font-weight:normal;font-size:15px"></span>
-          <button class="btn btn-ghost" style="float:right;padding:2px 10px" title="thumbnails expire after a while on a private repo — refresh reloads them" onclick="window.lvRefresh()">↻ Refresh</button></h3>
-        <div class="sub">Upload 4–8 backgrounds (playback order: intro → verse 1 block → verse 2 →
-        bridge → final). They're stored with the song. Rendering runs in the cloud — the finished
-        <b>16:9 + 9:16 MP4s</b> land in the song's Video Files folder in Dropbox after a few minutes.
-        Needs saved timestamps (use the Timestamp Editor above first).</div>
-        <div id="lvThumbs" style="margin:10px 0"></div>
-        <label>These backgrounds are for</label>
-        <select id="lvFmt">
-          <option value="16x9">16:9 — YouTube</option>
-          <option value="9x16">9:16 — Shorts / Reels</option>
-        </select>
-        <label>Add backgrounds (PNG/JPG — appended after existing, in filename order)</label>
-        <input type="file" id="lvFiles" accept="image/png,image/jpeg" multiple>
-        <div style="margin-top:14px">
-          <label style="color:var(--warn)">Background cues (optional — exact control)</label>
-          <div class="sub">Each cue = the moment a background starts. Images are picked by their
-          number, so the same image can appear more than once (start AND end on the cover).
-          Numbers refer to each format's own set. Without cues, backgrounds follow song sections
-          automatically.</div>
-          <div id="lvCueRows"></div>
-          <div class="save-bar">
-            <button class="btn btn-ghost" onclick="window.lvCueAdd()">+ Add cue</button>
-            <button class="btn btn-blue" onclick="window.lvCueSave()">Save cues</button>
-            <span id="lvCueStatus" class="sub"></span>
-          </div>
-        </div>
-        <div class="save-bar">
-          <button class="btn btn-blue" onclick="window.lvUpload()">Upload backgrounds</button>
-          <button class="btn btn-red" onclick="window.lvRenderLocal()">⚡ Render on THIS PC (fast 16:9 test)</button>
-          <button class="btn btn-red" onclick="window.lvRender()">Render in cloud (final, both → Dropbox)</button>
-          <span id="lvStatus" class="sub"></span>
-        </div>
-        <div class="sub">THIS PC = ~2 min, output opens in a folder — needs the <b>Render Agent</b>
-        running (double-click <b>start-render-agent.bat</b> in D:\HTR-Studio and leave the window
-        open while you work). Cloud = ~15 min, both formats auto-saved to the song's Dropbox folder,
-        no agent needed.</div>
+      <div class="card" style="max-width:900px;margin-top:18px">
+        <h3>Next: make the video</h3>
+        <div class="sub">Once the timestamps are saved, the lyric video is built in <b>Videos &rarr; Make Video</b> &mdash; backgrounds (video or stills), lyric styling and rendering, all in the browser.</div>
+        <button class="btn btn-red" onclick="window.showTab('mkvideo')">Open Make Video &rarr;</button>
       </div>
     </section>
+
+    <!-- ============ MAKE VIDEO (built by make-video.js) ============ -->
+    <section id="view-mkvideo" class="hidden"></section>
 
     <!-- ============ NEW ARTIST ============ -->
     <section id="view-newartist" class="hidden">
@@ -1251,12 +1204,8 @@
       <div class="grid">
         <div class="card">
           <h3>HTR Video Maker</h3>
-          <div class="sub">Lyric-video and background rendering. Runs locally on this PC only —
-          it needs FFmpeg and your Dropbox files on disk, so it can't run from the cloud or another device.</div>
-          <div class="dry-note" style="margin:10px 0">Start it first: double-click <code>HTR-VIDEO-MAKER.bat</code>
-          in D:\HTR-Studio (or run <code>HTR-Service.vbs</code> to start it silently in the background).
-          Then use the button below.</div>
-          <div class="row"><a class="btn btn-blue" href="http://127.0.0.1:8770/" target="_blank" rel="noreferrer">Open Video Maker</a></div>
+          <div class="sub">Moved into the app: <b>Videos &rarr; Make Video</b>. It runs in the browser now, so it works on any computer &mdash; no FFmpeg, no HTR-VIDEO-MAKER.bat, no render agent.</div>
+          <div class="row"><button class="btn btn-blue" onclick="window.showTab('mkvideo')">Open Make Video</button></div>
         </div>
         <div class="card">
           <h3>HTR Mastering Engine</h3>
@@ -1373,7 +1322,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
           window.renderCatalog();
         } catch(e) { /* non-fatal */ }
       }
-      if (!LYRICS_ONLY) window.showTab('artists');
+      if (!LYRICS_ONLY) window.showTab(ALL_VIEWS.indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'artists');
     } catch (e) {
       token = null;
       $('lockMsg').textContent = 'Token rejected: ' + e.message;
@@ -1393,11 +1342,11 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   const NAV_GROUPS = {
     artists:    [['artists', 'Roster'], ['newartist', 'New Artist'], ['editartist', 'Edit Artist']],
     publishing: [['bmicat', 'Song Catalog']],
-    videos:     [['lyrics', 'Lyric Timestamps'], ['video', 'Music Video'], ['polls', 'Song Polls']],
+    videos:     [['lyrics', 'Lyric Timestamps'], ['mkvideo', 'Make Video'], ['polls', 'Song Polls']],  // 'video' (Music Video bible) parked Sep 2026
     radio:      [['radio', 'Stations'], ['top20', 'Top 20']],
     admin:      [['dashboard', 'Dashboard & Runs'], ['tools', 'Local Tools']],
   };
-  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'editartist', 'radio', 'top20', 'lyrics', 'video', 'polls', 'bmicat', 'tools'];
+  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'editartist', 'radio', 'top20', 'lyrics', 'mkvideo', 'video', 'polls', 'bmicat', 'tools'];
   let curGroup = 'artists';
 
   function groupOf(view) {
@@ -1430,6 +1379,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (name === 'top20' && !t20Loaded) window.loadTop20();
     if (name === 'lyrics' && !lyrLoaded) window.loadLyrics();
     if (name === 'video' && !vidLoaded) window.loadVideo();
+    if (name === 'mkvideo' && window.MV) window.MV.onShow();
     if (name === 'polls' && !pollsLoaded) window.loadPolls();
     if (name === 'bmicat' && !bmiLoaded) window.loadBmi();
     if (name === 'editartist') window.eaInit();
@@ -3694,11 +3644,6 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     edLines = []; edSongId = ''; edHistory = [];
     $('lyrStatus').textContent = '';
     $('lyrSunoPrompt').value = song.sunoPrompt || '';
-    $('lyrAudio').value = audioOf(song);
-    $('lyrAlbumName').value = song.album || '';
-    $('lyrCoverImg').src = song.coverImage || '';
-    $('lyrAlbumImg').src = song.albumCover || '';
-    $('lyrCoverFile').value = ''; $('lyrAlbumCoverFile').value = '';
     let stored = [];
     try {
       const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-sheet.txt?ref=main');
@@ -3712,7 +3657,6 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     $('lyrStored').textContent = stored.length
       ? ('Stored for this song: ' + stored.join(' + ') + '.')
       : 'Nothing stored yet — paste lyrics below and Save to catalog.';
-    window.lvRefresh();
   };
 
   // store the lyric sheet + Suno prompt with the song
@@ -3739,55 +3683,6 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       $('lyrStatus').textContent = '';
       window.lyrSongChange();
       toast('Saved to catalog');
-    } catch (e) { $('lyrStatus').textContent = ''; toast('Save failed: ' + e.message, true); }
-  };
-
-  // edit stored info on an EXISTING song: mp3 link, album, covers
-  window.lyrSaveInfo = async function () {
-    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
-    if (!song) return toast('Pick a catalog song first', true);
-    const artist = artists.find((a) => a.id === song.artistId);
-    if (!artist) return toast('Artist not found for this song', true);
-    const repoFull = artist.githubRepo;
-    const audioIn = $('lyrAudio').value.trim();
-    const album = $('lyrAlbumName').value.trim() || song.album || 'Singles';
-    if (audioIn && audioIn.indexOf('/scl/fi/') === -1 && audioIn.indexOf('dropbox.com') !== -1) {
-      return toast('That is not a Dropbox FILE link (/scl/fi/...)', true);
-    }
-    $('lyrStatus').textContent = 'Saving song info…';
-    try {
-      const songSlug = slugify(song.title);
-      const albumSlug = slugify(album);
-      let coverUrl = '', albumCoverUrl = '';
-      if ($('lyrCoverFile').files[0]) {
-        const b64 = await fileToBase64($('lyrCoverFile').files[0]);
-        const name = song.artistId + '-' + songSlug + '-cover.png';
-        await putFile(repoFull, 'images/covers/' + name, b64, 'HTR Studio: cover for ' + song.title);
-        coverUrl = 'https://raw.githubusercontent.com/' + repoFull + '/main/images/covers/' + name;
-      }
-      if ($('lyrAlbumCoverFile').files[0]) {
-        const b64 = await fileToBase64($('lyrAlbumCoverFile').files[0]);
-        const name = song.artistId + '-' + albumSlug + '-ALBUM-cover.png';
-        await putFile(repoFull, 'images/covers/' + name, b64, 'HTR Studio: album cover for ' + album);
-        albumCoverUrl = 'https://raw.githubusercontent.com/' + repoFull + '/main/images/covers/' + name;
-      }
-      const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
-      const songs = JSON.parse(b64decode(sf.content));
-      const t = songs.find((s) => s.id === song.id);
-      if (!t) throw new Error('song missing from master data');
-      if (audioIn) { const a = normalizeDropbox(audioIn); t.audioFile = a; t.audioSrc = a; }
-      t.album = album;
-      if (coverUrl) t.coverImage = coverUrl;
-      if (albumCoverUrl) t.albumCover = albumCoverUrl;
-      t.sunoPrompt = $('lyrSunoPrompt').value.trim() || t.sunoPrompt || '';
-      await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', {
-        method: 'PUT',
-        body: { message: 'Song info: ' + song.id, content: b64encode(JSON.stringify(songs, null, 2)), sha: sf.sha }
-      });
-      Object.assign(song, t);
-      $('lyrStatus').textContent = '';
-      window.lyrSongChange();
-      toast('Song info saved');
     } catch (e) { $('lyrStatus').textContent = ''; toast('Save failed: ' + e.message, true); }
   };
 
@@ -4124,15 +4019,27 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     edLines.splice(at, 0, { t: t, text: '[' + name.trim().replace(/^\[|\]$/g, '') + ']', marker: true });
     edSel = at; edRender();
   };
+  // clear the screen at the current playhead: a [gap] marker ends the caption before it
+  window.edGap = function () {
+    const au = $('edAudio');
+    const t = Math.round((au.currentTime || 0) * 10) / 10;
+    edPush();
+    let at = edLines.findIndex((l) => l.t > t && !/^\[start\]$/i.test(l.text));
+    if (at < 0) { at = edLines.findIndex((l) => /^\[end\]$/i.test(l.text)); if (at < 0) at = edLines.length; }
+    edLines.splice(at, 0, { t: t, text: '[gap]', marker: true });
+    if (edSel >= at) edSel++;
+    edRender();
+    toast('Screen clears at ' + edFmt(t));
+  };
   window.edStamp = function () {
-    if (edSel < 0) edSel = edLines.findIndex((l) => l.text.toLowerCase() !== '[start]' && l.text.toLowerCase() !== '[end]');
+    if (edSel < 0) edSel = edLines.findIndex((l) => !/^\[(start|end|gap)\]$/i.test(l.text));
     if (edSel < 0) return;
     edPush();
     edLines[edSel].t = Math.round($('edAudio').currentTime * 10) / 10;
     // advance to the next line — markers included, so sections get stamped
     // in the same flow (skip only the [Start]/[End] anchors)
     let n = edSel + 1;
-    while (n < edLines.length && /^\[(start|end)\]$/i.test(edLines[n].text)) n++;
+    while (n < edLines.length && /^\[(start|end|gap)\]$/i.test(edLines[n].text)) n++;
     edSel = n < edLines.length ? n : edSel;
     edRender();
     const row = $('edRows').querySelector('[data-i="' + edSel + '"]');
@@ -4150,6 +4057,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.code === 'Space') { e.preventDefault(); const au = $('edAudio'); au.paused ? au.play() : au.pause(); }
     if (e.code === 'Enter') { e.preventDefault(); window.edStamp(); }
+    if (e.code === 'KeyG' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); window.edGap(); }
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); window.edUndo(); }
   });
   setInterval(function () {
@@ -4227,218 +4135,6 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     toast(cues.length + ' exact captions exported');
   };
 
-  // ---------- lyric video backgrounds + cloud render ----------
-  let lvItems = [];
-
-  async function lvList(path) {
-    try {
-      const files = await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + path + '?ref=main');
-      return (Array.isArray(files) ? files : []).filter((f) => /\.(png|jpe?g)$/i.test(f.name))
-        .sort((a, b) => a.name.localeCompare(b.name));
-    } catch (e) { return []; }
-  }
-
-  let lvRefreshSeq = 0;
-
-  window.lvRefresh = async function () {
-    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
-    const box = $('lvThumbs');
-    if (!song) { box.innerHTML = ''; return; }
-    const seq = ++lvRefreshSeq;   // only the latest refresh may touch the page
-    $('lvSongName').textContent = '— ' + song.title;
-    box.innerHTML = '<span class="sub">Loading…</span>';
-    const base = 'data/video-assets/' + song.id;
-    const groups = [
-      { label: '16:9 — YouTube', fmt: '16x9', items: await lvList(base + '/16x9'), tw: 150, th: 84 },
-      { label: '9:16 — Shorts / Reels', fmt: '9x16', items: await lvList(base + '/9x16'), tw: 84, th: 150 },
-      { label: 'Both formats (auto-cropped)', fmt: '', items: await lvList(base), tw: 150, th: 84 }
-    ];
-    if (seq !== lvRefreshSeq) return;   // a newer refresh took over
-    lvItems = [];
-    box.innerHTML = '';
-    let any = false;
-    groups.forEach((g) => {
-      if (!g.items.length) return;
-      any = true;
-      const h = document.createElement('div');
-      h.className = 'sub';
-      h.style.cssText = 'margin:8px 0 4px;font-weight:bold;color:#e0a952';
-      h.textContent = g.label + ' (' + g.items.length + ')';
-      box.appendChild(h);
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap';
-      g.items.forEach((f, k) => {
-        const gi = lvItems.length;
-        lvItems.push(Object.assign({ fmt: g.fmt }, f));
-        const d = document.createElement('div');
-        d.style.cssText = 'position:relative;width:' + g.tw + 'px';
-        d.innerHTML = '<img src="' + f.download_url + '" style="width:' + g.tw + 'px;height:' + g.th + 'px;object-fit:cover;border-radius:6px;border:1px solid #333">'
-          + '<div class="sub" style="text-align:center;font-size:11px"><b>#' + (k + 1) + '</b> · ' + f.name + '</div>'
-          + '<button class="btn btn-ghost" style="position:absolute;top:2px;right:2px;padding:0 6px" title="delete" onclick="window.lvDelete(' + gi + ')">✕</button>';
-        row.appendChild(d);
-      });
-      box.appendChild(row);
-    });
-    if (!any) box.innerHTML = '<span class="sub">No backgrounds stored yet.</span>';
-    // cue reference set: prefer the 16:9 group, then shared, then 9:16
-    lvCueImgs = (groups[0].items.length ? groups[0].items
-                : (groups[2].items.length ? groups[2].items : groups[1].items));
-    const cuesLoaded = [];
-    try {
-      const cf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/video-assets/' + song.id + '/cues.txt?ref=main');
-      b64decode(cf.content).split(/\r?\n/).forEach((ln) => {
-        const m = ln.match(/^\s*(\d+:\d{2}(?:\.\d+)?)\s+(\d+)\s*$/);
-        if (m) cuesLoaded.push({ t: m[1], idx: parseInt(m[2], 10) });
-      });
-    } catch (e) { /* no cues yet */ }
-    if (seq !== lvRefreshSeq) return;
-    if (lvCuesDirty) return;   // never clobber unsaved edits with a background refresh
-    lvCues = cuesLoaded;
-    lvCueRender();
-  };
-
-  let lvCueImgs = [];
-  let lvCues = [];
-  let lvCuesDirty = false;
-
-  function lvSec(t) {
-    const m = String(t).match(/^(\d+):(\d{2}(?:\.\d+)?)$/);
-    return m ? (+m[1]) * 60 + parseFloat(m[2]) : null;
-  }
-
-  function lvCueRender() {
-    const box = $('lvCueRows');
-    box.innerHTML = lvCues.length ? '' : '<div class="sub">No cues — backgrounds follow song sections automatically.</div>';
-    lvCues.forEach((c, i) => {
-      const opts = lvCueImgs.map((f, k) =>
-        '<option value="' + (k + 1) + '"' + (c.idx === k + 1 ? ' selected' : '') + '>#' + (k + 1) + ' · ' + f.name + '</option>').join('');
-      const img = lvCueImgs[c.idx - 1];
-      // how long this background stays on screen (until the next cue)
-      let dur = '';
-      const s0 = lvSec(c.t), s1 = (i + 1 < lvCues.length) ? lvSec(lvCues[i + 1].t) : null;
-      if (s0 !== null) dur = s1 !== null
-        ? '<span class="sub" style="min-width:86px">→ ' + lvCues[i + 1].t + ' (' + (s1 - s0).toFixed(1) + 's)</span>'
-        : '<span class="sub" style="min-width:86px">→ song end</span>';
-      const d = document.createElement('div');
-      d.style.cssText = 'display:flex;gap:8px;align-items:center;margin:4px 0';
-      d.innerHTML = '<input value="' + c.t + '" style="width:70px;font-family:monospace;text-align:right" onchange="window.lvCues_t(' + i + ',this.value)">'
-        + (img ? '<img src="' + img.download_url + '" style="width:46px;height:26px;object-fit:cover;border-radius:4px;border:1px solid #333">' : '')
-        + '<select style="flex:1" onchange="window.lvCues_i(' + i + ',this.value)">' + opts + '</select>'
-        + dur
-        + '<button class="btn btn-ghost" style="padding:2px 8px" onclick="window.lvCueDel(' + i + ')">✕</button>';
-      box.appendChild(d);
-    });
-    if (lvCuesDirty) {
-      const w = document.createElement('div');
-      w.style.cssText = 'color:#e05252;font-size:13px;margin-top:4px';
-      w.textContent = '⚠ Unsaved cue changes — hit Save cues or the render will use the OLD cues.';
-      box.appendChild(w);
-    }
-  }
-  window.lvCues_t = function (i, v) { lvCues[i].t = v.trim(); lvCuesDirty = true; lvCueRender(); };
-  window.lvCues_i = function (i, v) { lvCues[i].idx = parseInt(v, 10); lvCuesDirty = true; lvCueRender(); };
-  window.lvCueDel = function (i) { lvCues.splice(i, 1); lvCuesDirty = true; lvCueRender(); };
-  window.lvCueAdd = function () {
-    if (!lvCueImgs.length) return toast('Upload backgrounds first', true);
-    lvCues.push({ t: lvCues.length ? '' : '0:00', idx: 1 });
-    lvCuesDirty = true;
-    lvCueRender();
-  };
-  window.lvCueSave = async function () {
-    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
-    if (!song) return toast('Pick a catalog song first', true);
-    for (const c of lvCues) {
-      if (!/^\d+:\d{2}(\.\d+)?$/.test(c.t)) return toast('Bad cue time: "' + c.t + '" (use M:SS or M:SS.5)', true);
-    }
-    const body = lvCues.slice().sort((a, b) => {
-      const s = (x) => { const m = x.t.split(':'); return (+m[0]) * 60 + parseFloat(m[1]); };
-      return s(a) - s(b);
-    }).map((c) => c.t + '\t' + c.idx).join('\n') + '\n';
-    $('lvCueStatus').textContent = 'Saving…';
-    try {
-      await lyrCommitFile('data/video-assets/' + song.id + '/cues.txt', body, 'Background cues: ' + song.id);
-      lvCuesDirty = false;
-      lvCueRender();
-      $('lvCueStatus').textContent = 'Saved — renders now follow these cues.';
-      toast('Cues saved');
-    } catch (e) { $('lvCueStatus').textContent = ''; toast('Save failed: ' + e.message, true); }
-  };
-
-  window.lvUpload = async function () {
-    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
-    if (!song) return toast('Pick a catalog song first', true);
-    const files = Array.from($('lvFiles').files);
-    if (!files.length) return toast('Choose image files first', true);
-    files.sort((a, b) => a.name.localeCompare(b.name));
-    const fmt = $('lvFmt').value;
-    let idx = lvItems.filter((x) => x.fmt === fmt).length;
-    $('lvStatus').textContent = 'Uploading…';
-    try {
-      for (const f of files) {
-        idx++;
-        const ext = /jpe?g$/i.test(f.name) ? '.jpg' : '.png';
-        const name = 'bg' + String(idx).padStart(2, '0') + ext;
-        const b64 = await fileToBase64(f);
-        await putFile(OWNER + '/' + REPO, 'data/video-assets/' + song.id + '/' + fmt + '/' + name, b64,
-          'Lyric video bg (' + fmt + '): ' + song.id + ' ' + name);
-        $('lvStatus').textContent = 'Uploaded ' + fmt + '/' + name;
-      }
-      $('lvFiles').value = '';
-      $('lvStatus').textContent = files.length + ' uploaded to ' + fmt + '.';
-      window.lvRefresh();
-    } catch (e) { $('lvStatus').textContent = ''; toast('Upload failed: ' + e.message, true); }
-  };
-
-  window.lvDelete = async function (i) {
-    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
-    const f = lvItems[i];
-    if (!song || !f) return;
-    if (!confirm('Delete ' + f.name + '?')) return;
-    try {
-      await gh('/repos/' + OWNER + '/' + REPO + '/contents/' + f.path, {
-        method: 'DELETE',
-        body: { message: 'Remove lyric video bg: ' + f.name, sha: f.sha }
-      });
-      window.lvRefresh();
-    } catch (e) { toast('Delete failed: ' + e.message, true); }
-  };
-
-  window.lvRenderLocal = async function () {
-    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
-    if (!song) return toast('Pick a catalog song first', true);
-    if (!lvItems.length) return toast('Upload at least one background first', true);
-    if (lvCuesDirty) return toast('You have UNSAVED cue changes — hit Save cues first (renders read the saved file)', true);
-    try {
-      await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
-    } catch (e) {
-      return toast('No saved timestamps for this song — stamp them in the Timestamp Editor and Save to catalog first', true);
-    }
-    try {
-      await lyrCommitFile('data/render-requests/' + song.id + '.json',
-        JSON.stringify({ song_id: song.id, formats: '16x9', requested: new Date().toISOString() }) + '\n',
-        'Render request: ' + song.id);
-      $('lvStatus').textContent = 'Queued for your PC — the Render Agent picks it up within ~10s and renders in ~2 min. '
-        + '(Agent not running? Double-click start-render-agent.bat in D:\\HTR-Studio and leave it open.)';
-      toast('Local render queued');
-    } catch (e) { toast('Could not queue: ' + e.message, true); }
-  };
-
-  window.lvRender = async function () {
-    const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
-    if (!song) return toast('Pick a catalog song first', true);
-    if (!lvItems.length) return toast('Upload at least one background first', true);
-    if (lvCuesDirty) return toast('You have UNSAVED cue changes — hit Save cues first (renders read the saved file)', true);
-    try {
-      await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
-    } catch (e) {
-      return toast('No saved timestamps for this song — stamp them in the Timestamp Editor and Save to catalog first', true);
-    }
-    try {
-      await dispatch('lyric-video.yml', { song_id: song.id });
-      $('lvStatus').textContent = 'Rendering in the cloud — the MP4s land in the song’s Video Files folder in Dropbox in a few minutes. (Progress: Dashboard → Recent runs.)';
-      toast('Render started');
-    } catch (e) { toast('Could not start render: ' + e.message, true); }
-  };
 
   // ---------- new artist ----------
   const NA_ASSETS = [
@@ -5106,12 +4802,6 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   });
   $('radioOnlyChanged').addEventListener('change', renderRadio);
 
-  // private-repo image links expire — refresh thumbnails when returning to the tab
-  window.addEventListener('focus', function () {
-    if (!$('view-lyrics').classList.contains('hidden') && !lvCuesDirty) {
-      try { window.lvRefresh(); } catch (e) { }
-    }
-  });
 
   // ---------- song polls (Firebase / Firestore) ----------
   let pollsLoaded = false, pollsCache = [], pollVersions = [], pollAuthWired = false, pollPreviewAudio = null;
@@ -6118,6 +5808,10 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     toast(applied + ' change' + (applied === 1 ? '' : 's') + ' applied — hit Save changes to write to the catalog');
   };
 
+  // helpers for make-video.js (separate file, can't see inside this closure)
+  window.HTRBridge = { gh: gh, OWNER: OWNER, REPO: REPO, b64decode: b64decode, b64encode: b64encode, toast: toast,
+    audioOf: audioOf, commitFile: lyrCommitFile, getArtists: () => artists };
+
   const saved = localStorage.getItem(PAT_KEY);
   if (saved) {
     $('patInput').value = saved;
@@ -6125,6 +5819,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   }
 })();
 </script>
+
+<script src="make-video.js?v=20260926"></script>
 
 <!-- Firebase (Song Polls) — separate ES module; bridges to window.HTRPoll -->
 <script type="module">
