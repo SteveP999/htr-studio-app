@@ -215,7 +215,7 @@
   }
 
   // ---------- lyrics ----------
-  function fontStr(px) { return (HEAVY.indexOf(S.cfg.font) >= 0 ? '800 ' : '400 ') + px.toFixed(1) + 'px "' + S.cfg.font + '", sans-serif'; }
+  function fontStr(px) { return fontWeight() + ' ' + px.toFixed(1) + 'px "' + S.cfg.font + '", sans-serif'; }
   function setSpacing(ctx, px) { if ('letterSpacing' in ctx) ctx.letterSpacing = (TIGHT.indexOf(S.cfg.font) >= 0 ? px * 0.02 : 0).toFixed(1) + 'px'; }
   function drawLyrics(ctx, t, W, H, record) {
     const idx = lineAt(t);
@@ -326,14 +326,128 @@
     markLine();
   }
 
+
+  // ---------- fonts: big catalog, favorites (synced via repo), live-preview drawer ----------
+  // fonts.json = [{n:name, c:category, w:[weights available]}], all verified against Google Fonts.
+  const FT = { cat: FONTS.map((f) => ({ n: f, c: 'Classic', w: [400, 700] })), fav: ['Poppins', 'Fjalla One'], custom: [], loaded: {}, sha: null, open: false, q: '', tab: 'fav', sample: '' };
+  const FAV_PATH = 'data/video-fonts.json';
+  function fontWeight() {
+    if (S.cfg.bold == null) return HEAVY.indexOf(S.cfg.font) >= 0 ? 800 : 400; // setups saved before the Bold switch existed
+    return S.cfg.bold ? 700 : 400;
+  }
+  function fontInfo(n) { return FT.custom.find((f) => f.n === n) || FT.cat.find((f) => f.n === n) || { n: n, c: 'Custom', w: [400, 700] }; }
+  function ensureFont(n, w) {
+    const info = fontInfo(n), want = w || 400;
+    const avail = info.w && info.w.length ? info.w : [400];
+    const pick = avail.indexOf(want) >= 0 ? want : avail.reduce((a, b) => (Math.abs(b - want) < Math.abs(a - want) ? b : a), avail[0]);
+    const key = n + '@' + pick;
+    if (!FT.loaded[key]) {
+      const l = document.createElement('link'); l.rel = 'stylesheet';
+      l.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(n).replace(/%20/g, '+') + ':wght@' + pick + '&display=swap';
+      document.head.appendChild(l);
+      FT.loaded[key] = new Promise((res) => { l.onload = () => res(document.fonts.load(pick + ' 40px "' + n + '"').catch(() => { })); l.onerror = () => res(); });
+    }
+    return FT.loaded[key];
+  }
+  function ensureCurrentFont() { return Promise.all([ensureFont(S.cfg.font, fontWeight()), ensureFont(S.cfg.font, 400)]); }
+  async function loadFontData() {
+    try { const r = await fetch('fonts.json?v=' + (window.MV_FONTS_V || '1')); if (r.ok) FT.cat = await r.json(); } catch (e) { }
+    try {
+      const f = await B().gh(P(FAV_PATH + '?ref=main')); FT.sha = f.sha;
+      const d = JSON.parse(B().b64decode(f.content)); if (Array.isArray(d.favorites)) FT.fav = d.favorites; if (Array.isArray(d.custom)) FT.custom = d.custom;
+    } catch (e) { /* first run: defaults */ }
+  }
+  let favT = null;
+  function saveFontData() {
+    clearTimeout(favT);
+    favT = setTimeout(async () => {
+      try { await B().commitFile(FAV_PATH, JSON.stringify({ favorites: FT.fav, custom: FT.custom }, null, 2) + '\n', 'Video font favorites'); }
+      catch (e) { toast('Couldn’t save font favorites: ' + e.message, true); }
+    }, 1500);
+  }
+  function toggleFav(n) { const i = FT.fav.indexOf(n); if (i >= 0) FT.fav.splice(i, 1); else FT.fav.push(n); saveFontData(); renderFontBtn(); renderDrawer(); }
+  function applyFont(n) {
+    S.cfg.font = n; S.dirty = true;
+    ensureCurrentFont(); renderFontBtn(); renderDrawer();
+  }
+  function renderFontBtn() {
+    const b = $('mvFontBtn'); if (!b) return;
+    ensureFont(S.cfg.font, 400);
+    b.innerHTML = '<span style="font-family:\'' + esc(S.cfg.font) + '\',sans-serif;font-size:22px;line-height:1">' + esc(S.cfg.font) + '</span><span class="mv-dim">change ▸</span>';
+    const q = $('mvFavChips');
+    if (q) q.innerHTML = FT.fav.length ? FT.fav.map((n) => { ensureFont(n, 400); return '<span class="mv-fchip' + (n === S.cfg.font ? ' on' : '') + '" data-font="' + esc(n) + '" style="font-family:\'' + esc(n) + '\',sans-serif">' + esc(n) + '</span>'; }).join('')
+      : '<span class="mv-dim">Star fonts in the browser to keep them here.</span>';
+  }
+  function sampleText() {
+    let t = FT.sample;
+    if (!t) { const L = S.lines[S.shown >= 0 ? S.shown : (S.pick >= 0 ? S.pick : 0)]; t = L ? L.text.replace(/\s*[\/|]\s*/g, ' ') : 'The quick brown fox'; }
+    return S.cfg.upper ? t.toUpperCase() : t;
+  }
+  let fontObs = null;
+  function renderDrawer() {
+    const d = $('mvFontDrawer'); if (!d || !FT.open) return;
+    const all = FT.custom.concat(FT.cat.filter((f) => !FT.custom.some((c) => c.n === f.n)));
+    const cats = ['fav', 'all'].concat(Array.from(new Set(all.map((f) => f.c))));
+    const q = FT.q.trim().toLowerCase();
+    let list = FT.tab === 'fav' ? FT.fav.map(fontInfo) : FT.tab === 'all' ? all : all.filter((f) => f.c === FT.tab);
+    if (q) list = (FT.tab === 'fav' ? list : all).filter((f) => f.n.toLowerCase().indexOf(q) >= 0);
+    $('mvFtTabs').innerHTML = cats.map((c) => '<span class="mv-ftab' + (c === FT.tab ? ' on' : '') + '" data-ftab="' + esc(c) + '">' + (c === 'fav' ? '★ Favorites (' + FT.fav.length + ')' : c === 'all' ? 'All (' + all.length + ')' : esc(c)) + '</span>').join('');
+    const sample = esc(sampleText()), w = fontWeight();
+    $('mvFtList').innerHTML = list.length ? list.map((f) => '<div class="mv-fcard' + (f.n === S.cfg.font ? ' on' : '') + '" data-font="' + esc(f.n) + '">'
+      + '<div class="mv-fhead"><span>' + esc(f.n) + ' <span class="mv-dim">' + esc(f.c) + (f.w && f.w.indexOf(700) < 0 && f.w.indexOf(800) < 0 ? ' · no true bold' : '') + '</span></span>'
+      + '<span class="mv-fstar' + (FT.fav.indexOf(f.n) >= 0 ? ' on' : '') + '" data-star="' + esc(f.n) + '" title="Favorite">' + (FT.fav.indexOf(f.n) >= 0 ? '★' : '☆') + '</span></div>'
+      + '<div class="mv-fsample" data-lazy="' + esc(f.n) + '" style="font-weight:' + w + '">' + sample + '</div></div>').join('')
+      : '<div class="mv-dim" style="padding:14px">' + (FT.tab === 'fav' && !q ? 'No favorites yet — open <b>All</b> and tap ☆ on the ones you like.' : 'Nothing matches “' + esc(FT.q) + '”. If it’s a Google Font, add it by name below.') + '</div>';
+    if (fontObs) fontObs.disconnect();
+    fontObs = new IntersectionObserver((ents) => ents.forEach((e) => {
+      if (!e.isIntersecting) return; const el = e.target, n = el.dataset.lazy; fontObs.unobserve(el);
+      ensureFont(n, w).then(() => { el.style.fontFamily = '\'' + n + '\', sans-serif'; el.classList.add('ld'); });
+    }), { root: $('mvFtList'), rootMargin: '300px' });
+    $('mvFtList').querySelectorAll('[data-lazy]').forEach((el) => fontObs.observe(el));
+  }
+  function openDrawer(on) {
+    FT.open = on; $('mvFontDrawer').classList.toggle('hidden', !on);
+    if (on) { FT.tab = FT.fav.length ? 'fav' : 'all'; $('mvFtSearch').value = FT.q = ''; renderDrawer(); setTimeout(() => $('mvFtSearch').focus(), 50); }
+  }
+  async function addGoogleFont() {
+    const n = $('mvFtAdd').value.trim().replace(/\s+/g, ' '); if (!n) return;
+    if (fontInfo(n).c !== 'Custom' || FT.custom.some((f) => f.n.toLowerCase() === n.toLowerCase())) { FT.q = n; $('mvFtSearch').value = n; FT.tab = 'all'; renderDrawer(); return toast(n + ' is already in the list'); }
+    const w = [];
+    for (const wt of [400, 700]) {
+      try { const r = await fetch('https://fonts.googleapis.com/css2?family=' + encodeURIComponent(n).replace(/%20/g, '+') + ':wght@' + wt); if (r.ok) w.push(wt); } catch (e) { }
+    }
+    if (!w.length) return toast('Google Fonts doesn’t have “' + n + '” — check the spelling (it’s case-sensitive, e.g. “Playfair Display”)', true);
+    FT.custom.unshift({ n: n, c: 'My Fonts', w: w }); if (FT.fav.indexOf(n) < 0) FT.fav.push(n);
+    $('mvFtAdd').value = ''; saveFontData(); FT.tab = 'fav'; applyFont(n); toast('Added ' + n + ' and starred it');
+  }
+
   // ---------- UI ----------
   const CSS = `
   .mv-main{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:18px;margin-top:18px;align-items:start}
   @media(max-width:1150px){.mv-main{grid-template-columns:1fr}}
-  @media(min-width:1151px){.mv-left{position:sticky;top:10px}}
+  @media(min-width:1151px){.mv-left{position:sticky;top:var(--mvTop,10px)}}
   .mv-stagewrap{background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  #mvCanvas{display:block;width:100%;height:auto;margin:0 auto;touch-action:none;background:#000}
-  #mvCanvas.v{width:auto;height:min(68vh,760px)}
+  #mvCanvas{display:block;width:min(100%, calc((100vh - var(--mvTop,10px) - 72px) * 1.7778));height:auto;margin:0 auto;touch-action:none;background:#000}
+  #mvCanvas.v{width:auto;height:min(calc(100vh - var(--mvTop,10px) - 72px),760px)}
+  .mv-fontbtn{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);color:var(--cream);padding:10px 12px;border-radius:8px;margin-top:6px;text-align:left}
+  .mv-fontbtn:hover{border-color:var(--warn)}
+  .mv-fchips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+  .mv-fchip{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:16px;cursor:pointer}
+  .mv-fchip:hover,.mv-fchip.on{border-color:var(--red);color:#fff}.mv-fchip.on{background:var(--red)}
+  .mv-drawer{position:fixed;right:0;top:var(--mvTop,0px);bottom:0;width:min(470px,100vw);z-index:60;background:var(--panel);border-left:1px solid var(--line);box-shadow:-12px 0 30px rgba(0,0,0,.5);padding:14px;display:flex;flex-direction:column;gap:8px}
+  .mv-drawer.hidden{display:none}
+  .mv-drhead{display:flex;align-items:center;gap:10px}.mv-drhead b{font-family:'Bebas Neue';font-size:22px;font-weight:400}.mv-drhead .mv-dim{flex:1}
+  .mv-drawer input{padding:8px 10px;font-size:14px}
+  .mv-ftabs{display:flex;flex-wrap:wrap;gap:5px}
+  .mv-ftab{font-size:12.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);cursor:pointer;color:var(--muted)}
+  .mv-ftab.on{background:var(--red);border-color:var(--red);color:#fff}
+  .mv-ftlist{flex:1;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#0b0907}
+  .mv-fcard{padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+  .mv-fcard:hover{background:var(--panel2)} .mv-fcard.on{background:#3a1717}
+  .mv-fhead{display:flex;justify-content:space-between;font-size:12.5px}
+  .mv-fstar{font-size:20px;color:var(--muted);padding:0 4px;line-height:1}.mv-fstar.on{color:#e6bd52}.mv-fstar:hover{color:#e6bd52}
+  .mv-fsample{font-size:30px;line-height:1.15;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.35;transition:opacity .2s}
+  .mv-fsample.ld{opacity:1}
   .mv-transport{display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--panel)}
   .mv-pp{background:var(--red);color:#fff;width:40px;height:40px;border-radius:50%;font-size:15px;flex:none}
   .mv-transport input[type=range]{flex:1;padding:0;accent-color:var(--red);background:none;border:none}
@@ -458,7 +572,9 @@
           ${seg('align', [['left', 'Left'], ['center', 'Middle'], ['right', 'Right']])}
           <span class="mv-lab">Animation &amp; font</span>
           <select id="mvAnim" style="margin-bottom:6px">${ANIMS.map((a) => '<option value="' + a[0] + '">' + a[1] + '</option>').join('')}</select>
-          <select id="mvFont">${FONTS.map((f) => '<option style="font-family:\'' + f + '\'">' + f + '</option>').join('')}</select>
+          <button class="mv-fontbtn" id="mvFontBtn" title="Browse fonts"></button>
+          <div id="mvFavChips" class="mv-fchips"></div>
+          ${seg('bold', [['false', 'Regular'], ['true', 'Bold']])}
           ${seg('upper', [['true', 'UPPERCASE'], ['false', 'Normal case']])}
           <span class="mv-lab">Colors &amp; outline</span>
           <div class="mv-colors"><label>Text<input type="color" data-col="text"></label><label>Stressed<input type="color" data-col="hi"></label><label>Outline<input type="color" data-col="out"></label></div>
@@ -482,6 +598,15 @@
           <div class="mv-dim" id="mvRenderMsg" style="margin-top:8px">Records in real time &mdash; a 3-minute song takes about 3 minutes. Saves into your picked folder, or downloads.</div>
         </div>
       </div>
+    </div>
+    <div id="mvFontDrawer" class="mv-drawer hidden">
+      <div class="mv-drhead"><b>Fonts</b><span class="mv-dim">click to try it on the preview \u00b7 \u2606 to favorite</span><button class="btn btn-ghost mv-sm" id="mvFtClose">Done</button></div>
+      <input id="mvFtSearch" placeholder="Search fonts\u2026">
+      <input id="mvFtSample" placeholder="Sample text (blank = the current lyric)">
+      <div id="mvFtTabs" class="mv-ftabs"></div>
+      <div id="mvFtList" class="mv-ftlist"></div>
+      <div class="mv-row" style="margin-top:8px"><input id="mvFtAdd" placeholder="Add any Google Font by exact name (e.g. Rubik Dirt)"><button class="btn btn-blue mv-sm" id="mvFtAddBtn">Add</button></div>
+      <div class="mv-dim">Browse them all at <a href="https://fonts.google.com" target="_blank" rel="noreferrer">fonts.google.com</a> \u2014 copy the name, paste it here.</div>
     </div>`;
     cv = $('mvCanvas'); cx = cv.getContext('2d');
     wire();
@@ -518,7 +643,7 @@
   }
   function segVal(g) {
     if (g === 'fmt') return S.fmt; if (g === 'move') return S.move; if (g === 'out') return S.out;
-    if (g === 'lyricsOn') return String(S.lyricsOn); return String(S.cfg[g]);
+    if (g === 'lyricsOn') return String(S.lyricsOn); if (g === 'bold') return String(fontWeight() >= 700); return String(S.cfg[g]);
   }
   function segSet(g, v) {
     if (S.rec && (g === 'out' || g === 'lyricsOn')) return;
@@ -526,7 +651,8 @@
     else if (g === 'move') S.move = v;
     else if (g === 'out') S.out = v;
     else if (g === 'lyricsOn') S.lyricsOn = v === 'true';
-    else if (g === 'upper') { S.cfg.upper = v === 'true'; S.dirty = true; }
+    else if (g === 'upper') { S.cfg.upper = v === 'true'; S.dirty = true; renderDrawer(); }
+    else if (g === 'bold') { S.cfg.bold = v === 'true'; S.dirty = true; ensureCurrentFont(); renderDrawer(); }
     else { S.cfg[g] = v; S.dirty = true; }
     syncControls();
   }
@@ -535,7 +661,7 @@
     document.querySelectorAll('#view-mkvideo .mv-seg').forEach((s) => { const v = segVal(s.dataset.g); s.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); });
     document.querySelectorAll('#view-mkvideo [data-k]').forEach((r) => { const k = r.dataset.k, v = +getVal(k); if (document.activeElement !== r) r.value = v; const sh = document.querySelector('#view-mkvideo [data-show="' + k + '"]'); if (sh) sh.textContent = SLIDERS[k][4](v); });
     document.querySelectorAll('#view-mkvideo [data-col]').forEach((i) => { i.value = S.cfg[i.dataset.col]; });
-    $('mvAnim').value = S.cfg.anim; $('mvFont').value = S.cfg.font; $('mvKen').checked = !!S.cfg.kenburns;
+    $('mvAnim').value = S.cfg.anim; renderFontBtn(); $('mvKen').checked = !!S.cfg.kenburns;
     const k = tgtKey();
     document.querySelector('#view-mkvideo [data-show="size"]').previousElementSibling.textContent = (S.move === 'line' ? (k ? 'Caption size (this line)' : 'Caption size (pick a line)') : 'Caption size (all lines)');
   }
@@ -779,7 +905,7 @@
     S.statusBits = bits; showStatus();
     if (S.dirFiles.length) await afterFolder();
     renderLines(); renderBg(); renderEnd(); syncControls();
-    document.fonts.load(fontStr(80)).catch(() => { });
+    ensureCurrentFont();
   }
   async function saveSetup() {
     if (!S.song) return toast('Pick a song first', true);
@@ -829,7 +955,7 @@
     if (empty.length && !confirm('No backgrounds for ' + empty.map((f) => (f === '16' ? '16:9' : '9:16')).join(' & ') + ' \u2014 that video will be black behind the lyrics. Keep going?')) return;
     const mime = pickMime(); if (!mime) return toast('This browser can\u2019t record video \u2014 use Chrome or Edge', true);
     ensureGraph(); await AC.resume();
-    await document.fonts.load(fontStr(80)).catch(() => { });
+    await ensureCurrentFont();
     audio.pause();
     if (!S.total) await new Promise((r) => { if (audio.readyState >= 1) r(); else audio.addEventListener('loadedmetadata', r, { once: true }); });
     await new Promise((r) => { const to = setTimeout(r, 2000); audio.addEventListener('seeked', () => { clearTimeout(to); r(); }, { once: true }); audio.currentTime = 0; });
@@ -967,7 +1093,19 @@
       if (bt) { const it = S.bg[S.fmt][+bt.dataset.bgt]; if (it) { it.start = parseT(bt.value); S.dirty = true; } bt.blur(); S.bgPending = false; renderBg(); }
     });
     $('mvAnim').onchange = function () { S.cfg.anim = this.value; S.dirty = true; };
-    $('mvFont').onchange = function () { S.cfg.font = this.value; S.dirty = true; document.fonts.load(fontStr(80)).catch(() => { }); };
+    $('mvFontBtn').onclick = () => openDrawer(!FT.open);
+    $('mvFavChips').addEventListener('click', (e) => { const f = e.target.closest('[data-font]'); if (f) applyFont(f.dataset.font); });
+    $('mvFontDrawer').addEventListener('click', (e) => {
+      const st = e.target.closest('[data-star]'); if (st) { toggleFav(st.dataset.star); return; }
+      const tb = e.target.closest('[data-ftab]'); if (tb) { FT.tab = tb.dataset.ftab; $('mvFtList').scrollTop = 0; renderDrawer(); return; }
+      const fc = e.target.closest('[data-font]'); if (fc) applyFont(fc.dataset.font);
+    });
+    $('mvFtClose').onclick = () => openDrawer(false);
+    $('mvFtSearch').oninput = function () { FT.q = this.value; renderDrawer(); };
+    $('mvFtSample').oninput = function () { FT.sample = this.value.trim(); renderDrawer(); };
+    $('mvFtAddBtn').onclick = addGoogleFont;
+    $('mvFtAdd').onkeydown = (e) => { if (e.key === 'Enter') addGoogleFont(); };
+    $('mvFontDrawer').addEventListener('keydown', (e) => { if (e.key === 'Escape') openDrawer(false); });
     $('mvKen').onchange = function () { S.cfg.kenburns = this.checked; S.dirty = true; };
     $('mvLinkAdd').onclick = () => { if (addLink($('mvLink').value)) $('mvLink').value = ''; };
     $('mvLink').onkeydown = (e) => { if (e.key === 'Enter') $('mvLinkAdd').click(); };
@@ -1004,9 +1142,15 @@
     renderLines();
   }
 
+  function placeUnderHeader() {
+    const h = document.querySelector('header'), top = h && getComputedStyle(h).position === 'sticky' ? h.offsetHeight : 0;
+    $('view-mkvideo').style.setProperty('--mvTop', (top + 8) + 'px');
+  }
+  window.addEventListener('resize', () => { if (built) placeUnderHeader(); });
   async function onShow() {
     build();
-    FONTS.forEach((f) => document.fonts.load((HEAVY.indexOf(f) >= 0 ? '800 ' : '400 ') + '40px "' + f + '"').catch(() => { }));
+    placeUnderHeader();
+    if (!FT.ready) { FT.ready = true; loadFontData().then(() => { renderFontBtn(); ensureCurrentFont(); }); }
     if (!S.songs) {
       try { await loadSongs(); } catch (e) { toast('Could not load songs: ' + e.message, true); return; }
     }
