@@ -18,12 +18,18 @@
     { slug: 'jazz', name: 'Movie Score - Elegant Jazz', I: -15, TP: -1, LRA: 10, match: ['jazz', 'elegant'] },
     { slug: 'triumphant', name: 'Movie Score - Triumphant', I: -14, TP: -1, LRA: 9, match: ['triumphant'] }
   ];
+  // Auto: listen to the whole batch, pick ONE loudness for all of it, then clean gain + light true-peak limiting.
+  //   base -14 LUFS = what Spotify/YouTube play everything at (louder buys nothing - they turn it down).
+  //   ceiling -1 dBTP = streaming-safe headroom for MP3/AAC encoding.
+  //   The batch target only drops (to a -16 floor) if most songs would need more than 2 dB of limiting;
+  //   a song needing more than 4 dB is left a little quieter rather than squashed.
+  const AUTO = { base: -14, floor: -16, ceil: -1, limitAt: -1.2, medianLim: 2, maxLim: 4 };
   const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const stem = (n) => n.replace(/\.[^.]+$/, '');
   const detect = (name) => { const l = name.toLowerCase(); const p = PROFILES.find((p) => p.match.some((k) => l.indexOf(k) >= 0)); return p ? p.slug : ''; };
 
   const S = {
-    tool: 'master', mode: 'folder', profile: 'studio', custom: { I: -14, TP: -1, LRA: 10 },
+    tool: 'master', mode: 'folder', profile: 'smart', custom: { I: -14, TP: -1, LRA: 10 },
     mp3: true, dry: false, dir: null, files: [], subs: [], conv: 'mp3', bitrate: '320k', running: false, cancel: false
   };
   let ff = null, ffLog = [], built = false;
@@ -60,6 +66,7 @@
 
   // ---------- profiles ----------
   function target(slug) {
+    if (slug === 'smart') return { name: 'Auto', I: AUTO.base, TP: AUTO.ceil, LRA: 11 };
     if (slug === 'custom') return { name: 'Custom', I: +S.custom.I, TP: +S.custom.TP, LRA: +S.custom.LRA };
     const p = PROFILES.find((x) => x.slug === slug); return { name: p.name, I: p.I, TP: p.TP, LRA: p.LRA };
   }
@@ -67,6 +74,27 @@
     return 'highpass=f=25:poles=2,loudnorm=I=' + t.I + ':TP=' + t.TP + ':LRA=' + t.LRA
       + ':measured_I=' + m.input_i + ':measured_TP=' + m.input_tp + ':measured_LRA=' + m.input_lra
       + ':measured_thresh=' + m.input_thresh + ':offset=' + m.target_offset + ':linear=true,aresample=48000';
+  }
+
+  // ---------- Auto: plan ----------
+  const median = (a) => { const s = a.slice().sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : 0; };
+  const limNeed = (T, m) => Math.max(0, m.TP + (T - m.I) - AUTO.ceil);
+  function autoPlan(meas) { // meas: [{I, TP, LRA}] -> one batch target + per-track gain/limiting
+    let T = AUTO.base;
+    while (T > AUTO.floor && median(meas.map((m) => limNeed(T, m))) > AUTO.medianLim) T -= 0.5;
+    const tracks = meas.map((m) => {
+      let t = T, lim = limNeed(T, m), note = '';
+      if (lim > AUTO.maxLim) { t = T - (lim - AUTO.maxLim); note = 'kept ' + (T - t).toFixed(1) + ' dB quieter so it isn\u2019t squashed'; lim = AUTO.maxLim; }
+      return { T: Math.round(t * 10) / 10, gain: t - m.I, lim: lim, note: note };
+    });
+    return { T: T, tracks: tracks };
+  }
+  function dynLabel(lra) { lra = +lra; return lra < 5 ? 'tight' : lra <= 10 ? 'moderate' : 'wide'; }
+  function autoFilter(p, limitAt) {
+    const lin = Math.pow(10, (limitAt == null ? AUTO.limitAt : limitAt) / 20).toFixed(4);
+    return 'highpass=f=25:poles=2,volume=' + p.gain.toFixed(2) + 'dB'
+      + (p.lim > 0.05 || limitAt != null ? ',aresample=192000,alimiter=limit=' + lin + ':attack=1:release=60:level=false:asc=1' : '')
+      + ',aresample=48000';
   }
 
   // ---------- disk ----------
@@ -83,18 +111,25 @@
   }
 
   // ---------- one track ----------
-  async function masterOne(fileH, outDir, slug, rel) {
+  async function masterOne(fileH, outDir, slug, rel, pre) {
     const t = target(slug), name = fileH.name;
-    const r = { track: name, profile: t.name, targetLUFS: t.I, truePeakCeiling: t.TP, measuredLUFS: '', resultLUFS: '', resultTruePeak: '', status: '', output: '', mp3Output: '' };
+    const r = { track: name, profile: t.name, targetLUFS: pre ? pre.T : t.I, truePeakCeiling: t.TP, measuredLUFS: '', resultLUFS: '', resultTruePeak: '',
+      gainDB: '', limitingDB: '', dynamicsLRA: '', note: '', status: '', output: '', mp3Output: '' };
     try {
       const file = await fileH.getFile();
       await ff.writeFile('in.wav', new Uint8Array(await file.arrayBuffer()));
-      const m = await measure('in.wav', t);
-      r.measuredLUFS = Math.round(+m.input_i * 10) / 10;
-      if (S.dry) { r.status = 'Measured (dry run)'; return r; }
-      await run(['-y', '-hide_banner', '-nostats', '-i', 'in.wav', '-af', masterFilter(t, m), '-c:a', 'pcm_s24le', 'out.wav']);
+      const m = pre ? pre.m : await measure('in.wav', t);
+      r.measuredLUFS = Math.round((pre ? m.I : +m.input_i) * 10) / 10;
+      if (pre) { r.gainDB = Math.round(pre.gain * 10) / 10; r.limitingDB = Math.round(pre.lim * 10) / 10; r.dynamicsLRA = m.LRA + ' (' + dynLabel(m.LRA) + ')'; r.note = pre.note; }
+      if (S.dry) { r.status = pre ? 'Planned (dry run)' : 'Measured (dry run)'; return r; }
+      await run(['-y', '-hide_banner', '-nostats', '-i', 'in.wav', '-af', pre ? autoFilter(pre) : masterFilter(t, m), '-c:a', 'pcm_s24le', 'out.wav']);
+      let v = await verify('out.wav');
+      if (pre && v.TP != null && v.TP > AUTO.ceil + 0.05) { // an inter-sample peak slipped past - redo with a slightly lower limit
+        await run(['-y', '-hide_banner', '-nostats', '-i', 'in.wav', '-af', autoFilter(pre, AUTO.limitAt - 0.5), '-c:a', 'pcm_s24le', 'out.wav']);
+        v = await verify('out.wav');
+      }
       await ff.deleteFile('in.wav');
-      const v = await verify('out.wav'); r.resultLUFS = v.I; r.resultTruePeak = v.TP;
+      r.resultLUFS = v.I; r.resultTruePeak = v.TP;
       const outName = stem(name) + '-mastered.wav';
       await writeOut(outDir, outName, await ff.readFile('out.wav'));
       r.output = rel + '/' + outName; r.status = 'Mastered';
@@ -137,7 +172,7 @@
     await writeOut(dir, base + '.csv', toCSV(rows, fields));
     await writeOut(dir, base + '.json', JSON.stringify(rows, null, 2));
   }
-  const MFIELDS = ['track', 'profile', 'targetLUFS', 'truePeakCeiling', 'measuredLUFS', 'resultLUFS', 'resultTruePeak', 'status', 'output', 'mp3Output'];
+  const MFIELDS = ['track', 'profile', 'targetLUFS', 'truePeakCeiling', 'measuredLUFS', 'resultLUFS', 'resultTruePeak', 'gainDB', 'limitingDB', 'dynamicsLRA', 'note', 'status', 'output', 'mp3Output'];
 
   // ---------- job ----------
   function plan() {
@@ -160,11 +195,34 @@
     const groups = plan(), total = groups.reduce((a, g) => a + g.files.length, 0);
     if (!total) return toast(S.tool === 'convert' ? 'No ' + (S.conv === 'mp3' ? 'WAV' : 'MP3') + ' files checked in that folder' : (S.mode === 'auto' ? 'No version folders with a profile picked' : 'No WAV files checked'), true);
     try { if ((await S.dir.queryPermission({ mode: 'readwrite' })) !== 'granted' && (await S.dir.requestPermission({ mode: 'readwrite' })) !== 'granted') return toast('Need permission to write into that folder', true); } catch (e) { }
-    S.running = true; S.cancel = false; setBusy(true); $('msLog').textContent = '';
+    S.running = true; S.cancel = false; setBusy(true); $('msLog').textContent = ''; $('msPlan').classList.add('hidden');
     const rowsEl = $('msResults'); rowsEl.innerHTML = '';
-    let done = 0; const all = [];
+    let done = 0; const all = []; const plans = new Map();
     try {
       await loadFF();
+      const smart = S.tool === 'master' ? [].concat.apply([], groups.filter((g) => g.slug === 'smart').map((g) => g.files)) : [];
+      if (smart.length) { // pass 1: listen to everything, then pick one loudness for the whole batch
+        const meas = [];
+        for (let i = 0; i < smart.length; i++) {
+          if (S.cancel) break;
+          setMsg('Listening ' + (i + 1) + ' of ' + smart.length + ': ' + smart[i].name + '\u2026');
+          $('msBar').style.width = (i / smart.length * 30) + '%';
+          if (!ff) await loadFF();
+          await ff.writeFile('in.wav', new Uint8Array(await (await smart[i].h.getFile()).arrayBuffer()));
+          try { const m = await measure('in.wav', target('smart')); meas.push({ I: +m.input_i, TP: +m.input_tp, LRA: +m.input_lra }); }
+          finally { try { await ff.deleteFile('in.wav'); } catch (e) { } }
+        }
+        if (S.cancel) throw new Error('stopped while listening');
+        const p = autoPlan(meas);
+        smart.forEach((f, i) => plans.set(f, Object.assign({ m: meas[i] }, p.tracks[i])));
+        const Is = meas.map((m) => m.I), limited = p.tracks.filter((t) => t.lim > 0.05), quieter = p.tracks.filter((t) => t.note);
+        $('msPlan').innerHTML = '<b>Auto picked ' + p.T.toFixed(1) + ' LUFS</b> for all ' + smart.length + ' song' + (smart.length > 1 ? 's' : '')
+          + (p.T < AUTO.base ? ' (a bit under the usual \u221214 \u2014 most of these mixes don\u2019t have the peak headroom for it cleanly)' : ' (the streaming standard)') + ', peaks capped at \u22121.0 dBTP.'
+          + (smart.length > 1 ? '<br>Your mixes ranged from ' + Math.max.apply(null, Is).toFixed(1) + ' to ' + Math.min.apply(null, Is).toFixed(1) + ' LUFS \u2014 a ' + (Math.max.apply(null, Is) - Math.min.apply(null, Is)).toFixed(1) + ' dB jump between songs, now evened out.' : '')
+          + '<br>' + (smart.length - limited.length) + ' clean volume change' + (limited.length ? ', ' + limited.length + ' with light peak limiting (up to ' + Math.max.apply(null, limited.map((t) => t.lim)).toFixed(1) + ' dB)' : '') + '. No compression, no pumping.'
+          + (quieter.length ? '<br><span class="ms-warn">' + quieter.length + ' very dynamic song' + (quieter.length > 1 ? 's were' : ' was') + ' left a little quieter rather than squashed \u2014 see the notes.</span>' : '');
+        $('msPlan').classList.remove('hidden');
+      }
       for (const g of groups) {
         const outDir = S.dry ? null : await subdir(S.dir, g.path);
         const res = [];
@@ -172,10 +230,10 @@
           if (S.cancel) break;
           done++;
           setMsg((S.tool === 'convert' ? 'Converting' : S.dry ? 'Measuring' : 'Mastering') + ' ' + done + ' of ' + total + ': ' + f.name + '…');
-          $('msBar').style.width = ((done - 1) / total * 100) + '%';
+          $('msBar').style.width = ((plans.size ? 30 : 0) + (done - 1) / total * (plans.size ? 70 : 100)) + '%';
           const tr = document.createElement('tr'); tr.innerHTML = '<td>' + esc(f.name) + '</td><td colspan="4" class="ms-dim">working…</td>'; rowsEl.appendChild(tr);
           if (!ff) await loadFF();
-          const r = S.tool === 'convert' ? await convertOne(f.h, outDir, S.dir.name + '/' + g.path.join('/')) : await masterOne(f.h, outDir, g.slug, S.dir.name + '/' + g.path.join('/'));
+          const r = S.tool === 'convert' ? await convertOne(f.h, outDir, S.dir.name + '/' + g.path.join('/')) : await masterOne(f.h, outDir, g.slug, S.dir.name + '/' + g.path.join('/'), plans.get(f));
           res.push(r); all.push(r); tr.innerHTML = rowHTML(r);
         }
         if (res.length && !S.dry) {
@@ -199,7 +257,11 @@
   function rowHTML(r) {
     if (r.source != null) return '<td>' + esc(r.source) + '</td><td colspan="3" class="ms-dim">' + esc(r.status === 'FAILED' ? '' : r.output) + '</td><td class="' + (r.status === 'FAILED' ? 'ms-bad' : 'ms-ok') + '" title="' + esc(r.status === 'FAILED' ? r.output : '') + '">' + esc(r.status) + '</td>';
     const off = r.resultLUFS !== '' && r.resultLUFS != null && Math.abs(r.resultLUFS - r.targetLUFS) > 1;
-    return '<td>' + esc(r.track) + '<div class="ms-dim">' + esc(r.profile) + ' · target ' + r.targetLUFS + ' LUFS</div></td>'
+    const sub = r.gainDB !== '' && r.gainDB != null
+      ? 'Auto \u00b7 ' + (+r.targetLUFS).toFixed(1) + ' LUFS \u00b7 ' + (r.gainDB >= 0 ? '+' : '') + (+r.gainDB).toFixed(1) + ' dB' + (r.limitingDB > 0.05 ? ' \u00b7 limited ' + (+r.limitingDB).toFixed(1) + ' dB' : ' \u00b7 clean') + ' \u00b7 dynamics ' + esc(r.dynamicsLRA)
+        + (r.note ? '<br><span class="ms-warn">' + esc(r.note) + '</span>' : '')
+      : esc(r.profile) + ' \u00b7 target ' + r.targetLUFS + ' LUFS';
+    return '<td>' + esc(r.track) + '<div class="ms-dim">' + sub + '</div></td>'
       + '<td>' + fmtN(r.measuredLUFS) + '</td><td' + (off ? ' class="ms-warn" title="More than 1 LU off target — the track probably hit the peak ceiling. Worth a listen."' : '') + '>' + fmtN(r.resultLUFS) + '</td><td>' + fmtN(r.resultTruePeak) + '</td>'
       + '<td class="' + (r.status === 'FAILED' ? 'ms-bad' : 'ms-ok') + '" title="' + esc(r.status === 'FAILED' ? r.output : r.output + (r.mp3Output ? '\n' + r.mp3Output : '')) + '">' + esc(r.status === 'FAILED' ? 'FAILED: ' + r.output : r.status + (r.mp3Output ? ' + MP3' : '')) + '</td>';
   }
@@ -223,6 +285,8 @@
   .ms-prof{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;cursor:pointer;text-align:left;color:var(--cream)}
   .ms-prof b{display:block;font-size:14px} .ms-prof span{font-size:12px;color:var(--muted)}
   .ms-prof.on{border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red)}
+  .ms-autocard{width:100%;padding:12px 14px} .ms-autocard b{font-size:16px;margin-bottom:3px}
+  .ms-plan{margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-left:3px solid var(--red);border-radius:6px;background:var(--panel2);font-size:13.5px;line-height:1.55}
   .ms-custom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
   .ms-custom input{padding:8px;font-size:14px}
   .ms-chk{display:flex;gap:8px;align-items:center;font-size:14px;margin:7px 0;cursor:pointer} .ms-chk input{width:auto}
@@ -254,11 +318,14 @@
           <span class="ms-dim" id="msFolderName">No folder picked yet.</span>
         </div>
         <div id="msList"></div>
+        <div id="msPlan" class="ms-plan hidden"></div>
         <div id="msOut" style="margin-top:14px"></div>
       </div>
       <div>
         <div class="card" id="msProfileCard">
-          <span class="ms-lab" style="margin-top:0" id="msProfLab">Profile</span>
+          <span class="ms-lab" style="margin-top:0" id="msProfLab">Loudness</span>
+          <button class="ms-prof ms-autocard" data-prof="smart"><b>\u2605 Auto \u2014 listens and picks</b><span>Measures every song you picked, then sets them all to one loudness (normally \u221214 LUFS, the streaming standard) with a clean volume change and light peak limiting only where needed. Songs stop jumping in level.</span></button>
+          <span class="ms-lab">Presets <span style="text-transform:none;letter-spacing:0">(the older fixed profiles)</span></span>
           <div class="ms-profiles">${PROFILES.map((p) => '<button class="ms-prof" data-prof="' + p.slug + '"><b>' + esc(p.name) + '</b><span>' + p.I + ' LUFS · ' + p.TP + ' dBTP · LRA ' + p.LRA + '</span></button>').join('')}
             <button class="ms-prof" data-prof="custom"><b>Custom</b><span>set your own targets</span></button></div>
           <div class="ms-custom hidden" id="msCustom">
@@ -277,7 +344,7 @@
           <button class="btn btn-red ms-go" id="msGo">Start</button>
           <button class="btn btn-ghost hidden" id="msStop" style="width:100%;margin-top:8px">Stop after this song</button>
           <div class="ms-prog"><div id="msBar"></div></div>
-          <div class="ms-dim" id="msMsg" style="margin-top:8px">About 25 seconds per song. Keep this tab open while it works.</div>
+          <div class="ms-dim" id="msMsg" style="margin-top:8px">About 10\u201325 seconds per song. Keep this tab open while it works.</div>
         </div>
       </div>
     </div>`;
@@ -305,9 +372,9 @@
     $('msCustom').classList.toggle('hidden', S.profile !== 'custom');
     document.querySelectorAll('#view-master [data-cu]').forEach((i) => { if (document.activeElement !== i) i.value = S.custom[i.dataset.cu]; });
     $('msMp3').checked = S.mp3; $('msDry').checked = S.dry; $('msBitrate').value = S.bitrate;
-    $('msGo').textContent = conv ? 'Start converting' : S.dry ? 'Measure only' : 'Start mastering';
+    $('msGo').textContent = conv ? 'Start converting' : S.dry ? (S.profile === 'smart' ? 'Listen & show the plan' : 'Measure only') : 'Start mastering';
     $('msModeHelp').innerHTML = conv ? 'Straight format change, no loudness processing. Output goes in a <b>Converted - ' + (S.conv === 'mp3' ? 'MP3' : 'WAV') + '</b> folder inside the one you pick.'
-      : auto ? 'Pick the <b>album</b> folder that holds version subfolders (Studio, Live, Piano…). Each subfolder gets its own profile, auto-picked from its name. Output: <b>Masters/&lt;version&gt;</b> inside the album folder.'
+      : auto ? 'Pick the <b>album</b> folder that holds version subfolders (Studio, Live, Piano…). Output: <b>Masters/&lt;version&gt;</b> inside the album folder.'
         : 'Pick the folder with your mixed WAVs, and uncheck any you don’t want (one checked = a single). Output: <b>Masters - &lt;Profile&gt;</b> inside that folder.';
     renderList();
   }
@@ -317,9 +384,9 @@
     const conv = S.tool === 'convert';
     if (!conv && S.mode === 'auto') {
       if (!S.subs.length) { box.innerHTML = '<div class="ms-dim" style="margin-top:10px">No subfolders with WAVs in here. If this folder holds the WAVs itself, use <b>Songs in one folder</b>.</div>'; return; }
-      box.innerHTML = '<div class="ms-files">' + S.subs.map((s, i) => '<div class="ms-sub"><span class="n">&#128193; ' + esc(s.name) + ' <span class="ms-dim">(' + s.wavs.length + ' WAV)</span></span><select data-sub="' + i + '"><option value="">— skip —</option>'
+      box.innerHTML = '<div class="ms-files">' + S.subs.map((s, i) => '<div class="ms-sub"><span class="n">&#128193; ' + esc(s.name) + ' <span class="ms-dim">(' + s.wavs.length + ' WAV)</span></span><select data-sub="' + i + '"><option value="">— skip —</option><option value="smart"' + (s.slug === 'smart' ? ' selected' : '') + '>\u2605 Auto (listens)</option>'
         + PROFILES.map((p) => '<option value="' + p.slug + '"' + (s.slug === p.slug ? ' selected' : '') + '>' + esc(p.name) + ' (' + p.I + ')</option>').join('') + '</select></div>').join('') + '</div>'
-        + '<div class="ms-dim" style="margin-top:6px">Folders whose name didn’t match a profile are set to skip — pick one to include them.</div>';
+        + '<div class="ms-dim" style="margin-top:6px">Every folder starts on <b>Auto</b>, and all Auto folders share one loudness so the whole album sits together. Pick a preset or skip for any folder you want handled differently.</div>';
       return;
     }
     const ext = conv ? (S.conv === 'mp3' ? /\.wav$/i : /\.mp3$/i) : /\.wav$/i;
@@ -335,12 +402,12 @@
     try { h = await window.showDirectoryPicker({ id: 'htr-mastering', mode: 'readwrite' }); } catch (e) { if (e.name !== 'AbortError') toast('Folder: ' + e.message, true); return; }
     setMsg('Reading folder…');
     const top = await listDir(h);
-    for (const s of top.subs) { const inner = await listDir(s.h); s.wavs = inner.files.filter((f) => /\.wav$/i.test(f.name)).map((f) => f.h); s.slug = detect(s.name); }
+    for (const s of top.subs) { const inner = await listDir(s.h); s.wavs = inner.files.filter((f) => /\.wav$/i.test(f.name)).map((f) => f.h); s.slug = 'smart'; }
     S.dir = h; S.files = top.files; S.subs = top.subs.filter((s) => s.wavs.length);
     // sensible default: a folder that only has version subfolders -> album mode
     if (S.tool === 'master' && !S.files.some((f) => /\.wav$/i.test(f.name)) && S.subs.length) S.mode = 'auto';
     $('msFolderName').innerHTML = '&#128193; <b>' + esc(h.name) + '</b>';
-    setMsg('About 25 seconds per song. Keep this tab open while it works.');
+    setMsg('About 10\u201325 seconds per song. Keep this tab open while it works.');
     $('msOut').innerHTML = '<table class="ms-table"><thead><tr><th>Track</th><th>Before</th><th>After</th><th>Peak</th><th>Result</th></tr></thead><tbody id="msResults"></tbody></table>'
       + '<details style="margin-top:10px"><summary class="ms-dim" style="cursor:pointer">FFmpeg log</summary><div class="ms-log" id="msLog"></div></details>';
     sync();
