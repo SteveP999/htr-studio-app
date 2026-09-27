@@ -62,21 +62,27 @@
   const S = {
     songs: null, song: null, lines: [], total: 0, cfg: clone(DEF), bg: { '16': [], '9': [] }, end: { '16': null, '9': null },
     fmt: '16', move: 'all', pick: -1, shown: -1, dir: null, dirFiles: [], lyricsOn: true, out: '16', rec: null, dirty: false,
-    hits: [], block: null, drag: null, seeking: false, audioName: ''
+    hits: [], block: null, drag: null, seeking: false, audioName: '', ev: [], sel: null, tsDirty: false, tsHist: []
   };
   const audio = new Audio(); audio.crossOrigin = 'anonymous'; audio.preload = 'auto';
   let AC = null, monGain = null, mdest = null, cv = null, cx = null, built = false;
 
   // ---------- timestamps -> lyric lines ----------
   // file format: "M:SS.s<TAB>text" per line; [brackets] are section markers / [gap]s that end the caption before them
-  function buildLines(text) {
+  let _uid = 0;
+  const isMarker = (tx) => /^\[.*\]$/.test(tx);
+  function parseEvents(text) {
     const ev = [];
     text.split(/\r?\n/).forEach((ln) => {
       const m = ln.match(/^\s*(\d+):(\d{2}(?:\.\d+)?)\s+(.+)$/); if (!m) return;
       const tx = m[3].trim();
-      ev.push({ t: +m[1] * 60 + parseFloat(m[2]), text: tx, marker: /^\[.*\]$/.test(tx) });
+      ev.push({ id: ++_uid, t: +m[1] * 60 + parseFloat(m[2]), text: tx, marker: isMarker(tx) });
     });
-    ev.sort((a, b) => a.t - b.t);
+    return ev.sort((a, b) => a.t - b.t);
+  }
+  function buildLines(text) { return deriveLines(parseEvents(text)); }
+  function deriveLines(ev) {
+    ev = ev.slice().sort((a, b) => a.t - b.t);
     const seen = {}, out = [];
     ev.forEach((e, i) => {
       if (e.marker) return;
@@ -88,7 +94,7 @@
       const gap = Math.min(((end - e.t) * 0.7) / real, 0.32);
       let k = 0;
       const words = toks.map((w) => (w === '/' || w === '|') ? { br: true } : { w: w, at: e.t + (k++) * gap });
-      out.push({ key: e.text + '#' + seen[e.text], start: e.t, end: end, text: e.text, words: words });
+      out.push({ key: e.text + '#' + seen[e.text], evId: e.id, start: e.t, end: end, text: e.text, words: words });
     });
     return out;
   }
@@ -324,7 +330,7 @@
   const CSS = `
   .mv-main{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:18px;margin-top:18px;align-items:start}
   @media(max-width:1150px){.mv-main{grid-template-columns:1fr}}
-  .mv-left{position:sticky;top:10px}
+  @media(min-width:1151px){.mv-left{position:sticky;top:10px}}
   .mv-stagewrap{background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden}
   #mvCanvas{display:block;width:100%;height:auto;margin:0 auto;touch-action:none;background:#000}
   #mvCanvas.v{width:auto;height:min(68vh,760px)}
@@ -335,7 +341,12 @@
   .mv-lines{margin-top:10px;max-height:250px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel);position:relative}
   .mv-line{display:flex;gap:10px;padding:6px 10px;border-bottom:1px solid var(--line);cursor:pointer;font-size:14px}
   .mv-line:hover{background:var(--panel2)} .mv-line.cur{background:#3a1717} .mv-line.pick{outline:1px solid var(--warn);outline-offset:-1px}
-  .mv-lt{font-family:monospace;color:var(--warn);min-width:54px} .mv-lx{flex:1}
+  .mv-line{align-items:center;gap:4px !important;padding:4px 8px !important}
+  .mv-line.mk .mv-lx{color:var(--warn);font-style:italic}
+  .mv-lt{font-family:monospace;color:var(--warn);width:70px !important;flex:none;padding:5px 6px !important;font-size:13px !important;text-align:center}
+  .mv-lx{flex:1;min-width:0;padding:5px 8px !important;font-size:14px !important;background:transparent !important;border-color:transparent !important}
+  .mv-lx:focus,.mv-lx:hover{background:var(--panel2) !important;border-color:var(--line) !important}
+  .mv-tsbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
   .mv-tag{font-size:10px;background:var(--warn);color:#1a1200;border-radius:4px;padding:1px 5px;font-weight:700;align-self:center;white-space:nowrap}
   .mv-card{padding:16px !important;margin-bottom:14px}
   .mv-card h4{font-family:'Bebas Neue',sans-serif;font-size:21px;letter-spacing:.04em;font-weight:400;margin-bottom:6px}
@@ -406,7 +417,14 @@
           <canvas id="mvCanvas"></canvas>
           <div class="mv-transport"><button class="mv-pp" id="mvPP">&#9654;</button><input type="range" id="mvSeek" min="0" max="1000" value="0"><span id="mvTime" class="mv-time">0:00 / 0:00</span></div>
         </div>
-        <div class="mv-dim" style="margin:7px 2px">Drag the lyrics on the frame to move them &middot; click a word to stress it &middot; Space = play/pause &middot; click a line below to jump to it.</div>
+        <div class="mv-dim" style="margin:7px 2px">Drag the lyrics on the frame to move them &middot; click a word to stress it &middot; Space = play/pause.</div>
+        <div class="mv-tsbar hidden" id="mvTsBar">
+          <button class="btn btn-ghost mv-sm" id="mvAddLine" title="Add a new lyric line at the current playhead">+ Line at playhead</button>
+          <button class="btn btn-ghost mv-sm" id="mvAddGap" title="Clear the screen at the current playhead (instrumental / breath)">+ Clear screen here</button>
+          <button class="btn btn-ghost mv-sm" id="mvTsUndo" title="Undo the last lyric edit (Ctrl+Z)">&#8630; Undo</button>
+          <button class="btn btn-red mv-sm" id="mvTsSave" disabled>Lyrics saved</button>
+        </div>
+        <div class="mv-dim" style="margin:6px 2px 0">Fix a line right here: edit the time or the words and press Enter. To re-time by ear, click the line, play, and press <b>Enter</b> the moment it’s sung (&#9201; does the same). Changes show in the preview immediately; <b>Save lyric changes</b> writes them to the song’s timestamps.</div>
         <div id="mvLines" class="mv-lines"></div>
       </div>
       <div>
@@ -531,19 +549,92 @@
   // ---------- lines list ----------
   function renderLines() {
     const box = $('mvLines'); if (!box) return;
+    const tb = $('mvTsBar'); if (tb) tb.classList.toggle('hidden', !S.song);
+    const sv = $('mvTsSave'); if (sv) { sv.disabled = !S.tsDirty; sv.textContent = S.tsDirty ? '\u25cf Save lyric changes' : 'Lyrics saved'; }
     if (!S.song) { box.innerHTML = '<div class="mv-dim" style="padding:12px">Pick a song above.</div>'; return; }
-    if (!S.lines.length) { box.innerHTML = '<div class="mv-dim" style="padding:12px">No saved timestamps for this song yet &mdash; stamp them in Lyric Timestamps (button above), save, then Reload timestamps.</div>'; return; }
-    const c = S.cfg;
-    box.innerHTML = S.lines.map((L, i) => '<div class="mv-line' + (i === S.pick ? ' pick' : '') + '" data-i="' + i + '"><span class="mv-lt">' + fmtT(L.start) + '</span><span class="mv-lx">' + esc(L.text) + '</span>'
-      + ((c.linePos[L.key] || c.lineSize[L.key] != null) ? '<span class="mv-tag" title="This line has its own size/position \u2014 click to select, then Reset">own look</span><button class="mv-ib" data-reset="' + i + '" title="Reset this line to the all-lines look">&#8634;</button>' : '')
-      + '</div>').join('');
+    if (!S.ev.length) { box.innerHTML = '<div class="mv-dim" style="padding:12px">No saved timestamps for this song yet &mdash; stamp them in Lyric Timestamps (button above), save, then Reload timestamps. Or add lines right here with <b>+ Line at playhead</b>.</div>'; return; }
+    const c = S.cfg, li = {};
+    S.lines.forEach((L, i) => { li[L.evId] = i; });
+    const keep = box.scrollTop;
+    box.innerHTML = S.ev.map((e) => {
+      const i = li[e.id], L = i != null ? S.lines[i] : null;
+      const own = L && (c.linePos[L.key] || c.lineSize[L.key] != null);
+      return '<div class="mv-line' + (e.marker ? ' mk' : '') + (e.id === S.sel ? ' pick' : '') + '" data-ev="' + e.id + '"' + (i != null ? ' data-li="' + i + '"' : '') + '>'
+        + '<input class="mv-lt" data-evt="' + e.id + '" value="' + fmtT(e.t) + '" title="Start time (M:SS.s) \u2014 type a new one and press Enter">'
+        + '<button class="mv-ib" data-evnow="' + e.id + '" title="Set to the current playhead (or select the row and press Enter while it plays)">&#9201;</button>'
+        + '<button class="mv-ib" data-evn="' + e.id + ',-0.1" title="0.1s earlier">&minus;</button><button class="mv-ib" data-evn="' + e.id + ',0.1" title="0.1s later">+</button>'
+        + '<input class="mv-lx" data-evx="' + e.id + '" value="' + esc(e.text) + '" title="' + (e.marker ? 'Section / [gap] marker \u2014 the lyric before it clears here' : 'Lyric text \u2014 fix spelling or missing words, press Enter') + '">'
+        + (own ? '<span class="mv-tag" title="This line has its own size/position">own look</span><button class="mv-ib" data-reset="' + i + '" title="Reset this line to the all-lines look">&#8634;</button>' : '')
+        + '<button class="mv-ib" data-evdel="' + e.id + '" title="Delete this line">&#10005;</button></div>';
+    }).join('');
+    box.scrollTop = keep;
     S._marked = null;
+  }
+  // ---------- lyric edits (saved back to data/lyrics/<song>-timestamps.txt) ----------
+  function evById(id) { return S.ev.find((e) => e.id === +id); }
+  function tsPush() { S.tsHist.push(JSON.stringify({ ev: S.ev, lp: S.cfg.linePos, ls: S.cfg.lineSize, st: S.cfg.stress })); if (S.tsHist.length > 100) S.tsHist.shift(); }
+  function tsCommit() {
+    // carry per-line looks (position / size / stressed words) over to the edited line's new key
+    const oldK = {}; S.lines.forEach((L) => { oldK[L.evId] = L; });
+    S.ev.sort((a, b) => a.t - b.t);
+    S.lines = deriveLines(S.ev);
+    const c = S.cfg, lp = {}, ls = {}, st = {};
+    S.lines.forEach((L) => {
+      const o = oldK[L.evId]; if (!o) return;
+      if (c.linePos[o.key]) lp[L.key] = c.linePos[o.key];
+      if (c.lineSize[o.key] != null) ls[L.key] = c.lineSize[o.key];
+      Object.keys(c.stress).forEach((k) => { const cut = k.lastIndexOf(':'); if (k.slice(0, cut) === o.key && +k.slice(cut + 1) < L.words.length) st[L.key + ':' + k.slice(cut + 1)] = c.stress[k]; });
+    });
+    c.linePos = lp; c.lineSize = ls; c.stress = st;
+    S.tsDirty = true; S.dirty = true; S.shown = -1; S._marked = null;
+    renderLines(); syncControls();
+  }
+  function tsUndo() {
+    if (!S.tsHist.length) return toast('Nothing to undo', true);
+    const h = JSON.parse(S.tsHist.pop());
+    S.ev = h.ev; S.cfg.linePos = h.lp; S.cfg.lineSize = h.ls; S.cfg.stress = h.st;
+    S.lines = deriveLines(S.ev); S.tsDirty = true; renderLines(); syncControls();
+  }
+  const now10 = () => Math.round(((audio.currentTime || 0) + S.cfg.offset) * 10) / 10;
+  function evSetTime(id, t) { const e = evById(id); if (!e || t == null || isNaN(t)) { renderLines(); return; } tsPush(); e.t = Math.max(0, Math.round(t * 10) / 10); tsCommit(); }
+  function evSetText(id, tx) {
+    const e = evById(id); tx = String(tx || '').trim();
+    if (!e || tx === e.text) return;
+    if (!tx) { renderLines(); return toast('Empty line \u2014 use \u2715 to delete it instead', true); }
+    tsPush(); e.text = tx; e.marker = isMarker(tx); tsCommit();
+  }
+  function evDel(id) { const i = S.ev.findIndex((e) => e.id === +id); if (i < 0) return; tsPush(); S.ev.splice(i, 1); if (S.sel === +id) S.sel = null; tsCommit(); }
+  function evAdd(text) {
+    if (!S.song) return;
+    tsPush(); const e = { id: ++_uid, t: now10(), text: text, marker: isMarker(text) }; S.ev.push(e); S.sel = e.id; tsCommit();
+    const inp = document.querySelector('#mvLines [data-evx="' + e.id + '"]'); if (inp && !e.marker) { inp.focus(); inp.select(); }
+  }
+  // Enter (while not typing) = stamp the selected row at the playhead, then select the next row
+  function evStamp() {
+    if (S.sel == null) return toast('Click a line first, then press Enter as it\u2019s sung', true);
+    const e = evById(S.sel); if (!e) return;
+    const idx = S.ev.indexOf(e), next = S.ev[idx + 1];
+    tsPush(); e.t = now10(); S.sel = next ? next.id : e.id; tsCommit();
+    const row = document.querySelector('#mvLines [data-ev="' + S.sel + '"]'); if (row) row.scrollIntoView({ block: 'nearest' });
+  }
+  function tsSerialize() {
+    const f = (t) => { const m = Math.floor(t / 60), s = t - m * 60, whole = Math.abs(s - Math.round(s)) < 0.05; return m + ':' + (whole ? String(Math.round(s)).padStart(2, '0') : (s < 10 ? '0' : '') + s.toFixed(1)); };
+    return S.ev.slice().sort((a, b) => a.t - b.t).map((e) => f(e.t) + '\t' + e.text).join('\n') + '\n';
+  }
+  async function saveTimestamps(quiet) {
+    if (!S.song || !S.tsDirty) return true;
+    try {
+      await B().commitFile('data/lyrics/' + S.song.id + '-timestamps.txt', tsSerialize(), 'Timestamps (edited in Make Video): ' + S.song.id);
+      S.tsDirty = false; renderLines(); if (!quiet) toast('Lyric changes saved');
+      S.statusBits[0] = [true, S.lines.length + ' lyric lines']; showStatus();
+      return true;
+    } catch (e) { toast('Could not save lyrics: ' + e.message, true); return false; }
   }
   function markLine() {
     const i = S.shown; if (i === S._marked) return; S._marked = i;
     const box = $('mvLines');
     box.querySelectorAll('.mv-line').forEach((r) => {
-      const on = +r.dataset.i === i; r.classList.toggle('cur', on);
+      const on = r.dataset.li != null && +r.dataset.li === i; r.classList.toggle('cur', on);
       if (on && !audio.paused) box.scrollTop = r.offsetTop - box.clientHeight / 2;
     });
     if (S.move === 'line') syncControls();
@@ -551,7 +642,7 @@
   function jumpToLine(i) {
     const L = S.lines[i]; if (!L) return;
     const words = L.words.filter((w) => !w.br), last = words.length ? words[words.length - 1].at : L.start;
-    S.pick = i;
+    S.pick = i; S.sel = L.evId;
     audio.currentTime = Math.max(0, Math.min(last + 0.45, Math.min(L.end, L.start + S.cfg.maxHold) - 0.15) - S.cfg.offset);
     renderLines(); syncControls();
   }
@@ -659,12 +750,13 @@
   }
   async function loadTimestamps() {
     const b = B();
-    try { const f = await b.gh(P('data/lyrics/' + S.song.id + '-timestamps.txt?ref=main')); S.lines = buildLines(b.b64decode(f.content)); return true; }
-    catch (e) { S.lines = []; return false; }
+    S.tsDirty = false; S.tsHist = []; S.sel = null;
+    try { const f = await b.gh(P('data/lyrics/' + S.song.id + '-timestamps.txt?ref=main')); S.ev = parseEvents(b.b64decode(f.content)); S.lines = deriveLines(S.ev); return true; }
+    catch (e) { S.ev = []; S.lines = []; return false; }
   }
   async function pickSong(id) {
     if (S.rec) { toast('Finish or cancel the render first', true); $('mvSong').value = S.song ? S.song.id : ''; return; }
-    if (S.dirty && S.song && S.song.id !== id && !confirm('Unsaved video setup changes for "' + S.song.title + '" will be lost. Switch songs anyway?')) { $('mvSong').value = S.song.id; return; }
+    if ((S.dirty || S.tsDirty) && S.song && S.song.id !== id && !confirm('Unsaved ' + (S.tsDirty ? 'lyric edits and ' : '') + 'video setup changes for "' + S.song.title + '" will be lost. Switch songs anyway?')) { $('mvSong').value = S.song.id; return; }
     const song = S.songs.find((s) => s.id === id); if (!song) return;
     const b = B();
     audio.pause(); allItems().forEach((it) => { if (it.el && it.el.pause) it.el.pause(); });
@@ -693,6 +785,7 @@
     const pack = (it) => (it ? { name: it.name, src: it.src || null, kind: it.kind, start: it.start == null ? null : Math.round(it.start * 10) / 10 } : null);
     const data = { version: 1, song: S.song.id, updated: new Date().toISOString(), cfg: S.cfg,
       bg: { '16': S.bg['16'].map(pack), '9': S.bg['9'].map(pack) }, end: { '16': pack(S.end['16']), '9': pack(S.end['9']) } };
+    if (S.tsDirty && !(await saveTimestamps(true))) return;
     try {
       $('mvSave').disabled = true;
       await B().commitFile('data/video-projects/' + S.song.id + '.json', JSON.stringify(data, null, 2) + '\n', 'Video setup: ' + S.song.id);
@@ -798,7 +891,7 @@
     $('mvSong').onchange = () => { if ($('mvSong').value) pickSong($('mvSong').value); };
     $('mvFolderBtn').onclick = pickFolder;
     $('mvDirInput').onchange = function () { onDirInput(this); };
-    $('mvReload').onclick = async () => { if (!S.song) return; const ok = await loadTimestamps(); S.statusBits[0] = ok ? [true, S.lines.length + ' lyric lines'] : [false, 'no saved timestamps yet']; showStatus(); renderLines(); toast(ok ? 'Timestamps reloaded' : 'Still no saved timestamps', !ok); };
+    $('mvReload').onclick = async () => { if (!S.song) return; if (S.tsDirty && !confirm('Throw away your unsaved lyric edits and reload the saved timestamps?')) return; const ok = await loadTimestamps(); S.statusBits[0] = ok ? [true, S.lines.length + ' lyric lines'] : [false, 'no saved timestamps yet']; showStatus(); renderLines(); toast(ok ? 'Timestamps reloaded' : 'Still no saved timestamps', !ok); };
     $('mvEditTs').onclick = () => {
       const song = S.song; window.showTab('lyrics');
       if (!song) return;
@@ -848,7 +941,16 @@
       const ln = e.target.closest('.mv-line');
       const rs = e.target.closest('[data-reset]');
       if (rs) { const L = S.lines[+rs.dataset.reset]; delete S.cfg.linePos[L.key]; delete S.cfg.lineSize[L.key]; S.dirty = true; renderLines(); syncControls(); return; }
-      if (ln) { jumpToLine(+ln.dataset.i); return; }
+      const now = e.target.closest('[data-evnow]'); if (now) { S.sel = +now.dataset.evnow; evSetTime(now.dataset.evnow, now10()); return; }
+      const nd = e.target.closest('[data-evn]'); if (nd) { const [id, d] = nd.dataset.evn.split(','); const ev = evById(id); if (ev) evSetTime(id, ev.t + +d); return; }
+      const dl = e.target.closest('[data-evdel]'); if (dl) { evDel(dl.dataset.evdel); return; }
+      if (ln && !e.target.closest('input')) {
+        S.sel = +ln.dataset.ev;
+        if (ln.dataset.li != null) jumpToLine(+ln.dataset.li);
+        else { const ev = evById(S.sel); if (ev) audio.currentTime = Math.max(0, ev.t - 1 - S.cfg.offset); renderLines(); }
+        return;
+      }
+      if (ln) { S.sel = +ln.dataset.ev; ln.parentNode.querySelectorAll('.mv-line.pick').forEach((r) => r.classList.remove('pick')); ln.classList.add('pick'); return; }
       const up = e.target.closest('[data-bgup]'); if (up) { const l = S.bg[S.fmt], i = +up.dataset.bgup; l.splice(i - 1, 0, l.splice(i, 1)[0]); S.dirty = true; renderBg(); return; }
       const rm = e.target.closest('[data-bgrm]'); if (rm) { S.bg[S.fmt].splice(+rm.dataset.bgrm, 1); S.dirty = true; renderBg(); return; }
       const ch = e.target.closest('[data-fi]'); if (ch) { useFolderFile(+ch.dataset.fi, e.shiftKey); return; }
@@ -858,6 +960,8 @@
       const col = e.target.closest('[data-col]'); if (col) { S.cfg[col.dataset.col] = col.value; S.dirty = true; }
     });
     root.addEventListener('change', (e) => {
+      const et = e.target.closest('[data-evt]'); if (et) { evSetTime(et.dataset.evt, parseT(et.value)); return; }
+      const ex = e.target.closest('[data-evx]'); if (ex) { evSetText(ex.dataset.evx, ex.value); return; }
       const bt = e.target.closest('[data-bgt]');
       if (bt) { const it = S.bg[S.fmt][+bt.dataset.bgt]; if (it) { it.start = parseT(bt.value); S.dirty = true; } bt.blur(); S.bgPending = false; renderBg(); }
     });
@@ -872,15 +976,30 @@
     $('mvEndFile').onchange = function () { addFiles(this.files, true); this.value = ''; };
     $('mvEndClear').onclick = () => { S.end[S.fmt] = null; S.dirty = true; renderEnd(); };
     $('mvSave').onclick = saveSetup;
+    $('mvAddLine').onclick = () => evAdd('New line');
+    $('mvAddGap').onclick = () => evAdd('[gap]');
+    $('mvTsUndo').onclick = tsUndo;
+    $('mvTsSave').onclick = () => saveTimestamps(false);
+    $('mvLines').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.matches('input')) { e.preventDefault(); e.stopPropagation(); e.target.blur(); }
+      if (e.key === 'Escape' && e.target.matches('input')) { const ev = evById(e.target.dataset.evt || e.target.dataset.evx); if (ev) e.target.value = e.target.dataset.evt ? fmtT(ev.t) : ev.text; e.target.blur(); }
+    });
     $('mvGo').onclick = () => makeVideo(0);
     $('mvTest').onclick = () => makeVideo(20);
     $('mvCancel').onclick = () => { if (S.rec) { S.rec.cancel = true; finishRender(); } };
     document.addEventListener('keydown', (e) => {
       if (root.classList.contains('hidden') || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) return;
       if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+      if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+        const btn = e.target && e.target.closest ? e.target.closest('button') : null;
+        if (btn && !btn.closest('#mvLines, #mvTsBar')) return; // Enter on other buttons keeps its normal meaning
+        if (btn) btn.blur();                                    // a row button still focused from a click
+        e.preventDefault(); evStamp();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); tsUndo(); }
     });
     document.addEventListener('visibilitychange', () => { if (document.hidden && S.rec) S.rec.hidden = true; });
-    window.addEventListener('beforeunload', (e) => { if (S.rec || S.dirty) { e.preventDefault(); e.returnValue = ''; } });
+    window.addEventListener('beforeunload', (e) => { if (S.rec || S.dirty || S.tsDirty) { e.preventDefault(); e.returnValue = ''; } });
     renderLines();
   }
 
@@ -893,5 +1012,5 @@
     fillArtists();
   }
 
-  window.MV = { onShow: onShow, _state: S, _buildLines: buildLines, _dbx: dbx };
+  window.MV = { onShow: onShow, _state: S, _buildLines: buildLines, _dbx: dbx, _serialize: tsSerialize };
 })();
