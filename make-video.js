@@ -588,6 +588,7 @@
           ${seg('lyricsOn', [['true', 'With lyrics'], ['false', 'No lyrics (clean)']])}
           ${seg('out', [['16', '16:9'], ['9', '9:16'], ['both', 'Both at once']])}
           <label class="mv-chk"><input type="checkbox" id="mvListen" checked> Play the audio out loud while it records</label>
+          <label class="mv-chk" title="Same video at a much lower bitrate - the one to put in Dropbox for an Exclusive on the artist site"><input type="checkbox" id="mvWeb" checked> Also save a smaller <b>website copy</b> (for Exclusives)</label>
           <div class="save-bar" style="margin-top:6px">
             <button class="btn btn-ghost mv-sm" id="mvSave">Save setup</button>
             <button class="btn btn-ghost mv-sm" id="mvTest" title="Records only the first 20 seconds">Quick test (20s)</button>
@@ -966,8 +967,13 @@
       const ctx = c.getContext('2d'); drawFrame(ctx, f, 0, 1, false, S.lyricsOn);
       const ms = new MediaStream([c.captureStream(30).getVideoTracks()[0], at.clone()]);
       const rec = new MediaRecorder(ms, { mimeType: mime, videoBitsPerSecond: 16000000, audioBitsPerSecond: 192000 });
-      const r = { fmt: f, ctx: ctx, rec: rec, ms: ms, chunks: [] };
+      const r = { fmt: f, ctx: ctx, rec: rec, ms: ms, chunks: [], web: null };
       rec.ondataavailable = (e) => { if (e.data && e.data.size) r.chunks.push(e.data); };
+      if ($('mvWeb').checked) { // second recorder on the same frames: ~2.5 Mbps is plenty for lyric videos on a phone or laptop
+        const wr = new MediaRecorder(ms, { mimeType: mime, videoBitsPerSecond: 2500000, audioBitsPerSecond: 160000 });
+        r.web = { rec: wr, chunks: [] };
+        wr.ondataavailable = (e) => { if (e.data && e.data.size) r.web.chunks.push(e.data); };
+      }
       return r;
     });
     S.rec = { list: list, lyrics: S.lyricsOn, ext: ext, mime: mime, limit: limit || 0, hidden: false };
@@ -975,14 +981,15 @@
     ['mvGo', 'mvTest', 'mvSave'].forEach((id) => { $(id).disabled = true; });
     $('mvCancel').classList.remove('hidden'); $('mvProg').classList.remove('hidden');
     startClock();
-    list.forEach((r) => r.rec.start(1000));
+    list.forEach((r) => { r.rec.start(1000); if (r.web) r.web.rec.start(1000); });
     audio.play().catch((e) => { toast('Audio: ' + e.message, true); S.rec.cancel = true; finishRender(); });
   }
   async function finishRender() {
     const R = S.rec; if (!R || R.finishing) return; R.finishing = true;
     stopClock();
     audio.pause();
-    await Promise.all(R.list.map((r) => new Promise((res) => { r.rec.onstop = res; try { r.rec.stop(); } catch (e) { res(); } })));
+    const stopRec = (m) => new Promise((res) => { m.onstop = res; try { m.stop(); } catch (e) { res(); } });
+    await Promise.all(R.list.map((r) => Promise.all([stopRec(r.rec), r.web ? stopRec(r.web.rec) : null])));
     R.list.forEach((r) => r.ms.getTracks().forEach((t) => t.stop()));
     if (monGain) monGain.gain.value = 1;
     S.rec = null;
@@ -993,7 +1000,11 @@
     for (const r of R.list) {
       const blob = new Blob(r.chunks, { type: R.mime.split(';')[0] });
       const name = S.song.id + (R.lyrics ? '-lyric' : '') + '-' + (r.fmt === '16' ? '16x9' : '9x16') + (R.limit ? '-test' : '') + '.' + R.ext;
-      msgs.push(await saveBlob(blob, name));
+      msgs.push(await saveBlob(blob, name) + ' <span class="mv-dim">(' + (blob.size / 1048576).toFixed(0) + ' MB)</span>');
+      if (r.web && r.web.chunks.length) {
+        const wb = new Blob(r.web.chunks, { type: R.mime.split(';')[0] });
+        msgs.push(await saveBlob(wb, name.replace(/(\.[a-z0-9]+)$/i, '-web$1')) + ' <span class="mv-dim">(' + (wb.size / 1048576).toFixed(0) + ' MB \u2014 website copy)</span>');
+      }
     }
     $('mvRenderMsg').innerHTML = msgs.join('<br>') + (R.hidden ? '<br><span class="mv-warn">&#9888; This tab was hidden for part of the render. Give the video a quick watch \u2014 if a background video froze anywhere, re-render with the tab showing.</span>' : '');
     toast(R.limit ? 'Test clip done' : 'Video done');

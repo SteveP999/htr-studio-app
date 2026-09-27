@@ -312,8 +312,21 @@
         </div>
 
         <label style="margin-top:26px;color:var(--warn)">— Add Video —</label>
-        <label>YouTube URL</label>
-        <input id="exVideoUrl" type="text" placeholder="https://youtu.be/...">
+        <div class="sub">A <b>YouTube</b> link shows as a normal video. An <b>Exclusive</b> plays right on the artist's site
+        (not on YouTube) &mdash; paste Dropbox links to the MP4s: 16:9 for computers, 9:16 for phones (either or both).
+        In Dropbox: right-click the video file &rarr; Copy link.</div>
+        <div style="display:flex;gap:18px;margin:8px 0">
+          <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="radio" name="exVidType" value="yt" checked style="width:auto" onchange="window.exVidType()"> YouTube link</label>
+          <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="radio" name="exVidType" value="ex" style="width:auto" onchange="window.exVidType()"> Exclusive (MP4 in Dropbox)</label>
+        </div>
+        <div id="exVidYt"><label>YouTube URL</label>
+        <input id="exVideoUrl" type="text" placeholder="https://youtu.be/..."></div>
+        <div id="exVidEx" class="hidden">
+          <label>16:9 video &mdash; computers (Dropbox link)</label>
+          <input id="exEx16" type="text" placeholder="https://www.dropbox.com/scl/fi/...-16x9.mp4?...">
+          <label>9:16 video &mdash; phones (Dropbox link)</label>
+          <input id="exEx9" type="text" placeholder="https://www.dropbox.com/scl/fi/...-9x16.mp4?...">
+        </div>
         <label>Video title (default: Official Video)</label>
         <input id="exVideoTitle" type="text" placeholder="Official Video">
         <div class="save-bar">
@@ -1617,7 +1630,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   function buildSongCard(s, allAlbums, artistId) {
     const detId = 'sdet-' + s.id.replace(/[^a-z0-9]/gi,'_');
     const coverSrc = s.coverImage || s.cover || s.albumCover || '';
-    const videoUrl = (s.videos&&s.videos[0]) ? (s.videos[0].youtube||s.videos[0].url||'') : '';
+    const ytv = (s.videos||[]).find(v => v && !v.exclusive && (v.youtube||v.url)); const videoUrl = ytv ? (ytv.youtube||ytv.url||'') : '';
     const sp = (s.streaming||{}).spotify||'';
     const am = (s.streaming||{}).apple||'';
     const yt = (s.streaming||{}).youtubeMusic||'';
@@ -2068,7 +2081,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       if (album)  msData[idx].album  = album;
       if (audio)  { msData[idx].audioFile = audio; msData[idx].audio = audio; msData[idx].audioSrc = audio; }
       msData[idx].streaming = {spotify:spot, apple:apple, youtubeMusic:ytm};
-      msData[idx].videos = vidUrl ? [{youtube:vidUrl, title:'Official Video', order:1}] : [];
+      msData[idx].videos = withYoutube(msData[idx].videos, vidUrl);
       if (suno)      msData[idx].sunoPrompt    = suno;
       if (sunoDate)  msData[idx].sunoDate      = sunoDate;
       if (sunoLink)  msData[idx].sunoLink      = sunoLink;
@@ -2115,7 +2128,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
             asData[ai].isLatest = isLatest;
             asData[ai].includeOnHomepage = isLatest;
             asData[ai].streaming = {spotify:spot, apple:apple, youtubeMusic:ytm};
-            asData[ai].videos = vidUrl ? [{youtube:vidUrl, title:'Official Video', order:1}] : [];
+            asData[ai].videos = withYoutube(asData[ai].videos, vidUrl);
             await gh('/repos/SteveP999/'+repoName+'/contents/songs.json', {method:'PUT', body:{message:'HTR Studio: update '+songId, content:b64encode(JSON.stringify(asData,null,2)), sha:asf.sha}});
           }
         } catch(e2) { toast('master saved — artist repo failed: '+e2.message, true); }
@@ -2497,6 +2510,16 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   }
 
+  // replace (or add/remove) the song's main YouTube video, leaving exclusives and other videos alone
+  function withYoutube(list, url) {
+    const vids = Array.isArray(list) ? list.slice() : [];
+    const i = vids.findIndex((v) => v && !v.exclusive && (v.youtube || v.url));
+    if (url) {
+      if (i >= 0) vids[i] = Object.assign({}, vids[i], { youtube: url });
+      else vids.push({ youtube: url, title: 'Official Video', order: vids.length + 1 });
+    } else if (i >= 0) vids.splice(i, 1);
+    return vids;
+  }
   function normalizeDropbox(url) {
     url = String(url || '').trim();
     if (!url) return '';
@@ -2776,21 +2799,46 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     return count;
   }
 
+  window.exVidType = function () {
+    const ex = (document.querySelector('input[name="exVidType"]:checked') || {}).value === 'ex';
+    $('exVidYt').classList.toggle('hidden', ex); $('exVidEx').classList.toggle('hidden', !ex);
+  };
+  function exDropboxVideo(v, label) {
+    v = String(v || '').trim(); if (!v) return '';
+    if (/dropbox\.com\/scl\/fo\//i.test(v)) throw new Error(label + ' is a Dropbox FOLDER link \u2014 right-click the video file itself and Copy link');
+    if (!/^https?:\/\//i.test(v)) throw new Error(label + ' doesn\u2019t look like a link');
+    return normalizeDropbox(v);
+  }
   window.exSaveVideo = async function () {
     const songId = $('exSong').value;
-    const url = $('exVideoUrl').value.trim();
-    if (!url) return toast('YouTube URL required', true);
+    const exclusive = (document.querySelector('input[name="exVidType"]:checked') || {}).value === 'ex';
     const title = $('exVideoTitle').value.trim() || 'Official Video';
+    let entry;
+    try {
+      if (exclusive) {
+        const v16 = exDropboxVideo($('exEx16').value, 'The 16:9 link'), v9 = exDropboxVideo($('exEx9').value, 'The 9:16 link');
+        if (!v16 && !v9) return toast('Paste at least one Dropbox video link (16:9 or 9:16)', true);
+        entry = { title: title, exclusive: true, mp4_16: v16, mp4_9: v9 };
+      } else {
+        const url = $('exVideoUrl').value.trim();
+        if (!url) return toast('YouTube URL required', true);
+        entry = { title: title, youtube: url };
+      }
+    } catch (e) { return toast(e.message, true); }
     $('exMsg').textContent = 'Saving video...';
     try {
       await exUpdateSongs((songs) => {
         const s = songs.find((x) => x.id === songId);
         if (!s) return 0;
         if (!Array.isArray(s.videos)) s.videos = [];
-        s.videos.push({ title: title, youtube: url, order: s.videos.length + 1 });
-        if (!s.youtubeUrl) s.youtubeUrl = url;
+        entry.order = s.videos.length + 1;
+        s.videos.push(entry);
+        if (entry.youtube && !s.youtubeUrl) s.youtubeUrl = entry.youtube;
         return 1;
-      }, 'HTR Studio: add video to ' + songId);
+      }, 'HTR Studio: add ' + (exclusive ? 'exclusive ' : '') + 'video to ' + songId);
+      const loc = exSongs.find((x) => x.id === songId);
+      if (loc) { if (!Array.isArray(loc.videos)) loc.videos = []; loc.videos.push(entry); window.exRenderVideos(); }
+      $('exEx16').value = ''; $('exEx9').value = '';
       exLastArtist = $('exArtist').value;
       $('exMsg').textContent = 'Video added.';
       $('exAfter').classList.remove('hidden');
@@ -2822,7 +2870,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       t.textContent = v.title || 'Video';
       t.style.cssText = 'font-weight:600';
       const u = document.createElement('div');
-      u.textContent = v.youtube || v.url || '';
+      u.textContent = v.exclusive ? ('\u2605 EXCLUSIVE \u00b7 ' + [v.mp4_16 ? '16:9' : '', v.mp4_9 ? '9:16' : ''].filter(Boolean).join(' + ') + ' (plays on the artist site)') : (v.youtube || v.url || '');
+      if (v.exclusive) u.style.color = 'var(--warn)';
       u.style.cssText = 'font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
       info.appendChild(t); info.appendChild(u);
       const btn = document.createElement('button');
@@ -5842,7 +5891,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 })();
 </script>
 
-<script src="make-video.js?v=20260927-fonts"></script>
+<script src="make-video.js?v=20260927-web"></script>
 <script src="vendor/ffmpeg/ffmpeg.js"></script>
 <script src="vendor/ffmpeg/util.js"></script>
 <script src="mastering.js?v=20260927"></script>
