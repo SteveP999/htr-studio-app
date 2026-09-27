@@ -308,7 +308,7 @@
     if (!built) return;
     const visible = !$('view-mkvideo').classList.contains('hidden');
     if (!visible && !S.rec) { if (!audio.paused) audio.pause(); return; }
-    const t = audio.currentTime || 0, playing = !audio.paused;
+    const t = S.rec ? recTime() : (audio.currentTime || 0), playing = S.rec ? true : !audio.paused;
     const set = new Set([S.fmt]); if (S.rec) S.rec.list.forEach((r) => set.add(r.fmt));
     syncVideos(Array.from(set), t, playing);
     if (S.rec) {
@@ -316,7 +316,7 @@
       const lim = S.rec.limit || S.total;
       $('mvProg').firstChild.style.width = clamp(t / lim * 100, 0, 100) + '%';
       $('mvRenderMsg').textContent = 'Recording ' + fmtS(t) + ' / ' + fmtS(lim) + ' \u2014 you can switch windows, just don\u2019t close this tab.';
-      if (S.rec.limit && t >= S.rec.limit) finishRender();
+      if (t >= lim - 0.02) finishRender();
     }
     drawFrame(cx, S.fmt, t, PREVIEW_SCALE, true, S.lyricsOn);
     if (S.total) {
@@ -930,8 +930,23 @@
     AC = new (window.AudioContext || window.webkitAudioContext)();
     const src = AC.createMediaElementSource(audio);
     monGain = AC.createGain(); src.connect(monGain); monGain.connect(AC.destination);
-    mdest = AC.createMediaStreamDestination(); src.connect(mdest);
+    // Renders do NOT record the <audio> player: after a rewind it can push the first slice of the song into the
+    // stream twice (heard as the first note repeating ~0.5s in). Renders play a decoded copy on the audio clock instead.
+    mdest = AC.createMediaStreamDestination();
   }
+  let decoded = { url: '', buf: null };
+  async function decodeSong() {
+    const url = audio.currentSrc || audio.src;
+    if (decoded.url === url && decoded.buf) return decoded.buf;
+    setRenderMsg('Preparing the audio for recording\u2026');
+    const ab = await (await fetch(url)).arrayBuffer();
+    const buf = await AC.decodeAudioData(ab);
+    decoded = { url: url, buf: buf };
+    return buf;
+  }
+  function setRenderMsg(t) { const e = $('mvRenderMsg'); if (e) e.textContent = t; }
+  // position in the song while recording = the audio clock, the same clock the recorded sound runs on
+  function recTime() { const R = S.rec; return R && R.t0 != null ? Math.max(0, AC.currentTime - R.t0) : 0; }
   function togglePlay() {
     if (S.rec) return;
     if (!audio.src) return toast('No audio for this song yet', true);
@@ -958,8 +973,9 @@
     ensureGraph(); await AC.resume();
     await ensureCurrentFont();
     audio.pause();
-    if (!S.total) await new Promise((r) => { if (audio.readyState >= 1) r(); else audio.addEventListener('loadedmetadata', r, { once: true }); });
-    await new Promise((r) => { const to = setTimeout(r, 2000); audio.addEventListener('seeked', () => { clearTimeout(to); r(); }, { once: true }); audio.currentTime = 0; });
+    let songBuf;
+    try { songBuf = await decodeSong(); } catch (e) { setRenderMsg(''); return toast('Couldn\u2019t load the song audio for recording: ' + e.message, true); }
+    if (!S.total) S.total = songBuf.duration;
     syncVideos(fmts, 0, false); await wait(700); // let video layers land on frame 0
     const at = mdest.stream.getAudioTracks()[0], ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
     const list = fmts.map((f) => {
@@ -976,23 +992,30 @@
       }
       return r;
     });
-    S.rec = { list: list, lyrics: S.lyricsOn, ext: ext, mime: mime, limit: limit || 0, hidden: false };
-    monGain.gain.value = $('mvListen').checked ? 1 : 0;
+    S.rec = { list: list, lyrics: S.lyricsOn, ext: ext, mime: mime, limit: limit || 0, hidden: false, t0: null };
+    const node = AC.createBufferSource(); node.buffer = songBuf;
+    const listen = AC.createGain(); listen.gain.value = $('mvListen').checked ? 1 : 0;
+    node.connect(mdest); node.connect(listen); listen.connect(AC.destination);
+    node.onended = () => { if (S.rec && S.rec.node === node) finishRender(); };
+    S.rec.node = node; S.rec.listen = listen;
     ['mvGo', 'mvTest', 'mvSave'].forEach((id) => { $(id).disabled = true; });
     $('mvCancel').classList.remove('hidden'); $('mvProg').classList.remove('hidden');
-    startClock();
     list.forEach((r) => { r.rec.start(1000); if (r.web) r.web.rec.start(1000); });
-    audio.play().catch((e) => { toast('Audio: ' + e.message, true); S.rec.cancel = true; finishRender(); });
+    const t0 = AC.currentTime + 0.25;           // recorders are running; the song starts exactly here on the audio clock
+    node.start(t0); S.rec.t0 = t0;
+    if (S.rec.limit) node.stop(t0 + S.rec.limit + 0.05);
+    startClock();
   }
   async function finishRender() {
     const R = S.rec; if (!R || R.finishing) return; R.finishing = true;
     stopClock();
-    audio.pause();
+    try { R.node.onended = null; R.node.stop(); } catch (e) { }
+    try { R.node.disconnect(); R.listen.disconnect(); } catch (e) { }
     const stopRec = (m) => new Promise((res) => { m.onstop = res; try { m.stop(); } catch (e) { res(); } });
     await Promise.all(R.list.map((r) => Promise.all([stopRec(r.rec), r.web ? stopRec(r.web.rec) : null])));
     R.list.forEach((r) => r.ms.getTracks().forEach((t) => t.stop()));
-    if (monGain) monGain.gain.value = 1;
     S.rec = null;
+    audio.currentTime = 0;
     ['mvGo', 'mvTest', 'mvSave'].forEach((id) => { $(id).disabled = false; });
     $('mvCancel').classList.add('hidden'); $('mvProg').classList.add('hidden');
     if (R.cancel) { $('mvRenderMsg').textContent = 'Render cancelled.'; return; }
