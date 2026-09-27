@@ -588,7 +588,7 @@
           ${seg('lyricsOn', [['true', 'With lyrics'], ['false', 'No lyrics (clean)']])}
           ${seg('out', [['16', '16:9'], ['9', '9:16'], ['both', 'Both at once']])}
           <label class="mv-chk"><input type="checkbox" id="mvListen" checked> Play the audio out loud while it records</label>
-          <label class="mv-chk" title="Same video at a much lower bitrate - the one to put in Dropbox for an Exclusive on the artist site"><input type="checkbox" id="mvWeb" checked> Also save a smaller <b>website copy</b> (for Exclusives)</label>
+          <label class="mv-chk" title="Same video at a much lower bitrate - the one to put in Dropbox for an Exclusive on the artist site"><input type="checkbox" id="mvWeb"> Also save an extra-small <b>website copy</b> (optional)</label>
           <div class="save-bar" style="margin-top:6px">
             <button class="btn btn-ghost mv-sm" id="mvSave">Save setup</button>
             <button class="btn btn-ghost mv-sm" id="mvTest" title="Records only the first 20 seconds">Quick test (20s)</button>
