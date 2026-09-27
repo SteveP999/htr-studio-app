@@ -615,7 +615,8 @@
     const e = evById(S.sel); if (!e) return;
     const idx = S.ev.indexOf(e), next = S.ev[idx + 1];
     tsPush(); e.t = now10(); S.sel = next ? next.id : e.id; tsCommit();
-    const row = document.querySelector('#mvLines [data-ev="' + S.sel + '"]'); if (row) row.scrollIntoView({ block: 'nearest' });
+    const box = $('mvLines'), row = box.querySelector('[data-ev="' + S.sel + '"]');
+    if (row && (row.offsetTop < box.scrollTop || row.offsetTop + row.offsetHeight > box.scrollTop + box.clientHeight)) box.scrollTop = row.offsetTop - box.clientHeight / 2;
   }
   function tsSerialize() {
     const f = (t) => { const m = Math.floor(t / 60), s = t - m * 60, whole = Math.abs(s - Math.round(s)) < 0.05; return m + ':' + (whole ? String(Math.round(s)).padStart(2, '0') : (s < 10 ? '0' : '') + s.toFixed(1)); };

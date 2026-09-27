@@ -557,8 +557,9 @@
         <b>Enter</b>) the instant it's sung — the line takes the current playback time and selection
         moves to the next line. <b>Space</b> = play/pause. Times are precise to a tenth of a second.
         Section markers are separators (never captions) and show how long each section runs.<br><b>G</b> = <b>Clear screen</b>: tap it the moment the singing stops (breath, instrumental, solo) and the lyric comes off the screen right there &mdash; no more captions hanging through the gaps. It drops a <b>[gap]</b> marker at that time; Enter keeps stamping the next line as usual.</div>
+        <div id="edDeck" style="position:sticky;top:0;z-index:20;background:var(--panel);padding:8px 0 6px;border-bottom:1px solid var(--line)">
         <audio id="edAudio" controls preload="metadata" style="width:100%"></audio>
-        <div class="save-bar" style="align-items:center;flex-wrap:wrap">
+        <div class="save-bar" style="align-items:center;flex-wrap:wrap;margin-top:8px">
           <button class="btn btn-ghost" onclick="window.edSeek(-5)">−5s</button>
           <button class="btn btn-ghost" onclick="window.edSeek(-1)">−1s</button>
           <button class="btn btn-ghost" onclick="window.edSeek(1)">+1s</button>
@@ -568,6 +569,8 @@
           <button class="btn btn-red" onclick="window.edStamp()">Stamp selected (Enter)</button>
           <button class="btn btn-blue" onclick="window.edGap()" title="Singing stopped: clear the lyrics off the screen at this moment">Clear screen (G)</button>
           <button class="btn btn-ghost" onclick="window.edUndo()">&#8630; Undo (Ctrl+Z)</button>
+          <span id="edKeys" style="font-size:13px;padding:4px 10px;border-radius:99px;border:1px solid var(--line)"></span>
+        </div>
         </div>
         <div id="edRows" style="max-height:440px;overflow:auto;border:1px solid #333;border-radius:8px;padding:4px"></div>
         <div class="save-bar" style="flex-wrap:wrap">
@@ -3903,7 +3906,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     au.onloadedmetadata = function () { edEnsureAnchors(); edRender(); };
     edEnsureAnchors();
     $('lyrEditor').classList.remove('hidden');
-    edRender();
+    try { document.activeElement.blur(); } catch (e) { }
+    edRender(); edKeysLight(); edDeckTop();
     $('lyrEditor').scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -3955,7 +3959,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         }
       }
       row.innerHTML =
-        '<input value="' + edFmt(l.t) + '" style="width:64px;font-family:monospace;text-align:right" onchange="window.edSetTime(' + i + ',this.value)">'
+        '<input value="' + edFmt(l.t) + '" style="width:78px;flex:none;font-family:monospace;text-align:right;padding:8px 8px" onchange="window.edSetTime(' + i + ',this.value)">'
         + '<button class="btn btn-ghost" style="padding:2px 8px" title="jump audio here" onclick="window.edJump(' + i + ')">&#9658;</button>'
         + '<button class="btn btn-ghost" style="padding:2px 6px" onclick="window.edNudge(' + i + ',-0.5)">−.5</button>'
         + '<button class="btn btn-ghost" style="padding:2px 6px" onclick="window.edNudge(' + i + ',0.5)">+.5</button>'
@@ -4042,9 +4046,21 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     while (n < edLines.length && /^\[(start|end|gap)\]$/i.test(edLines[n].text)) n++;
     edSel = n < edLines.length ? n : edSel;
     edRender();
-    const row = $('edRows').querySelector('[data-i="' + edSel + '"]');
-    if (row) row.scrollIntoView({ block: 'center' });
+    const box = $('edRows'), row = box.querySelector('[data-i="' + edSel + '"]');
+    if (row) box.scrollTop = row.offsetTop - box.offsetTop - box.clientHeight / 2 + row.offsetHeight / 2;
   };
+  // keyboard-ready light + give the keys back whenever focus lands somewhere that shouldn't hold it
+  function edKeysLight() {
+    const el = $('edKeys'); if (!el) return;
+    const ae = document.activeElement, typing = ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName);
+    el.textContent = typing ? '\u2328 typing \u2014 click a line to stamp' : '\u2328 Enter / G ready';
+    el.style.color = typing ? 'var(--warn)' : 'var(--ok)';
+  }
+  document.addEventListener('focusin', edKeysLight); document.addEventListener('focusout', () => setTimeout(edKeysLight, 0));
+  $('edAudio').addEventListener('focus', function () { this.blur(); });
+  function edDeckTop() { const h = document.querySelector('header'); edDeck.style.top = (h && getComputedStyle(h).position === 'sticky' ? h.offsetHeight : 0) + 'px'; }
+  edDeckTop(); window.addEventListener('resize', edDeckTop);
+  $('edRows').addEventListener('click', function (e) { if (!e.target.closest('input')) { const ae = document.activeElement; if (ae && ae !== document.body) ae.blur(); } });
   window.edSeek = function (d) { const au = $('edAudio'); au.currentTime = Math.max(0, au.currentTime + d); };
   window.edRate = function () {
     const au = $('edAudio');
@@ -4054,9 +4070,15 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   document.addEventListener('keydown', function (e) {
     if ($('lyrEditor').classList.contains('hidden')) return;
-    if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    const ae = document.activeElement, tag = ae ? ae.tagName : '';
+    if (/INPUT|TEXTAREA|SELECT/.test(tag)) {
+      // a line's time box: Enter/Esc just finishes that edit - the next Enter stamps again
+      if (ae.closest && ae.closest('#edRows') && (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Escape')) { e.preventDefault(); ae.blur(); }
+      return;   // otherwise you're typing somewhere - leave the keys alone
+    }
+    if (tag === 'BUTTON' && (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space')) ae.blur();
     if (e.code === 'Space') { e.preventDefault(); const au = $('edAudio'); au.paused ? au.play() : au.pause(); }
-    if (e.code === 'Enter') { e.preventDefault(); window.edStamp(); }
+    if (e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); window.edStamp(); }
     if (e.code === 'KeyG' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); window.edGap(); }
     if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') { e.preventDefault(); window.edUndo(); }
   });
@@ -5820,7 +5842,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 })();
 </script>
 
-<script src="make-video.js?v=20260927-edit3"></script>
+<script src="make-video.js?v=20260927-keys"></script>
 <script src="vendor/ffmpeg/ffmpeg.js"></script>
 <script src="vendor/ffmpeg/util.js"></script>
 <script src="mastering.js?v=20260927"></script>
