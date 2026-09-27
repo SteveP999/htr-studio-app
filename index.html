@@ -1298,6 +1298,9 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     opts = opts || {};
     const res = await fetch(API + path, {
       method: opts.method || 'GET',
+      // GitHub API answers carry Cache-Control max-age=60: without this the browser
+      // hands back a copy up to a minute old (new songs missing until Ctrl+F5)
+      cache: 'no-store',
       headers: {
         'Authorization': 'Bearer ' + token,
         'Accept': 'application/vnd.github+json',
@@ -2316,10 +2319,11 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   };
   window.artOpenWorkshop = async function (artistId, songId) {
     window.showTab('lyrics');
-    if (!lyrLoaded) await window.loadLyrics();
+    await window.loadLyrics();
     $('lyrArtist').value = artistId;
-    await window.lyrLoadSongs();
+    await window.lyrLoadSongs(true);
     $('lyrSong').value = songId;
+    if ($('lyrSong').value !== songId) return toast('That song isn\u2019t in the catalog list yet \u2014 try again in a moment', true);
     window.lyrSongChange();
   };
   window.artOpenExtras = async function (artistId, songId) {
@@ -3645,8 +3649,13 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   let lyrLoaded = false;
   let lyrPoll = null;
 
-  window.loadLyrics = async function () {
-    if (lyrLoaded && $('lyrArtist').options.length) return;
+  let lyrLoading = null;
+  window.loadLyrics = function () {
+    if (lyrLoaded && $('lyrArtist').options.length) return Promise.resolve();
+    if (!lyrLoading) lyrLoading = lyrLoadOnce().finally(() => { lyrLoading = null; });
+    return lyrLoading;
+  };
+  async function lyrLoadOnce() {
     if (!artists.length) {
       try { await loadArtists(); } catch (e) { toast('Could not load artists: ' + e.message, true); return; }
     }
@@ -3659,14 +3668,17 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     });
     await window.lyrLoadSongs();
     lyrLoaded = artists.length > 0;
-  };
+  }
 
-  window.lyrLoadSongs = async function () {
+  let lyrListReq = 0;
+  window.lyrLoadSongs = async function (noPick) {
     const artistId = $('lyrArtist').value;
     if (!artistId) return;
+    const my = ++lyrListReq;
     $('lyrSong').innerHTML = '<option>Loading…</option>';
     try {
       const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
+      if (my !== lyrListReq) return;          // a newer load replaced this one
       lyrSongs = JSON.parse(b64decode(sf.content));
       const mine = lyrSongs.filter((s) => s.artistId === artistId);
       const sel = $('lyrSong');
@@ -3676,7 +3688,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         o.value = s.id; o.textContent = (s.album || '?') + ' — ' + s.title;
         sel.appendChild(o);
       });
-      window.lyrSongChange();
+      if (!noPick) window.lyrSongChange();
     } catch (e) {
       toast('Could not load songs: ' + e.message, true);
     }
@@ -3685,9 +3697,11 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   // when a song is picked: load its stored Suno prompt + lyric sheet.
   // EVERYTHING from the previous song is cleared first so nothing stale
   // can be accidentally saved onto the wrong song.
+  let lyrPickReq = 0;
   window.lyrSongChange = async function () {
     const song = lyrSongs.find((s) => s.id === $('lyrSong').value);
     if (!song) return;
+    const my = ++lyrPickReq, stale = () => my !== lyrPickReq;
     // clear previous song's state
     $('lyrText').value = '';
     $('lyrResult').classList.add('hidden');
@@ -3700,13 +3714,16 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     let stored = [];
     try {
       const f = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-sheet.txt?ref=main');
+      if (stale()) return;
       $('lyrText').value = b64decode(f.content).trim();
       stored.push('lyric sheet');
     } catch (e) { /* no sheet yet */ }
+    if (stale()) return;
     try {
       await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
       stored.push('timestamps');
     } catch (e) { /* none */ }
+    if (stale()) return;
     $('lyrStored').textContent = stored.length
       ? ('Stored for this song: ' + stored.join(' + ') + '.')
       : 'Nothing stored yet — paste lyrics below and Save to catalog.';
