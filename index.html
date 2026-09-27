@@ -3719,6 +3719,11 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       stored.push('lyric sheet');
     } catch (e) { /* no sheet yet */ }
     if (stale()) return;
+    // songs added from the Artist page keep their Suno lyrics on the song itself
+    if (!$('lyrText').value && String(song.lyrics || '').trim()) {
+      $('lyrText').value = String(song.lyrics).trim();
+      stored.push('lyrics from the song entry');
+    }
     try {
       await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/lyrics/' + song.id + '-timestamps.txt?ref=main');
       stored.push('timestamps');
@@ -3742,13 +3747,17 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       const sf = await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json');
       const songs = JSON.parse(b64decode(sf.content));
       const target = songs.find((s) => s.id === song.id);
-      if (target && (target.sunoPrompt || '') !== suno) {
+      // keep the song's own lyrics (what the artist site shows) in step with the sheet
+      const lyrChanged = target && lyrics && (target.lyrics || '').trim() !== lyrics;
+      if (lyrChanged) { target.lyrics = lyrics; song.lyrics = lyrics; }
+      if (target && ((target.sunoPrompt || '') !== suno || lyrChanged)) {
         target.sunoPrompt = suno;
         await gh('/repos/' + OWNER + '/' + REPO + '/contents/data/master-songs.json', {
           method: 'PUT',
-          body: { message: 'Suno prompt: ' + song.id, content: b64encode(JSON.stringify(songs, null, 2)), sha: sf.sha }
+          body: { message: 'Lyrics / Suno prompt: ' + song.id, content: b64encode(JSON.stringify(songs, null, 2)), sha: sf.sha }
         });
         song.sunoPrompt = suno;
+        invalidateCatalogCaches();
       }
       $('lyrStatus').textContent = '';
       window.lyrSongChange();
