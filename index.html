@@ -8,7 +8,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#101014">
-<meta name="htr-build" content="20260927-182435">
+<meta name="htr-build" content="20260927-182454">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700;800&family=Poppins:wght@700;800&family=Teko:wght@600;700;800&family=Barlow+Condensed:wght@600;700;800&family=Fjalla+One&family=Alfa+Slab+One&family=Bungee&family=Luckiest+Guy&family=Kanit:wght@700;800&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -5977,7 +5977,7 @@ onAuthStateChanged(auth, u => {
     function check() {
       if (shown || document.hidden) return;
       fetch(location.pathname + '?build=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
-        var m = t.match(/<meta name="htr-build" content="20260927-182435"]+)"/);
+        var m = t.match(new RegExp('<meta name="htr-' + 'build" content="([^"]+)"'));
         if (m && m[1] !== mine) banner();
       }).catch(function () { });
     }
