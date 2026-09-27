@@ -535,6 +535,7 @@
         <div class="mv-tsbar hidden" id="mvTsBar">
           <button class="btn btn-ghost mv-sm" id="mvAddLine" title="Add a new lyric line at the current playhead">+ Line at playhead</button>
           <button class="btn btn-ghost mv-sm" id="mvAddGap" title="Clear the screen at the current playhead (instrumental / breath)">+ Clear screen here</button>
+          <button class="btn btn-ghost mv-sm" id="mvAddSec" title="Add a section marker at the playhead (e.g. [Chorus]) &mdash; the line before it clears here">+ Section here</button>
           <button class="btn btn-ghost mv-sm" id="mvTsUndo" title="Undo the last lyric edit (Ctrl+Z)">&#8630; Undo</button>
           <button class="btn btn-red mv-sm" id="mvTsSave" disabled>Lyrics saved</button>
         </div>
@@ -692,6 +693,8 @@
         + '<button class="mv-ib" data-evn="' + e.id + ',-0.1" title="0.1s earlier">&minus;</button><button class="mv-ib" data-evn="' + e.id + ',0.1" title="0.1s later">+</button>'
         + '<input class="mv-lx" data-evx="' + e.id + '" value="' + esc(e.text) + '" title="' + (e.marker ? 'Section / [gap] marker \u2014 the lyric before it clears here' : 'Lyric text \u2014 fix spelling or missing words, press Enter') + '">'
         + (own ? '<span class="mv-tag" title="This line has its own size/position">own look</span><button class="mv-ib" data-reset="' + i + '" title="Reset this line to the all-lines look">&#8634;</button>' : '')
+        + (e.marker ? '' : '<button class="mv-ib" data-evclr="' + e.id + '" title="Clear the screen after this line (adds a [gap]; if the song is playing inside this line, it lands at the playhead)">&#8676;&#8677;</button>'
+          + '<button class="mv-ib" data-evmerge="' + e.id + '" title="Merge the next line into this one (it becomes a second row of this caption)">&#8681;</button>')
         + '<button class="mv-ib" data-evdel="' + e.id + '" title="Delete this line">&#10005;</button></div>';
     }).join('');
     box.scrollTop = keep;
@@ -731,6 +734,31 @@
     tsPush(); e.text = tx; e.marker = isMarker(tx); tsCommit();
   }
   function evDel(id) { const i = S.ev.findIndex((e) => e.id === +id); if (i < 0) return; tsPush(); S.ev.splice(i, 1); if (S.sel === +id) S.sel = null; tsCommit(); }
+  // merge the next lyric line into this one as a second row ("a / b")
+  function evMerge(id) {
+    const e = evById(id); if (!e) return;
+    const ord = S.ev.slice().sort((a, b) => a.t - b.t), n = ord[ord.indexOf(e) + 1];
+    if (!n) return toast('This is the last line \u2014 nothing to merge', true);
+    if (n.marker) return toast('A ' + n.text + ' marker sits right after this line \u2014 delete it first if you really want them together', true);
+    tsPush(); e.text = e.text + ' / ' + n.text; S.ev.splice(S.ev.indexOf(n), 1); S.sel = e.id; tsCommit();
+    toast('Merged \u2014 the caption now shows two rows');
+  }
+  // end this caption early: add a [gap] after it (at the playhead if it's inside the line, else ~80% through)
+  function evClearAfter(id) {
+    const e = evById(id); if (!e) return;
+    const ord = S.ev.slice().sort((a, b) => a.t - b.t), n = ord.slice(ord.indexOf(e) + 1).find((x) => x.t > e.t);
+    const end = n ? n.t : e.t + 6, ph = now10();
+    let at = (ph > e.t + 0.2 && ph < end - 0.05) ? ph : Math.round((e.t + Math.max(0.6, (end - e.t) * 0.8)) * 10) / 10;
+    if (n && at >= n.t) at = Math.round((n.t - 0.1) * 10) / 10;
+    if (at <= e.t) return toast('No room after this line to clear the screen', true);
+    tsPush(); const g = { id: ++_uid, t: at, text: '[gap]', marker: true }; S.ev.push(g); S.sel = g.id; tsCommit();
+    toast('Screen clears at ' + fmtT(at) + ' \u2014 nudge it with \u2212/+, or play and press Enter the moment the singing stops');
+  }
+  function evAddSection() {
+    if (!S.song) return;
+    tsPush(); const e = { id: ++_uid, t: now10(), text: '[Section]', marker: true }; S.ev.push(e); S.sel = e.id; tsCommit();
+    const inp = document.querySelector('#mvLines [data-evx="' + e.id + '"]'); if (inp) { inp.focus(); inp.setSelectionRange(1, 8); }
+  }
   function evAdd(text) {
     if (!S.song) return;
     tsPush(); const e = { id: ++_uid, t: now10(), text: text, marker: isMarker(text) }; S.ev.push(e); S.sel = e.id; tsCommit();
@@ -1140,6 +1168,8 @@
       const now = e.target.closest('[data-evnow]'); if (now) { S.sel = +now.dataset.evnow; evSetTime(now.dataset.evnow, now10()); return; }
       const nd = e.target.closest('[data-evn]'); if (nd) { const [id, d] = nd.dataset.evn.split(','); const ev = evById(id); if (ev) evSetTime(id, ev.t + +d); return; }
       const dl = e.target.closest('[data-evdel]'); if (dl) { evDel(dl.dataset.evdel); return; }
+      const mg = e.target.closest('[data-evmerge]'); if (mg) { evMerge(mg.dataset.evmerge); return; }
+      const cl = e.target.closest('[data-evclr]'); if (cl) { evClearAfter(cl.dataset.evclr); return; }
       if (ln && !e.target.closest('input')) {
         S.sel = +ln.dataset.ev;
         if (ln.dataset.li != null) jumpToLine(+ln.dataset.li);
@@ -1186,6 +1216,7 @@
     $('mvSave').onclick = saveSetup;
     $('mvAddLine').onclick = () => evAdd('New line');
     $('mvAddGap').onclick = () => evAdd('[gap]');
+    $('mvAddSec').onclick = evAddSection;
     $('mvTsUndo').onclick = tsUndo;
     $('mvTsSave').onclick = () => saveTimestamps(false);
     $('mvLines').addEventListener('keydown', (e) => {
