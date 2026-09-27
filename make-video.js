@@ -1001,6 +1001,7 @@
     ['mvGo', 'mvTest', 'mvSave'].forEach((id) => { $(id).disabled = true; });
     $('mvCancel').classList.remove('hidden'); $('mvProg').classList.remove('hidden');
     list.forEach((r) => { r.rec.start(1000); if (r.web) r.web.rec.start(1000); });
+    S.rec.acStart = AC.currentTime;
     const t0 = AC.currentTime + 0.25;           // recorders are running; the song starts exactly here on the audio clock
     node.start(t0); S.rec.t0 = t0;
     if (S.rec.limit) node.stop(t0 + S.rec.limit + 0.05);
@@ -1009,6 +1010,7 @@
   async function finishRender() {
     const R = S.rec; if (!R || R.finishing) return; R.finishing = true;
     stopClock();
+    R.recorded = AC.currentTime - (R.acStart || AC.currentTime);
     try { R.node.onended = null; R.node.stop(); } catch (e) { }
     try { R.node.disconnect(); R.listen.disconnect(); } catch (e) { }
     const stopRec = (m) => new Promise((res) => { m.onstop = res; try { m.stop(); } catch (e) { res(); } });
@@ -1021,16 +1023,49 @@
     if (R.cancel) { $('mvRenderMsg').textContent = 'Render cancelled.'; return; }
     const msgs = [];
     for (const r of R.list) {
-      const blob = new Blob(r.chunks, { type: R.mime.split(';')[0] });
+      const blob = await withDuration(new Blob(r.chunks, { type: R.mime.split(';')[0] }), R.recorded);
       const name = S.song.id + (R.lyrics ? '-lyric' : '') + '-' + (r.fmt === '16' ? '16x9' : '9x16') + (R.limit ? '-test' : '') + '.' + R.ext;
       msgs.push(await saveBlob(blob, name) + ' <span class="mv-dim">(' + (blob.size / 1048576).toFixed(0) + ' MB)</span>');
       if (r.web && r.web.chunks.length) {
-        const wb = new Blob(r.web.chunks, { type: R.mime.split(';')[0] });
+        const wb = await withDuration(new Blob(r.web.chunks, { type: R.mime.split(';')[0] }), R.recorded);
         msgs.push(await saveBlob(wb, name.replace(/(\.[a-z0-9]+)$/i, '-web$1')) + ' <span class="mv-dim">(' + (wb.size / 1048576).toFixed(0) + ' MB \u2014 website copy)</span>');
       }
     }
     $('mvRenderMsg').innerHTML = msgs.join('<br>') + (R.hidden ? '<br><span class="mv-warn">&#9888; This tab was hidden for part of the render. Give the video a quick watch \u2014 if a background video froze anywhere, re-render with the tab showing.</span>' : '');
     toast(R.limit ? 'Test clip done' : 'Video done');
+  }
+  // Browsers record MP4 as a stream of fragments and leave the length in the header at 0, so players show no end
+  // time and a stuck progress bar (Chrome even reports just the first fragment, ~3 s). Write the real length into the
+  // header boxes (mvhd / tkhd / mdhd / mehd) - only the first few KB are touched, the rest of the file is reused as-is.
+  async function withDuration(blob, seconds) {
+    if (!/mp4/.test(blob.type) || !(seconds > 0)) return blob;
+    try {
+      const headLen = Math.min(blob.size, 256 * 1024);
+      const buf = await blob.slice(0, headLen).arrayBuffer(), dv = new DataView(buf), found = {};
+      let stop = false;
+      const walk = (start, end) => {
+        let p = start;
+        while (!stop && p + 8 <= end) {
+          let size = dv.getUint32(p), hs = 8;
+          const type = String.fromCharCode(dv.getUint8(p + 4), dv.getUint8(p + 5), dv.getUint8(p + 6), dv.getUint8(p + 7));
+          if (size === 1) { size = Number(dv.getBigUint64(p + 8)); hs = 16; }
+          if (type === 'moof' || type === 'mdat') { stop = true; break; }
+          if (size < 8 || p + size > headLen) { stop = true; break; }
+          if (type === 'moov' || type === 'trak' || type === 'mdia' || type === 'mvex') walk(p + hs, p + size);
+          else if (type === 'mvhd' || type === 'tkhd' || type === 'mdhd' || type === 'mehd') (found[type] = found[type] || []).push(p);
+          p += size;
+        }
+      };
+      walk(0, headLen);
+      if (!found.mvhd) return blob;
+      const put = (off, ver, val) => { if (ver) dv.setBigUint64(off, BigInt(Math.round(val))); else dv.setUint32(off, Math.round(val)); };
+      const mv = found.mvhd[0], mvVer = dv.getUint8(mv + 8), movieTS = dv.getUint32(mv + (mvVer ? 28 : 20));
+      put(mv + (mvVer ? 32 : 24), mvVer, seconds * movieTS);
+      (found.tkhd || []).forEach((p) => { const v = dv.getUint8(p + 8); put(p + (v ? 36 : 28), v, seconds * movieTS); });
+      (found.mdhd || []).forEach((p) => { const v = dv.getUint8(p + 8), ts = dv.getUint32(p + (v ? 28 : 20)); put(p + (v ? 32 : 24), v, seconds * ts); });
+      (found.mehd || []).forEach((p) => { const v = dv.getUint8(p + 8); put(p + 12, v, seconds * movieTS); });
+      return new Blob([buf, blob.slice(headLen)], { type: blob.type });
+    } catch (e) { console.warn('duration fix skipped', e); return blob; }
   }
   async function saveBlob(blob, name) {
     if (S.dir) {
