@@ -1358,7 +1358,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   // ---------- tabs (grouped nav) ----------
   const NAV_GROUPS = {
-    artists:    [['artists', 'Roster'], ['newartist', 'New Artist'], ['editartist', 'Edit Artist']],
+    artists:    [['artists', 'Roster'], ['extras', 'Song Extras'], ['newartist', 'New Artist'], ['editartist', 'Edit Artist']],
     publishing: [['bmicat', 'Song Catalog'], ['master', 'Mastering']],
     videos:     [['lyrics', 'Lyric Timestamps'], ['mkvideo', 'Make Video'], ['polls', 'Song Polls']],  // 'video' (Music Video bible) parked Sep 2026
     radio:      [['radio', 'Stations'], ['top20', 'Top 20']],
@@ -1403,6 +1403,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (name === 'polls' && !pollsLoaded) window.loadPolls();
     if (name === 'bmicat' && !bmiLoaded) window.loadBmi();
     if (name === 'editartist') window.eaInit();
+    if (name === 'extras' && $('exArtist').value && !$('exSong').options.length) window.exLoadSongs();
   };
 
   function applyLyricsOnly() {
@@ -1829,6 +1830,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-blue" style="padding:4px 16px;font-size:12px" onclick="window.artSaveSong('${s.id}','${artistId}')">💾 Save</button>
           <button class="btn btn-ghost" style="padding:4px 12px;font-size:12px" onclick="window.artOpenWorkshop('${artistId}','${s.id}')">Lyrics / Timestamps →</button>
+          <button class="btn btn-ghost" style="padding:4px 12px;font-size:12px" title="Add a YouTube video or a site-only Exclusive, streaming links, move/rename" onclick="window.artOpenExtras('${artistId}','${s.id}')">Videos / Extras →</button>
           <span id="smsg-${s.id}" style="font-size:12px;color:var(--ok)"></span>
         </div>
       </div>`;
