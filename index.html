@@ -590,6 +590,9 @@
     <!-- ============ MAKE VIDEO (built by make-video.js) ============ -->
     <section id="view-mkvideo" class="hidden"></section>
 
+    <!-- ============ MASTERING (built by mastering.js) ============ -->
+    <section id="view-master" class="hidden"></section>
+
     <!-- ============ NEW ARTIST ============ -->
     <section id="view-newartist" class="hidden">
       <div class="card editor" style="max-width:720px">
@@ -1209,12 +1212,8 @@
         </div>
         <div class="card">
           <h3>HTR Mastering Engine</h3>
-          <div class="sub">Two-pass loudness mastering (FFmpeg loudnorm) for your mixed WAVs — album-at-once
-          or single-track. Never modifies your source files. Same local-only rule as the Video Maker.</div>
-          <div class="dry-note" style="margin:10px 0">Start it first: double-click <code>HTR-MASTERING.bat</code>
-          in D:\HTR-Studio\modules\mastering (or run <code>HTR-Mastering-Service.vbs</code> from that same folder to start it silently in the background).
-          Then use the button below.</div>
-          <div class="row"><a class="btn btn-blue" href="http://127.0.0.1:8771/" target="_blank" rel="noreferrer">Open Mastering Engine</a></div>
+          <div class="sub">Moved into the app: <b>Publishing &rarr; Mastering</b>. Same two-pass loudness engine and profiles, running in the browser on any computer &mdash; no Python, FFmpeg or HTR-MASTERING.bat needed.</div>
+          <div class="row"><button class="btn btn-blue" onclick="window.showTab('master')">Open Mastering</button></div>
         </div>
       </div>
       <div class="dry-note" style="margin-top:14px">Both tools only work while you're using this admin page on the
@@ -1341,12 +1340,12 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   // ---------- tabs (grouped nav) ----------
   const NAV_GROUPS = {
     artists:    [['artists', 'Roster'], ['newartist', 'New Artist'], ['editartist', 'Edit Artist']],
-    publishing: [['bmicat', 'Song Catalog']],
+    publishing: [['bmicat', 'Song Catalog'], ['master', 'Mastering']],
     videos:     [['lyrics', 'Lyric Timestamps'], ['mkvideo', 'Make Video'], ['polls', 'Song Polls']],  // 'video' (Music Video bible) parked Sep 2026
     radio:      [['radio', 'Stations'], ['top20', 'Top 20']],
     admin:      [['dashboard', 'Dashboard & Runs'], ['tools', 'Local Tools']],
   };
-  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'editartist', 'radio', 'top20', 'lyrics', 'mkvideo', 'video', 'polls', 'bmicat', 'tools'];
+  const ALL_VIEWS = ['dashboard', 'artists', 'newartist', 'addsong', 'extras', 'editartist', 'radio', 'top20', 'lyrics', 'mkvideo', 'video', 'polls', 'bmicat', 'master', 'tools'];
   let curGroup = 'artists';
 
   function groupOf(view) {
@@ -1380,6 +1379,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (name === 'lyrics' && !lyrLoaded) window.loadLyrics();
     if (name === 'video' && !vidLoaded) window.loadVideo();
     if (name === 'mkvideo' && window.MV) window.MV.onShow();
+    if (name === 'master' && window.MS) window.MS.onShow();
     if (name === 'polls' && !pollsLoaded) window.loadPolls();
     if (name === 'bmicat' && !bmiLoaded) window.loadBmi();
     if (name === 'editartist') window.eaInit();
@@ -5821,6 +5821,9 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 </script>
 
 <script src="make-video.js?v=20260926"></script>
+<script src="vendor/ffmpeg/ffmpeg.js"></script>
+<script src="vendor/ffmpeg/util.js"></script>
+<script src="mastering.js?v=20260927"></script>
 
 <!-- Firebase (Song Polls) — separate ES module; bridges to window.HTRPoll -->
 <script type="module">
