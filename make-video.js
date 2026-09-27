@@ -1139,7 +1139,7 @@
     $('mvCancel').onclick = () => { if (S.rec) { S.rec.cancel = true; finishRender(); } };
     document.addEventListener('keydown', (e) => {
       if (root.classList.contains('hidden') || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) return;
-      if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+      if (e.code === 'Space') { e.preventDefault(); if (e.target && e.target.tagName === 'BUTTON') e.target.blur(); togglePlay(); } // a focused button would also 'click' on key-up and toggle twice
       if (e.code === 'Enter' || e.code === 'NumpadEnter') {
         const btn = e.target && e.target.closest ? e.target.closest('button') : null;
         if (btn && !btn.closest('#mvLines, #mvTsBar')) return; // Enter on other buttons keeps its normal meaning

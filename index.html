@@ -1390,6 +1390,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       sn.appendChild(b);
     });
     ALL_VIEWS.forEach((t) => $('view-' + t).classList.toggle('hidden', t !== name));
+    if (name !== 'lyrics') { try { $('edAudio').pause(); } catch (e) { } }   // never leave the timestamp editor playing behind another tab
     if (name === 'radio' && !radioLoaded) window.loadRadio();
     if (name === 'top20' && !t20Loaded) window.loadTop20();
     if (name === 'lyrics' && !lyrLoaded) window.loadLyrics();
@@ -4118,7 +4119,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   };
 
   document.addEventListener('keydown', function (e) {
-    if ($('lyrEditor').classList.contains('hidden')) return;
+    // only while the Lyric Timestamps tab is on screen - the editor stays 'open' behind other tabs
+    if ($('lyrEditor').classList.contains('hidden') || $('view-lyrics').classList.contains('hidden')) return;
     const ae = document.activeElement, tag = ae ? ae.tagName : '';
     if (/INPUT|TEXTAREA|SELECT/.test(tag)) {
       // a line's time box: Enter/Esc just finishes that edit - the next Enter stamps again
@@ -5891,7 +5893,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 })();
 </script>
 
-<script src="make-video.js?v=20260927-web"></script>
+<script src="make-video.js?v=20260927-keys2"></script>
 <script src="vendor/ffmpeg/ffmpeg.js"></script>
 <script src="vendor/ffmpeg/util.js"></script>
 <script src="mastering.js?v=20260927-auto"></script>
