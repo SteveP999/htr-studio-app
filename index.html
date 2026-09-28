@@ -8,7 +8,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#101014">
-<meta name="htr-build" content="20260928-073438">
+<meta name="htr-build" content="20260928-075618">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700;800&family=Poppins:wght@700;800&family=Teko:wght@600;700;800&family=Barlow+Condensed:wght@600;700;800&family=Fjalla+One&family=Alfa+Slab+One&family=Bungee&family=Luckiest+Guy&family=Kanit:wght@700;800&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -320,8 +320,12 @@
           <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="radio" name="exVidType" value="yt" checked style="width:auto" onchange="window.exVidType()"> YouTube link</label>
           <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="radio" name="exVidType" value="ex" style="width:auto" onchange="window.exVidType()"> Exclusive (MP4 in Dropbox)</label>
         </div>
-        <div id="exVidYt"><label>YouTube URL</label>
-        <input id="exVideoUrl" type="text" placeholder="https://youtu.be/..."></div>
+        <div id="exVidYt"><label>YouTube link &mdash; 16:9 (computers)</label>
+        <input id="exVideoUrl" type="text" placeholder="https://youtu.be/...">
+        <label>YouTube link &mdash; 9:16 vertical (phones, optional)</label>
+        <input id="exVideoUrl9" type="text" placeholder="https://youtube.com/shorts/...">
+        <div class="sub">Phones get the vertical one, computers the 16:9. Leave the 16:9 box empty to add a vertical
+        to the song&rsquo;s existing YouTube video. Tip: upload the vertical as <b>Unlisted</b> if you only want it seen on the site.</div></div>
         <div id="exVidEx" class="hidden">
           <label>16:9 video &mdash; computers (Dropbox link)</label>
           <input id="exEx16" type="text" placeholder="https://www.dropbox.com/scl/fi/...-16x9.mp4?...">
@@ -2828,9 +2832,11 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         if (!v16 && !v9) return toast('Paste at least one Dropbox video link (16:9 or 9:16)', true);
         entry = { title: title, exclusive: true, mp4_16: v16, mp4_9: v9 };
       } else {
-        const url = $('exVideoUrl').value.trim();
-        if (!url) return toast('YouTube URL required', true);
-        entry = { title: title, youtube: url };
+        const url = $('exVideoUrl').value.trim(), url9 = $('exVideoUrl9').value.trim();
+        if (!url && !url9) return toast('Paste a YouTube link (16:9, 9:16 or both)', true);
+        entry = { title: title };
+        if (url) entry.youtube = url;
+        if (url9) entry.youtube_9 = url9;
       }
     } catch (e) { return toast(e.message, true); }
     $('exMsg').textContent = 'Saving video...';
@@ -2839,13 +2845,22 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         const s = songs.find((x) => x.id === songId);
         if (!s) return 0;
         if (!Array.isArray(s.videos)) s.videos = [];
+        // vertical-only on a song that already has a YouTube video: pair it with that video
+        const pair = !entry.youtube && entry.youtube_9 && s.videos.find((x) => x && !x.exclusive && (x.youtube || x.url));
+        if (pair) { pair.youtube_9 = entry.youtube_9; entry = pair; return 1; }
         entry.order = s.videos.length + 1;
         s.videos.push(entry);
         if (entry.youtube && !s.youtubeUrl) s.youtubeUrl = entry.youtube;
         return 1;
       }, 'HTR Studio: add ' + (exclusive ? 'exclusive ' : '') + 'video to ' + songId);
       const loc = exSongs.find((x) => x.id === songId);
-      if (loc) { if (!Array.isArray(loc.videos)) loc.videos = []; loc.videos.push(entry); window.exRenderVideos(); }
+      if (loc) {
+        if (!Array.isArray(loc.videos)) loc.videos = [];
+        const lp = loc.videos.find((x) => x && !x.exclusive && x.youtube && x.youtube === entry.youtube);
+        if (lp) Object.assign(lp, entry); else loc.videos.push(entry);
+        window.exRenderVideos();
+      }
+      $('exVideoUrl9').value = '';
       $('exEx16').value = ''; $('exEx9').value = '';
       exLastArtist = $('exArtist').value;
       $('exMsg').textContent = 'Video added.';
@@ -2878,7 +2893,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       t.textContent = v.title || 'Video';
       t.style.cssText = 'font-weight:600';
       const u = document.createElement('div');
-      u.textContent = v.exclusive ? ('\u2605 EXCLUSIVE \u00b7 ' + [v.mp4_16 ? '16:9' : '', v.mp4_9 ? '9:16' : ''].filter(Boolean).join(' + ') + ' (plays on the artist site)') : (v.youtube || v.url || '');
+      u.textContent = v.exclusive ? ('\u2605 EXCLUSIVE \u00b7 ' + [v.mp4_16 ? '16:9' : '', v.mp4_9 ? '9:16' : ''].filter(Boolean).join(' + ') + ' (plays on the artist site)') : ((v.youtube || v.url || '') + (v.youtube_9 ? '   \u00b7 phones: ' + v.youtube_9 : ''));
       if (v.exclusive) u.style.color = 'var(--warn)';
       u.style.cssText = 'font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
       info.appendChild(t); info.appendChild(u);
