@@ -8,7 +8,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#101014">
-<meta name="htr-build" content="20260927-182454">
+<meta name="htr-build" content="20260928-073438">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Montserrat:wght@700;800;900&family=Oswald:wght@600;700;800&family=Poppins:wght@700;800&family=Teko:wght@600;700;800&family=Barlow+Condensed:wght@600;700;800&family=Fjalla+One&family=Alfa+Slab+One&family=Bungee&family=Luckiest+Guy&family=Kanit:wght@700;800&family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -679,7 +679,7 @@
         <label>Vertical offset (px, optional)</label>
         <input id="eaLogoOffset" type="number" step="2" value="0">
         <div class="save-bar">
-          <button class="btn btn-red" onclick="window.eaSaveLogoSize()">Save logo size</button>
+          <button class="btn btn-red" id="eaLogoSaveBtn" onclick="window.eaSaveLogoSize()">Save logo size</button>
           <button class="btn" onclick="window.eaResetLogoSize()">Reset to default</button>
         </div>
         <div class="sub" id="eaLogoStatus"></div>
@@ -4257,9 +4257,13 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   function eaB64Encode(str) { return btoa(unescape(encodeURIComponent(str))); }
   function eaArtistObj() { return artists.find(function (x) { return x.id === $('eaArtist').value; }); }
 
+  let eaRosterSeen = null;
   window.eaInit = function () {
     const sel = $('eaArtist');
-    const cur = sel.value;
+    let cur = sel.value;
+    // follow the artist picked on the Roster (the dropdown used to default to the
+    // alphabetically-first artist, so edits landed on the wrong site)
+    if (selectedId && selectedId !== eaRosterSeen) { cur = selectedId; eaRosterSeen = selectedId; }
     sel.innerHTML = '';
     artists.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (a) {
       const o = document.createElement('option');
@@ -4272,6 +4276,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.eaSelect = function () {
     const a = eaArtistObj();
     if (!a) return;
+    const sb = $('eaLogoSaveBtn'); if (sb) sb.textContent = 'Save logo size for ' + a.name;
     $('eaRepoLine').textContent = 'repo: ' + a.githubRepo + '   ·   site: ' + (a.siteUrl || ('https://' + a.id + '.hellotexasrecords.com'));
     $('eaAssetStatus').textContent = '';
     $('eaLogoStatus').textContent = 'Loading current logo size…';
@@ -4308,11 +4313,12 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   };
 
   function eaBuildOverride(d, mob, off) {
-    let deskRule = 'max-height:' + d + 'px !important;width:auto !important;';
+    // width:auto + a viewport cap: the logo keeps its shape and can never run off the screen
+    let deskRule = 'max-height:' + d + 'px !important;width:auto !important;height:auto !important;max-width:94vw !important;';
     if (off) deskRule += 'transform:translateY(' + off + 'px) !important;';
     return '/* HTR-MENU: hero logo size override */\n'
       + '.stage-logo img{' + deskRule + '}\n'
-      + '@media (max-width:768px){.stage-logo img{max-height:' + mob + 'px !important;}}\n'
+      + '@media (max-width:768px){.stage-logo img{max-height:' + mob + 'px !important;width:auto !important;max-width:92vw !important;}}\n'
       + '/* end logo size override */';
   }
 
@@ -4336,7 +4342,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
         method: 'PUT',
         body: { message: 'HTR Studio: hero logo size (' + d + '/' + mob + ') for ' + a.id, content: eaB64Encode(html), sha: f.sha }
       });
-      $('eaLogoStatus').textContent = 'Saved and live. Give GitHub Pages a minute, then hard-refresh the site.';
+      $('eaLogoStatus').textContent = 'Saved to ' + a.name + '\u2019s site. Give GitHub Pages a minute, then refresh it.';
       toast('Logo size updated on ' + a.name + "'s site");
     } catch (e) {
       $('eaLogoStatus').textContent = '';
