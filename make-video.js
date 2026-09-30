@@ -62,7 +62,7 @@
   const S = {
     songs: null, song: null, lines: [], total: 0, cfg: clone(DEF), bg: { '16': [], '9': [] }, end: { '16': null, '9': null },
     fmt: '16', move: 'all', pick: -1, shown: -1, dir: null, dirFiles: [], lyricsOn: true, out: '16', rec: null, dirty: false,
-    hits: [], block: null, drag: null, seeking: false, audioName: '', ev: [], sel: null, tsDirty: false, tsHist: []
+    hits: [], block: null, drag: null, seeking: false, audioName: '', ev: [], sel: null, tsDirty: false, tsHist: [], hooks: []
   };
   const audio = new Audio(); audio.crossOrigin = 'anonymous'; audio.preload = 'auto';
   let AC = null, monGain = null, mdest = null, cv = null, cx = null, built = false;
@@ -312,11 +312,17 @@
     const set = new Set([S.fmt]); if (S.rec) S.rec.list.forEach((r) => set.add(r.fmt));
     syncVideos(Array.from(set), t, playing);
     if (S.rec) {
-      S.rec.list.forEach((r) => drawFrame(r.ctx, r.fmt, t, 1, false, S.rec.lyrics));
-      const lim = S.rec.limit || S.total;
-      $('mvProg').firstChild.style.width = clamp(t / lim * 100, 0, 100) + '%';
-      $('mvRenderMsg').textContent = 'Recording ' + fmtS(t) + ' / ' + fmtS(lim) + ' \u2014 you can switch windows, just don\u2019t close this tab.';
-      if (t >= lim - 0.02) finishRender();
+      const R = S.rec, from = R.from || 0, lim = R.limit || (S.total - from), el = t - from;
+      R.list.forEach((r) => { drawFrame(r.ctx, r.fmt, t, 1, false, R.lyrics); if (R.fade) fadeBlack(r.ctx, r.fmt, el, lim); });
+      const pct = clamp(el / lim * 100, 0, 100) + '%';
+      $('mvProg').firstChild.style.width = pct; if ($('hkProg')) $('hkProg').firstChild.style.width = pct;
+      const msg = (R.label ? R.label + ' \u2014 ' : '') + 'Recording ' + fmtS(el) + ' / ' + fmtS(lim) + ' \u2014 you can switch windows, just don\u2019t close this tab.';
+      $('mvRenderMsg').textContent = msg;
+      if (R.label && $('hkNow')) $('hkNow').textContent = msg;
+      if (el >= lim - 0.02) finishRender();
+    } else if (H.play && (audio.paused || audio.currentTime >= H.play.end - 0.03)) {
+      if (!audio.paused) audio.pause();
+      H.play = null; hkRenderList();
     }
     drawFrame(cx, S.fmt, t, PREVIEW_SCALE, true, S.lyricsOn);
     if (S.total) {
@@ -324,6 +330,12 @@
       $('mvTime').textContent = fmtS(t) + ' / ' + fmtS(S.total);
     }
     markLine();
+    if (H.mode === 'hooks') hkDraw();
+  }
+  // hooks end on a short fade to black (the audio fades with it)
+  function fadeBlack(ctx, fmt, el, lim) {
+    const a = clamp((el - (lim - 0.6)) / 0.6, 0, 1); if (a <= 0) return;
+    const [W, H2] = SIZES[fmt]; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = a; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H2); ctx.globalAlpha = 1;
   }
 
 
@@ -499,6 +511,29 @@
   .mv-go{width:100%;font-size:19px !important;padding:14px !important;margin-top:8px;font-family:'Bebas Neue',sans-serif;letter-spacing:.05em}
   .mv-prog{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;margin-top:10px} .mv-prog>div{height:100%;width:0;background:var(--red)}
   .mv-card select{padding:8px 10px;font-size:14px}
+  .mv-tabs{display:flex;gap:4px;margin:4px 0 0;border-bottom:1px solid var(--line)}
+  .mv-tabs button{background:none;color:var(--muted);padding:8px 14px;font-size:14px;font-weight:600;border-radius:8px 8px 0 0;border:1px solid transparent;border-bottom:none;margin-bottom:-1px}
+  .mv-tabs button.on{color:var(--cream);background:var(--panel);border-color:var(--line)}
+  .mv-left.hk{position:static !important}
+  .mv-left.hk #mvCanvas{width:min(100%, calc(46vh * 1.7778))}
+  .mv-left.hk #mvCanvas.v{width:auto;height:46vh}
+  .hk-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0 8px}
+  .hk-sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+  .hk-tl{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0b0907}
+  #hkCanvas{display:block;width:100%;touch-action:none;user-select:none}
+  .hk-tips{margin:4px 2px 8px} .hk-tips summary{cursor:pointer;color:var(--warn);font-size:13px} .hk-tips div{margin-top:4px}
+  .hk-list{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+  .hk-row{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--line);font-size:13.5px;cursor:pointer}
+  .hk-row:hover{background:var(--panel2)} .hk-row.on{background:#2c1d12;outline:1px solid var(--warn);outline-offset:-1px} .hk-row.off{opacity:.5}
+  .hk-dot{width:11px;height:11px;border-radius:3px;flex:none}
+  .hk-name{min-width:92px}
+  .hk-t{width:68px !important;padding:4px 6px !important;font-family:monospace;font-size:13px !important;text-align:center;color:var(--warn)}
+  .hk-end{min-width:62px;font-family:monospace}
+  .hk-len{width:62px !important;padding:3px 4px !important;font-size:12.5px !important;text-align:center}
+  .hk-on{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);cursor:pointer;margin-left:auto} .hk-on input{width:auto}
+  .hk-made{color:var(--ok);font-size:12px;min-width:50px}
+  .hk-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  .hk-foot .mv-chk{margin:0}
   `;
   const seg = (g, opts) => '<div class="mv-seg" data-g="' + g + '">' + opts.map((o) => '<button data-v="' + o[0] + '">' + o[1] + '</button>').join('') + '</div>';
   const slider = (k) => { const d = SLIDERS[k]; return '<div class="mv-sl"><div class="mv-sll"><span>' + d[0] + '</span><span data-show="' + k + '"></span></div><input type="range" data-k="' + k + '" min="' + d[1] + '" max="' + d[2] + '" step="' + d[3] + '"></div>'; };
@@ -532,6 +567,8 @@
           <div class="mv-transport"><button class="mv-pp" id="mvPP">&#9654;</button><input type="range" id="mvSeek" min="0" max="1000" value="0"><span id="mvTime" class="mv-time">0:00 / 0:00</span></div>
         </div>
         <div class="mv-dim" style="margin:7px 2px">Drag the lyrics on the frame to move them &middot; click a word to stress it &middot; Space = play/pause.</div>
+        <div class="mv-tabs"><button class="on" data-mvtab="lines">Lyric lines</button><button data-mvtab="hooks">&#9986; Hooks <span id="hkCount"></span></button></div>
+        <div id="mvLinesPane">
         <div class="mv-tsbar hidden" id="mvTsBar">
           <button class="btn btn-ghost mv-sm" id="mvAddLine" title="Add a new lyric line at the current playhead">+ Line at playhead</button>
           <button class="btn btn-ghost mv-sm" id="mvAddGap" title="Clear the screen at the current playhead (instrumental / breath)">+ Clear screen here</button>
@@ -541,6 +578,34 @@
         </div>
         <div class="mv-dim" style="margin:6px 2px 0">Fix a line right here: edit the time or the words and press Enter. To re-time by ear, click the line, play, and press <b>Enter</b> the moment it’s sung (&#9201; does the same). Changes show in the preview immediately; <b>Save lyric changes</b> writes them to the song’s timestamps.</div>
         <div id="mvLines" class="mv-lines"></div>
+        </div>
+        <div id="mvHooksPane" class="hidden">
+          <div class="hk-bar">
+            <button class="btn btn-ghost mv-sm" data-hkadd="quick" title="Add a 15-second hook at the playhead"><span class="hk-sw" style="background:#4cd08a"></span>+ Quick 15s</button>
+            <button class="btn btn-ghost mv-sm" data-hkadd="standard" title="Add a 30-second hook at the playhead"><span class="hk-sw" style="background:#ff6a4d"></span>+ Standard 30s</button>
+            <button class="btn btn-ghost mv-sm" data-hkadd="extended" title="Add a 45-60 second hook at the playhead"><span class="hk-sw" style="background:#58b7ff"></span>+ Extended 45&ndash;60s</button>
+            <button class="btn btn-blue mv-sm" id="hkSuggest" title="Pick starting spots from the chorus markers, repeated lines and the loud parts">&#10024; Suggest hooks</button>
+          </div>
+          <div class="hk-tl"><canvas id="hkCanvas"></canvas></div>
+          <div class="mv-dim" style="margin:6px 2px">Click the waveform to jump there &middot; drag a bar to move it (it snaps to lyric lines &mdash; hold <b>Shift</b> to place it freely) &middot; drag the right edge of an Extended to lengthen it &middot; &#9654; plays just that hook &middot; arrow keys nudge the selected hook, Delete removes it.</div>
+          <details class="hk-tips"><summary>How to pick a good hook</summary>
+            <div class="mv-dim">Start right on the line people will sing back &mdash; usually the chorus. The first second decides whether someone keeps watching, so skip slow intros and start on a word or a hit, not a breath.
+            <b>Quick</b> = the one catchiest line or two. <b>Standard</b> = one full chorus (the everyday post). <b>Extended</b> = the build into the chorus and the chorus itself.
+            Make several from different spots and post them over a few weeks; the ones that get watched to the end tell you which part of the song is the real hook.</div></details>
+          <div id="hkList" class="hk-list"></div>
+          <div class="hk-foot">
+            <label class="mv-chk"><input type="checkbox" id="hk16" checked> 16:9</label>
+            <label class="mv-chk"><input type="checkbox" id="hk9" checked> 9:16</label>
+            <label class="mv-chk" title="Sound and picture fade out over the last second"><input type="checkbox" id="hkFade" checked> Fade out at the end</label>
+            <span style="flex:1"></span>
+            <button class="btn btn-ghost mv-sm" id="hkSave">Save hooks</button>
+            <button class="btn btn-red mv-sm" id="hkGo">&#127916; Make hooks</button>
+            <button class="btn btn-ghost mv-sm hidden" id="hkCancel">Stop</button>
+          </div>
+          <div class="mv-prog hidden" id="hkProg"><div></div></div>
+          <div class="mv-dim" id="hkNow" style="margin-top:6px"></div>
+          <div class="mv-dim" id="hkMsg" style="margin-top:4px">Uses this song&rsquo;s backgrounds and lyric look. Both sizes record at the same time, in real time, into a <b>Hooks</b> folder inside the song folder.</div>
+        </div>
       </div>
       <div>
         <div class="card mv-card">
@@ -916,7 +981,8 @@
     const song = S.songs.find((s) => s.id === id); if (!song) return;
     const b = B();
     audio.pause(); allItems().forEach((it) => { if (it.el && it.el.pause) it.el.pause(); });
-    Object.assign(S, { song: song, lines: [], pick: -1, shown: -1, cfg: clone(DEF), bg: { '16': [], '9': [] }, end: { '16': null, '9': null }, dirty: false, total: 0 });
+    Object.assign(S, { song: song, lines: [], pick: -1, shown: -1, cfg: clone(DEF), bg: { '16': [], '9': [] }, end: { '16': null, '9': null }, dirty: false, total: 0, hooks: [] });
+    H.sel = null; H.play = null; H.baseKey = '';
     $('mvSongName').textContent = '\u2014 ' + song.title;
     const src = dbx(b.audioOf(song));
     audio.src = src || ''; S.audioName = src ? nameOf(src) : '';
@@ -929,18 +995,21 @@
       const p = JSON.parse(b.b64decode(f.content));
       S.cfg = Object.assign(clone(DEF), p.cfg || {});
       ['16', '9'].forEach((k) => { S.bg[k] = ((p.bg && p.bg[k]) || []).map(itemFrom); S.end[k] = p.end && p.end[k] ? itemFrom(p.end[k]) : null; });
+      S.hooks = (Array.isArray(p.hooks) ? p.hooks : []).filter((h) => h && HK[h.type]).map((h) => Object.assign({ id: ++_uid, on: true }, h));
       bits.push([true, 'saved video setup loaded']);
     } catch (e) { bits.push([true, 'new video setup']); }
     S.statusBits = bits; showStatus();
     if (S.dirFiles.length) await afterFolder();
     renderLines(); renderBg(); renderEnd(); syncControls();
     ensureCurrentFont();
+    hkRenderList(); if (H.mode === 'hooks') { hkDraw(); hkAnalyze(); }
   }
   async function saveSetup() {
     if (!S.song) return toast('Pick a song first', true);
     const pack = (it) => (it ? { name: it.name, src: it.src || null, kind: it.kind, start: it.start == null ? null : Math.round(it.start * 10) / 10 } : null);
     const data = { version: 1, song: S.song.id, updated: new Date().toISOString(), cfg: S.cfg,
-      bg: { '16': S.bg['16'].map(pack), '9': S.bg['9'].map(pack) }, end: { '16': pack(S.end['16']), '9': pack(S.end['9']) } };
+      bg: { '16': S.bg['16'].map(pack), '9': S.bg['9'].map(pack) }, end: { '16': pack(S.end['16']), '9': pack(S.end['9']) },
+      hooks: S.hooks.map((h) => ({ type: h.type, start: h.start, len: h.len, n: h.n, on: h.on !== false, done: h.done || null })) };
     if (S.tsDirty && !(await saveTimestamps(true))) return;
     try {
       $('mvSave').disabled = true;
@@ -967,36 +1036,38 @@
     const url = audio.currentSrc || audio.src;
     if (decoded.url === url && decoded.buf) return decoded.buf;
     setRenderMsg('Preparing the audio for recording\u2026');
-    const ab = await (await fetch(url)).arrayBuffer();
+    // no-store: a plain fetch can sit behind the preview player's own download of the same file (browser cache lock)
+    const ab = await (await fetch(url, url.startsWith('blob:') ? {} : { cache: 'no-store' })).arrayBuffer();
     const buf = await AC.decodeAudioData(ab);
     decoded = { url: url, buf: buf };
     return buf;
   }
   function setRenderMsg(t) { const e = $('mvRenderMsg'); if (e) e.textContent = t; }
   // position in the song while recording = the audio clock, the same clock the recorded sound runs on
-  function recTime() { const R = S.rec; return R && R.t0 != null ? Math.max(0, AC.currentTime - R.t0) : 0; }
+  function recTime() { const R = S.rec; if (!R) return 0; const f = R.from || 0; return R.t0 != null ? f + Math.max(0, AC.currentTime - R.t0) : f; }
   function togglePlay() {
     if (S.rec) return;
     if (!audio.src) return toast('No audio for this song yet', true);
-    ensureGraph();
+    ensureGraph(); H.play = null;
     if (audio.paused) audio.play().catch((e) => toast('Audio: ' + e.message, true)); else audio.pause();
   }
   function pickMime() {
     const c = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
     return (window.MediaRecorder && c.find((m) => MediaRecorder.isTypeSupported(m))) || '';
   }
-  async function makeVideo(limit) {
+  async function makeVideo(limit, opt) {
+    const O = opt || {};
     if (S.rec) return;
     if (!S.song) return toast('Pick a song first', true);
     if (!audio.src) return toast('No audio \u2014 add the MP3 link in Song Catalog, or pick the song folder and click the MP3', true);
     if (S.lyricsOn && !S.lines.length) return toast('No saved timestamps \u2014 stamp the lyrics first (or choose No lyrics)', true);
-    const fmts = S.out === 'both' ? ['16', '9'] : [S.out];
+    const fmts = O.fmts || (S.out === 'both' ? ['16', '9'] : [S.out]);
     const used = [].concat.apply([], fmts.map((f) => S.bg[f].concat(S.end[f] ? [S.end[f]] : [])));
     const broken = used.filter((it) => !it.url || it.err);
     if (broken.length) return toast('Fix these backgrounds first: ' + broken.map((b) => b.name).join(', '), true);
     if (used.some((it) => !it.ready)) return toast('Backgrounds are still loading \u2014 give it a few seconds', true);
     const empty = fmts.filter((f) => !S.bg[f].length);
-    if (empty.length && !confirm('No backgrounds for ' + empty.map((f) => (f === '16' ? '16:9' : '9:16')).join(' & ') + ' \u2014 that video will be black behind the lyrics. Keep going?')) return;
+    if (empty.length && !O.quiet && !confirm('No backgrounds for ' + empty.map((f) => (f === '16' ? '16:9' : '9:16')).join(' & ') + ' \u2014 that video will be black behind the lyrics. Keep going?')) return;
     const mime = pickMime(); if (!mime) return toast('This browser can\u2019t record video \u2014 use Chrome or Edge', true);
     ensureGraph(); await AC.resume();
     await ensureCurrentFont();
@@ -1004,36 +1075,43 @@
     let songBuf;
     try { songBuf = await decodeSong(); } catch (e) { setRenderMsg(''); return toast('Couldn\u2019t load the song audio for recording: ' + e.message, true); }
     if (!S.total) S.total = songBuf.duration;
-    syncVideos(fmts, 0, false); await wait(700); // let video layers land on frame 0
+    const from = clamp(O.from || 0, 0, Math.max(0, songBuf.duration - 1));
+    if (from) limit = Math.min(limit || songBuf.duration, songBuf.duration - from);
+    syncVideos(fmts, from, false); await wait(700); // let video layers land on the first frame
     const at = mdest.stream.getAudioTracks()[0], ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
     const list = fmts.map((f) => {
       const [W, H] = SIZES[f]; const c = document.createElement('canvas'); c.width = W; c.height = H;
-      const ctx = c.getContext('2d'); drawFrame(ctx, f, 0, 1, false, S.lyricsOn);
+      const ctx = c.getContext('2d'); drawFrame(ctx, f, from, 1, false, S.lyricsOn);
       const ms = new MediaStream([c.captureStream(30).getVideoTracks()[0], at.clone()]);
       const rec = new MediaRecorder(ms, { mimeType: mime, videoBitsPerSecond: 16000000, audioBitsPerSecond: 192000 });
       const r = { fmt: f, ctx: ctx, rec: rec, ms: ms, chunks: [], web: null };
       rec.ondataavailable = (e) => { if (e.data && e.data.size) r.chunks.push(e.data); };
-      if ($('mvWeb').checked) { // second recorder on the same frames: ~2.5 Mbps is plenty for lyric videos on a phone or laptop
+      if (!O.fmts && $('mvWeb').checked) { // second recorder on the same frames: ~2.5 Mbps is plenty for lyric videos on a phone or laptop
         const wr = new MediaRecorder(ms, { mimeType: mime, videoBitsPerSecond: 2500000, audioBitsPerSecond: 160000 });
         r.web = { rec: wr, chunks: [] };
         wr.ondataavailable = (e) => { if (e.data && e.data.size) r.web.chunks.push(e.data); };
       }
       return r;
     });
-    S.rec = { list: list, lyrics: S.lyricsOn, ext: ext, mime: mime, limit: limit || 0, hidden: false, t0: null };
+    S.rec = { list: list, lyrics: S.lyricsOn, ext: ext, mime: mime, limit: limit || 0, hidden: false, t0: null,
+      from: from, names: O.names || null, sub: O.sub || '', label: O.label || '', fade: !!O.fade };
     const node = AC.createBufferSource(); node.buffer = songBuf;
     const listen = AC.createGain(); listen.gain.value = $('mvListen').checked ? 1 : 0;
-    node.connect(mdest); node.connect(listen); listen.connect(AC.destination);
+    const vol = AC.createGain();                  // fades for clips that start / stop mid-song
+    node.connect(vol); vol.connect(mdest); vol.connect(listen); listen.connect(AC.destination);
     node.onended = () => { if (S.rec && S.rec.node === node) finishRender(); };
     S.rec.node = node; S.rec.listen = listen;
-    ['mvGo', 'mvTest', 'mvSave'].forEach((id) => { $(id).disabled = true; });
+    ['mvGo', 'mvTest', 'mvSave', 'hkGo'].forEach((id) => { if ($(id)) $(id).disabled = true; });
     $('mvCancel').classList.remove('hidden'); $('mvProg').classList.remove('hidden');
     list.forEach((r) => { r.rec.start(1000); if (r.web) r.web.rec.start(1000); });
     S.rec.acStart = AC.currentTime;
-    const t0 = AC.currentTime + 0.25;           // recorders are running; the song starts exactly here on the audio clock
-    node.start(t0); S.rec.t0 = t0;
+    const t0 = AC.currentTime + (from ? 0.15 : 0.25); // recorders are running; the song starts exactly here on the audio clock
+    if (from) { vol.gain.setValueAtTime(0, t0); vol.gain.linearRampToValueAtTime(1, t0 + 0.06); }
+    if (O.fade && S.rec.limit) { vol.gain.setValueAtTime(1, t0 + Math.max(0.1, S.rec.limit - 1)); vol.gain.linearRampToValueAtTime(0, t0 + S.rec.limit); }
+    node.start(t0, from); S.rec.t0 = t0;
     if (S.rec.limit) node.stop(t0 + S.rec.limit + 0.05);
     startClock();
+    return new Promise((res) => { S.rec.done = res; });
   }
   async function finishRender() {
     const R = S.rec; if (!R || R.finishing) return; R.finishing = true;
@@ -1048,19 +1126,22 @@
     audio.currentTime = 0;
     ['mvGo', 'mvTest', 'mvSave'].forEach((id) => { $(id).disabled = false; });
     $('mvCancel').classList.add('hidden'); $('mvProg').classList.add('hidden');
-    if (R.cancel) { $('mvRenderMsg').textContent = 'Render cancelled.'; return; }
+    if ($('hkNow')) $('hkNow').textContent = '';
+    if (R.cancel) { $('mvRenderMsg').textContent = 'Render cancelled.'; if (H.queue) H.queue.cancel = true; if (R.done) R.done({ cancel: true }); hkRenderList(); return; }
     const msgs = [];
     for (const r of R.list) {
       const blob = await withDuration(new Blob(r.chunks, { type: R.mime.split(';')[0] }), R.recorded);
-      const name = S.song.id + (R.lyrics ? '-lyric' : '') + '-' + (r.fmt === '16' ? '16x9' : '9x16') + (R.limit ? '-test' : '') + '.' + R.ext;
-      msgs.push(await saveBlob(blob, name) + ' <span class="mv-dim">(' + (blob.size / 1048576).toFixed(0) + ' MB)</span>');
+      const name = R.names ? R.names[r.fmt] + '.' + R.ext : S.song.id + (R.lyrics ? '-lyric' : '') + '-' + (r.fmt === '16' ? '16x9' : '9x16') + (R.limit ? '-test' : '') + '.' + R.ext;
+      msgs.push(await saveBlob(blob, name, R.sub) + ' <span class="mv-dim">(' + (blob.size / 1048576).toFixed(R.names ? 1 : 0) + ' MB)</span>');
       if (r.web && r.web.chunks.length) {
         const wb = await withDuration(new Blob(r.web.chunks, { type: R.mime.split(';')[0] }), R.recorded);
         msgs.push(await saveBlob(wb, name.replace(/(\.[a-z0-9]+)$/i, '-web$1')) + ' <span class="mv-dim">(' + (wb.size / 1048576).toFixed(0) + ' MB \u2014 website copy)</span>');
       }
     }
     $('mvRenderMsg').innerHTML = msgs.join('<br>') + (R.hidden ? '<br><span class="mv-warn">&#9888; This tab was hidden for part of the render. Give the video a quick watch \u2014 if a background video froze anywhere, re-render with the tab showing.</span>' : '');
-    toast(R.limit ? 'Test clip done' : 'Video done');
+    if (!R.names) toast(R.limit ? 'Test clip done' : 'Video done');
+    hkRenderList();
+    if (R.done) R.done({ cancel: false, msgs: msgs });
   }
   // Browsers record MP4 as a stream of fragments and leave the length in the header at 0, so players show no end
   // time and a stuck progress bar (Chrome even reports just the first fragment, ~3 s). Write the real length into the
@@ -1095,17 +1176,359 @@
       return new Blob([buf, blob.slice(headLen)], { type: blob.type });
     } catch (e) { console.warn('duration fix skipped', e); return blob; }
   }
-  async function saveBlob(blob, name) {
+  async function saveBlob(blob, name, sub) {
     if (S.dir) {
       try {
-        const fh = await S.dir.getFileHandle(name, { create: true }); const w = await fh.createWritable();
+        const dir = sub ? await S.dir.getDirectoryHandle(sub, { create: true }) : S.dir;
+        const fh = await dir.getFileHandle(name, { create: true }); const w = await fh.createWritable();
         await w.write(blob); await w.close();
-        return '&#10003; Saved <b>' + esc(name) + '</b> into ' + esc(S.dir.name);
+        return '&#10003; Saved <b>' + esc(name) + '</b> into ' + esc(S.dir.name + (sub ? '/' + sub : ''));
       } catch (e) { console.warn('folder save failed, downloading instead', e); }
     }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 120000);
     return '&#10003; Downloaded <b>' + esc(name) + '</b>';
+  }
+
+  // ---------- hooks: short clips for TikTok / Reels / Shorts, cut from the same render engine ----------
+  // A hook = { id, type, start, len, n, on, done }. Rendered straight from the song timeline (same backgrounds,
+  // lyrics and look as the full video), both frame sizes at once, saved into <song folder>/Hooks/.
+  const HK = {
+    quick: { name: 'Quick', short: 'Q', min: 15, max: 15, color: '#4cd08a', count: 8, gap: 6, ov: 0.5 },
+    standard: { name: 'Standard', short: 'S', min: 30, max: 30, color: '#ff6a4d', count: 4, gap: 10, ov: 0.5 },
+    extended: { name: 'Extended', short: 'E', min: 45, max: 60, color: '#58b7ff', count: 2, gap: 18, ov: 0.4 }
+  };
+  const HK_ORDER = ['quick', 'standard', 'extended'];
+  const SEC_COL = { chorus: '#9a7424', pre: '#2b6f69', post: '#80582c', verse: '#34507f', bridge: '#62428c', intro: '#3b3b3b', outro: '#3b3b3b', inst: '#4f5c30', other: '#4a4a4a' };
+  const H = { mode: 'lines', peaks: null, energy: null, forUrl: '', loading: false, sel: null, drag: null, play: null, queue: null, rects: [], base: null, baseKey: '', G: 74 };
+  const hkById = (id) => S.hooks.find((h) => h.id === +id);
+  const hkDone = (h) => !!(h.done && Math.abs(h.done.start - h.start) < 0.05 && h.done.len === h.len);
+  function hkTotal() { return S.total || H.dur || 0; }
+  function sectionsOf() {
+    const mk = S.ev.filter((e) => e.marker && !/^\[(gap|start|end)\]$/i.test(e.text)).sort((a, b) => a.t - b.t);
+    return mk.map((m, i) => ({ name: m.text.replace(/^\[|\]$/g, '').trim(), s: m.t, e: i + 1 < mk.length ? mk[i + 1].t : hkTotal() }));
+  }
+  function secKind(name) {
+    const n = String(name).toLowerCase();
+    if (/pre[\s-]?chorus|build|lift|climb/.test(n)) return 'pre';
+    if (/post[\s-]?chorus/.test(n)) return 'post';
+    if (/chorus|hook|refrain/.test(n)) return 'chorus';
+    if (/bridge|middle/.test(n)) return 'bridge';
+    if (/verse/.test(n)) return 'verse';
+    if (/intro/.test(n)) return 'intro';
+    if (/outro|coda|ending|fade/.test(n)) return 'outro';
+    if (/solo|instrumental|interlude|break|drop|riff/.test(n)) return 'inst';
+    return 'other';
+  }
+  // waveform peaks + loudness (0..1 per quarter second) from the decoded song
+  async function hkAnalyze() {
+    const url = audio.currentSrc || audio.src;
+    if (!S.song || !url || H.loading) return;
+    if (H.forUrl === url && H.energy) return;
+    H.loading = true; hkDraw();
+    const keep = $('mvRenderMsg') ? $('mvRenderMsg').innerHTML : '';
+    try {
+      ensureGraph();
+      const buf = await decodeSong();
+      const a = buf.getChannelData(0), b = buf.numberOfChannels > 1 ? buf.getChannelData(1) : a;
+      const N = 2400, per = Math.max(1, Math.floor(a.length / N)), peaks = new Float32Array(N);
+      for (let i = 0; i < N; i++) { let m = 0; for (let j = i * per, z = Math.min(a.length, j + per); j < z; j += 3) { const v = (Math.abs(a[j]) + Math.abs(b[j])) / 2; if (v > m) m = v; } peaks[i] = m; }
+      const win = Math.floor(buf.sampleRate * 0.25), M = Math.ceil(a.length / win), en = new Float32Array(M);
+      for (let i = 0; i < M; i++) { let s = 0, c = 0; for (let j = i * win, z = Math.min(a.length, j + win); j < z; j += 6) { const v = (a[j] + b[j]) / 2; s += v * v; c++; } en[i] = Math.sqrt(s / Math.max(1, c)); }
+      const srt = Array.from(en).sort((x, y) => x - y), lo = srt[Math.floor(M * 0.1)] || 0, hi = srt[Math.floor(M * 0.95)] || 1;
+      for (let i = 0; i < M; i++) en[i] = clamp((en[i] - lo) / Math.max(1e-6, hi - lo), 0, 1);
+      const pm = Math.max.apply(null, Array.from(peaks)) || 1;
+      for (let i = 0; i < N; i++) peaks[i] /= pm;
+      Object.assign(H, { peaks: peaks, energy: en, forUrl: url, dur: buf.duration });
+      if (!S.total) S.total = buf.duration;
+    } catch (e) { toast('Couldn’t read the song for the waveform: ' + e.message, true); }
+    if ($('mvRenderMsg')) $('mvRenderMsg').innerHTML = keep;
+    H.loading = false; H.baseKey = ''; hkDraw(); hkRenderList();
+  }
+  const enAt = (t) => (H.energy ? H.energy[clamp(Math.floor(t / 0.25), 0, H.energy.length - 1)] : 0.5);
+  function enMean(a, b) { let s = 0, c = 0; for (let t = a; t < b; t += 0.25) { s += enAt(t); c++; } return c ? s / c : 0; }
+  // where a hook may start: just ahead of each lyric line (so the first word isn't clipped) and on each section marker
+  function hkSnaps() {
+    const c = new Set();
+    S.lines.forEach((L) => c.add(Math.max(0, Math.round((L.start - 0.3) * 10) / 10)));
+    sectionsOf().forEach((s) => c.add(Math.round(s.s * 10) / 10));
+    return Array.from(c).sort((a, b) => a - b);
+  }
+  function hkSnap(t) {
+    let best = t, d = 0.9;
+    hkSnaps().forEach((s) => { if (Math.abs(s - t) < d) { d = Math.abs(s - t); best = s; } });
+    return best;
+  }
+  // "how chorus-like" each half second is: section markers first, repeated lyric lines as the fallback
+  function hkChorusMap() {
+    const T = hkTotal(), secs = sectionsOf(), key = (x) => String(x).toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim(), reps = {};
+    S.lines.forEach((L) => { const k = key(L.text); reps[k] = (reps[k] || 0) + 1; });
+    const KW = { chorus: 1, post: 0.75, pre: 0.55, bridge: 0.35, verse: 0.25, inst: 0.2, other: 0.3, intro: 0, outro: 0.1 };
+    const out = new Float32Array(Math.ceil(T * 2) + 2);
+    for (let i = 0; i < out.length; i++) {
+      const t = i / 2; let v = null;
+      secs.forEach((s) => { if (t >= s.s && t < s.e) v = KW[secKind(s.name)]; });
+      const L = S.lines.find((x) => t >= x.start && t < Math.min(x.end, x.start + S.cfg.maxHold));
+      const r = L ? reps[key(L.text)] : 0, rv = r >= 3 ? 0.9 : r === 2 ? 0.65 : L ? 0.25 : 0.1;
+      out[i] = v == null ? rv : Math.max(v, rv * 0.8);
+    }
+    return out;
+  }
+  // roughly when the singing of a line stops (last word + a beat), never past the next line
+  function vocalEnd(L) { const w = L.words.filter((x) => !x.br); return Math.min(L.end, (w.length ? w[w.length - 1].at : L.start) + 0.8); }
+  const midLine = (t) => S.lines.some((L) => t > L.start + 0.15 && t < vocalEnd(L));
+  // starting or ending in the middle of a sung line sounds chopped
+  function hkEndScore(e) {
+    if (e > hkTotal() - 0.2) return -0.3;
+    return midLine(e) ? -0.15 : 0.1;
+  }
+  function hkScore(s, len, cm, secStarts, first, hookStarts) {
+    const e = s + len; if (s < 0 || e > hkTotal() + 0.01) return -9;
+    let c = 0, n = 0; for (let t = s; t < e; t += 0.5) { c += cm[Math.floor(t * 2)] || 0; n++; } c /= Math.max(1, n);
+    let sc = 0.45 * c + 0.3 * enMean(s, e) + 0.25 * enMean(s, s + 2) + hkEndScore(e);
+    if (midLine(s)) sc -= 0.2;
+    if (s < first - 1.5) sc -= 0.35;                                   // a slow intro gets scrolled past
+    if (secStarts.some((x) => Math.abs(x - s) < 0.4)) sc += 0.08;       // starting on a section edge feels intentional
+    if (hookStarts.some((x) => Math.abs(x - s) < 0.5)) sc += 0.15;      // ...and on the chorus itself even more
+    return sc;
+  }
+  async function hkSuggest() {
+    if (!S.song) return toast('Pick a song first', true);
+    if (!S.lines.length) return toast('This song needs saved timestamps first — that’s how hooks find the chorus', true);
+    if (S.hooks.length && !confirm('Replace your ' + S.hooks.length + ' hook' + (S.hooks.length > 1 ? 's' : '') + ' with fresh suggestions?')) return;
+    await hkAnalyze();
+    const cm = hkChorusMap(), secs = sectionsOf(), secStarts = secs.map((s) => s.s), first = S.lines[0].start, out = [];
+    const hookStarts = secs.filter((s) => secKind(s.name) === 'chorus').map((s) => { const L = S.lines.find((x) => x.start >= s.s - 0.1); return L ? L.start - 0.3 : s.s; });
+    HK_ORDER.forEach((type) => {
+      const d = HK[type], scored = [], cs = new Set(hkSnaps());
+      // also try clips that END cleanly just after a line finishes
+      S.lines.forEach((L) => { const s = Math.round((vocalEnd(L) + 0.4 - d.min) * 10) / 10; if (s >= 0) cs.add(s); });
+      const cands = Array.from(cs);
+      cands.forEach((s) => {
+        let best = null;
+        for (let L = d.min; L <= d.max; L += 1) { const v = hkScore(s, L, cm, secStarts, first, hookStarts); if (!best || v > best.v) best = { s: s, len: L, v: v }; }
+        if (best && best.v > -5) scored.push(best);
+      });
+      scored.sort((a, b) => b.v - a.v);
+      const chosen = [], floor = scored.length ? scored[0].v - 0.35 : 0;   // only spots nearly as good as the best one
+      for (const c of scored) {
+        if (chosen.length >= d.count || c.v < floor) break;
+        const clash = chosen.some((x) => Math.abs(x.s - c.s) < d.gap || (Math.min(x.s + x.len, c.s + c.len) - Math.max(x.s, c.s)) / Math.min(x.len, c.len) > d.ov);
+        if (!clash) chosen.push(c);
+      }
+      chosen.sort((a, b) => a.s - b.s).forEach((c, i) => out.push({ id: ++_uid, type: type, start: c.s, len: c.len, n: i + 1, on: true }));
+    });
+    S.hooks = out; S.dirty = true; H.sel = out.length ? out[0].id : null;
+    hkRenderList(); hkDraw();
+    toast(out.length ? out.length + ' hooks suggested — drag them around, then Make hooks' : 'Couldn’t find good spots — add hooks by hand', !out.length);
+  }
+  function hkAdd(type) {
+    if (!S.song) return toast('Pick a song first', true);
+    const d = HK[type], T = hkTotal(); if (!T) return toast('The song is still loading', true);
+    const len = d.min, start = clamp(hkSnap(Math.max(0, (audio.currentTime || 0) - 0.3)), 0, Math.max(0, T - len));
+    const n = S.hooks.filter((h) => h.type === type).reduce((m, h) => Math.max(m, h.n || 0), 0) + 1;
+    const h = { id: ++_uid, type: type, start: Math.round(start * 10) / 10, len: len, n: n, on: true };
+    S.hooks.push(h); S.dirty = true; H.sel = h.id;
+    hkRenderList(); hkDraw();
+  }
+  function hkSet(h, start, len) {
+    const T = hkTotal(), d = HK[h.type];
+    if (len != null) h.len = clamp(Math.round(len), d.min, d.max);
+    if (start != null) h.start = Math.round(clamp(start, 0, Math.max(0, T - h.len)) * 10) / 10;
+    if (h.start + h.len > T) h.start = Math.max(0, Math.round((T - h.len) * 10) / 10);
+    S.dirty = true;
+  }
+  function hkPlay(id) {
+    const h = hkById(id); if (!h) return;
+    if (H.play && H.play.id === h.id && !audio.paused) { audio.pause(); H.play = null; return; }
+    if (!audio.src) return toast('No audio for this song yet', true);
+    ensureGraph(); H.sel = h.id; H.play = { id: h.id, end: h.start + h.len };
+    audio.currentTime = h.start; audio.play().catch((e) => toast('Audio: ' + e.message, true));
+    hkRenderList();
+  }
+  // ----- timeline -----
+  function hkLanes() {
+    const lanes = {};
+    HK_ORDER.forEach((type) => {
+      const rows = [];
+      S.hooks.filter((h) => h.type === type).sort((a, b) => a.start - b.start).forEach((h) => {
+        let r = rows.findIndex((end) => end <= h.start + 0.01); if (r < 0) { r = rows.length; rows.push(0); }
+        rows[r] = h.start + h.len; h._row = r;
+      });
+      lanes[type] = Math.max(1, rows.length);
+    });
+    return lanes;
+  }
+  function hkGeom(W) {
+    const lanes = hkLanes(), RH = 15, top = { band: 0, wave: 20 }, waveH = 64;
+    let y = top.wave + waveH + 8; const lane = {};
+    HK_ORDER.forEach((t) => { lane[t] = { y: y, h: lanes[t] * RH + 4 }; y += lane[t].h + 5; });
+    return { W: W, H: y + 2, band: 18, waveY: top.wave, waveH: waveH, lane: lane, RH: RH };
+  }
+  function hkDraw() {
+    const c = $('hkCanvas'); if (!c || H.mode !== 'hooks' || !built) return;
+    const T = hkTotal(), dpr = window.devicePixelRatio || 1, W = Math.max(300, c.parentElement.clientWidth), g = hkGeom(W);
+    if (c.width !== Math.round(W * dpr) || c.height !== Math.round(g.H * dpr)) { c.width = Math.round(W * dpr); c.height = Math.round(g.H * dpr); c.style.height = g.H + 'px'; H.baseKey = ''; }
+    const x = c.getContext('2d'), G = H.G, X = (t) => G + (T ? t / T : 0) * (W - G - 6);
+    x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // static layer: section band + waveform + line ticks, cached until something changes
+    const key = [W, g.H, T, H.forUrl, S.ev.length, S.ev.map((e) => e.t + e.text).join('|').length, S.lines.length].join(':');
+    if (H.baseKey !== key) {
+      const b = H.base || (H.base = document.createElement('canvas'));
+      b.width = c.width; b.height = c.height; const bx = b.getContext('2d'); bx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      bx.fillStyle = '#0b0907'; bx.fillRect(0, 0, W, g.H);
+      bx.font = '600 10px system-ui,sans-serif'; bx.textBaseline = 'middle';
+      bx.fillStyle = '#8f8676'; bx.fillText('SECTIONS', 6, g.band / 2 + 1); bx.fillText('SONG', 6, g.waveY + g.waveH / 2);
+      HK_ORDER.forEach((t) => { bx.fillStyle = HK[t].color; bx.fillText(HK[t].name.toUpperCase(), 6, g.lane[t].y + g.lane[t].h / 2); });
+      if (T) {
+        const secs = sectionsOf();
+        if (!secs.length) { bx.fillStyle = '#6d6556'; bx.fillText('no [section] markers — add some in the timestamps for colored sections', G + 4, g.band / 2 + 1); }
+        secs.forEach((s) => {
+          const k = secKind(s.name), x0 = X(s.s), x1 = X(s.e);
+          bx.fillStyle = SEC_COL[k]; bx.fillRect(x0, 1, Math.max(1, x1 - x0 - 1), g.band - 2);
+          bx.fillStyle = 'rgba(255,255,255,.12)'; bx.fillRect(x0, g.waveY, Math.max(1, x1 - x0 - 1), g.waveH); // faint tint behind the wave
+          bx.fillStyle = SEC_COL[k]; bx.globalAlpha = 0.28; bx.fillRect(x0, g.waveY, Math.max(1, x1 - x0 - 1), g.waveH); bx.globalAlpha = 1;
+          if (x1 - x0 > 24) { bx.save(); bx.beginPath(); bx.rect(x0, 0, x1 - x0 - 2, g.band); bx.clip(); bx.fillStyle = '#fff'; bx.fillText(s.name, x0 + 4, g.band / 2 + 1); bx.restore(); }
+        });
+        bx.strokeStyle = 'rgba(230,189,82,.22)'; bx.lineWidth = 1;
+        S.lines.forEach((L) => { const lx = Math.round(X(L.start)) + 0.5; bx.beginPath(); bx.moveTo(lx, g.waveY); bx.lineTo(lx, g.waveY + 5); bx.stroke(); });
+        if (H.peaks) {
+          const mid = g.waveY + g.waveH / 2, P = H.peaks, n = P.length;
+          bx.fillStyle = '#cfc4ae';
+          for (let px = G; px < W - 6; px++) {
+            const i0 = Math.floor((px - G) / (W - G - 6) * n), i1 = Math.max(i0 + 1, Math.floor((px + 1 - G) / (W - G - 6) * n));
+            let m = 0; for (let i = i0; i < i1 && i < n; i++) if (P[i] > m) m = P[i];
+            const h = Math.max(1, m * (g.waveH / 2 - 3)); bx.fillRect(px, mid - h, 1, h * 2);
+          }
+        } else { bx.fillStyle = '#8f8676'; bx.fillText(H.loading ? 'Reading the song…' : 'Waveform loads when the song audio is ready', G + 6, g.waveY + g.waveH / 2); }
+      }
+      HK_ORDER.forEach((t) => { bx.fillStyle = 'rgba(255,255,255,.035)'; bx.fillRect(G, g.lane[t].y, W - G - 6, g.lane[t].h); });
+      H.baseKey = key;
+    }
+    x.clearRect(0, 0, W, g.H); x.drawImage(H.base, 0, 0, W, g.H);
+    if (!T) return;
+    // selected hook: tint the part of the song it covers
+    const sel = hkById(H.sel);
+    if (sel) { x.fillStyle = HK[sel.type].color; x.globalAlpha = 0.16; x.fillRect(X(sel.start), 0, X(sel.start + sel.len) - X(sel.start), g.waveY + g.waveH); x.globalAlpha = 1; }
+    H.rects = [];
+    x.font = '700 10.5px system-ui,sans-serif'; x.textBaseline = 'middle';
+    S.hooks.forEach((h) => {
+      const d = HK[h.type], L = g.lane[h.type], y0 = L.y + 2 + (h._row || 0) * g.RH, x0 = X(h.start), x1 = X(h.start + h.len), on = h.id === H.sel;
+      x.globalAlpha = h.on === false ? 0.35 : 1;
+      x.fillStyle = d.color; x.fillRect(x0, y0, Math.max(3, x1 - x0), g.RH - 3);
+      if (on) { x.strokeStyle = '#fff'; x.lineWidth = 2; x.strokeRect(x0 + 1, y0 + 1, Math.max(3, x1 - x0) - 2, g.RH - 5); }
+      if (d.max > d.min) { x.fillStyle = 'rgba(0,0,0,.45)'; x.fillRect(x1 - 4, y0 + 2, 2, g.RH - 7); }
+      x.fillStyle = '#111'; const lab = (x1 - x0 > 70 ? d.name + ' ' : d.short) + h.n + (hkDone(h) ? ' ✓' : '');
+      x.save(); x.beginPath(); x.rect(x0, y0, x1 - x0, g.RH); x.clip(); x.fillText(lab, x0 + 4, y0 + (g.RH - 3) / 2 + 1); x.restore();
+      x.globalAlpha = 1;
+      H.rects.push({ id: h.id, x0: x0, x1: Math.max(x0 + 3, x1), y0: y0, y1: y0 + g.RH - 3, grow: d.max > d.min });
+    });
+    const t = S.rec ? recTime() : (audio.currentTime || 0), px = Math.round(X(t)) + 0.5;
+    x.strokeStyle = '#ff3b30'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(px, 0); x.lineTo(px, g.H); x.stroke();
+    H.geom = g; H.X = X; H.tAt = (cx) => clamp((cx - G) / (W - G - 6), 0, 1) * T;
+  }
+  function hkPointer(e) {
+    const c = $('hkCanvas'), r = c.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    if (e.type === 'pointerdown') {
+      if (!H.tAt) return;
+      const hit = H.rects.slice().reverse().find((q) => mx >= q.x0 - 2 && mx <= q.x1 + 2 && my >= q.y0 && my <= q.y1);
+      if (hit) {
+        const h = hkById(hit.id); H.sel = h.id;
+        const grow = hit.grow && mx >= hit.x1 - 7;
+        H.drag = { id: h.id, grow: grow, off: H.tAt(mx) - h.start, moved: false, x: mx };
+        c.setPointerCapture(e.pointerId); hkRenderList(); hkDraw(); return;
+      }
+      if (my < H.geom.waveY + H.geom.waveH + 4) { audio.currentTime = H.tAt(mx); H.play = null; H.drag = { seek: true }; c.setPointerCapture(e.pointerId); hkDraw(); }
+      return;
+    }
+    if (e.type === 'pointermove') {
+      if (!H.drag) {
+        const over = H.rects.find((q) => mx >= q.x0 - 2 && mx <= q.x1 + 2 && my >= q.y0 && my <= q.y1);
+        c.style.cursor = over ? (over.grow && mx >= over.x1 - 7 ? 'ew-resize' : 'grab') : (my < (H.geom ? H.geom.waveY + H.geom.waveH + 4 : 0) ? 'pointer' : 'default');
+        return;
+      }
+      if (H.drag.seek) { audio.currentTime = H.tAt(mx); hkDraw(); return; }
+      const h = hkById(H.drag.id); if (!h) return;
+      if (Math.abs(mx - H.drag.x) > 2) H.drag.moved = true;
+      if (!H.drag.moved) return;
+      if (H.drag.grow) hkSet(h, null, H.tAt(mx) - h.start);
+      else { let s = H.tAt(mx) - H.drag.off; if (!e.shiftKey) s = hkSnap(s); hkSet(h, s, null); }
+      hkDraw(); hkRow(h);
+      if (!H.drag.grow && audio.paused) audio.currentTime = h.start; // the preview follows the hook's first frame
+      return;
+    }
+    if (e.type === 'pointerup' || e.type === 'pointercancel') {
+      const d = H.drag; H.drag = null;
+      if (d && !d.seek && d.moved) { hkRenderList(); hkDraw(); }
+    }
+  }
+  // ----- list -----
+  function hkRowHtml(h) {
+    const d = HK[h.type], lens = [];
+    if (d.max > d.min) for (let L = d.min; L <= d.max; L += 5) lens.push(L);
+    if (lens.length && lens.indexOf(h.len) < 0) { lens.push(h.len); lens.sort((a, b) => a - b); }
+    return '<div class="hk-row' + (h.id === H.sel ? ' on' : '') + (h.on === false ? ' off' : '') + '" data-hk="' + h.id + '">'
+      + '<span class="hk-dot" style="background:' + d.color + '"></span><b class="hk-name">' + d.name + ' ' + h.n + '</b>'
+      + '<input class="hk-t" data-hkt="' + h.id + '" value="' + fmtT(h.start) + '" title="Start (M:SS.s) — type and press Enter">'
+      + '<span class="mv-dim hk-end">→ ' + fmtT(h.start + h.len) + '</span>'
+      + (lens.length ? '<select class="hk-len" data-hklen="' + h.id + '">' + lens.map((L) => '<option value="' + L + '"' + (L === h.len ? ' selected' : '') + '>' + L + 's</option>').join('') + '</select>' : '<span class="mv-dim hk-len">' + h.len + 's</span>')
+      + '<button class="mv-ib" data-hkn="' + h.id + ',-0.5" title="0.5s earlier">&minus;</button><button class="mv-ib" data-hkn="' + h.id + ',0.5" title="0.5s later">+</button>'
+      + '<button class="mv-ib hk-play" data-hkplay="' + h.id + '" title="Play just this hook">' + (H.play && H.play.id === h.id && !audio.paused ? '&#10074;&#10074;' : '&#9654;') + '</button>'
+      + '<label class="hk-on" title="Include when you hit Make hooks"><input type="checkbox" data-hkon="' + h.id + '"' + (h.on === false ? '' : ' checked') + '> make</label>'
+      + '<span class="hk-made">' + (hkDone(h) ? '&#10003; made' : '') + '</span>'
+      + '<button class="mv-ib" data-hkdel="' + h.id + '" title="Delete this hook">&#10005;</button></div>';
+  }
+  function hkRow(h) { const r = document.querySelector('#hkList [data-hk="' + h.id + '"]'); if (r && document.activeElement && !r.contains(document.activeElement)) r.outerHTML = hkRowHtml(h); }
+  function hkRenderList() {
+    const box = $('hkList'); if (!box) return;
+    const fm = ['16', '9'].filter((f) => $(f === '16' ? 'hk16' : 'hk9').checked).length, on = S.hooks.filter((h) => h.on !== false).length;
+    $('hkCount').textContent = S.hooks.length ? '(' + S.hooks.length + ')' : '';
+    if ($('hkGo') && !H.queue) { $('hkGo').textContent = on ? '🎬 Make ' + on + ' hook' + (on > 1 ? 's' : '') + (fm ? ' (' + on * fm + ' files)' : '') : '🎬 Make hooks'; $('hkGo').disabled = !on || !fm || !!S.rec; }
+    if (!S.song) { box.innerHTML = '<div class="mv-dim" style="padding:10px">Pick a song above.</div>'; return; }
+    if (!S.hooks.length) { box.innerHTML = '<div class="mv-dim" style="padding:10px">No hooks yet. Hit <b>Suggest hooks</b> for a starting set, or play the song and press <b>+ Quick / + Standard / + Extended</b> where you want one.</div>'; return; }
+    const keep = box.scrollTop;
+    box.innerHTML = HK_ORDER.map((type) => S.hooks.filter((h) => h.type === type).sort((a, b) => a.start - b.start).map(hkRowHtml).join('')).join('');
+    box.scrollTop = keep;
+  }
+  function hkMode(m) {
+    H.mode = m;
+    document.querySelectorAll('#view-mkvideo [data-mvtab]').forEach((b) => b.classList.toggle('on', b.dataset.mvtab === m));
+    $('mvLinesPane').classList.toggle('hidden', m !== 'lines'); $('mvHooksPane').classList.toggle('hidden', m !== 'hooks');
+    document.querySelector('#view-mkvideo .mv-left').classList.toggle('hk', m === 'hooks');
+    if (m === 'hooks') { hkRenderList(); H.baseKey = ''; hkDraw(); hkAnalyze(); }
+  }
+  async function hkMake() {
+    if (S.rec || H.queue) return;
+    const list = S.hooks.filter((h) => h.on !== false).sort((a, b) => HK_ORDER.indexOf(a.type) - HK_ORDER.indexOf(b.type) || a.start - b.start);
+    const fmts = ['16', '9'].filter((f) => $(f === '16' ? 'hk16' : 'hk9').checked);
+    if (!list.length) return toast('Tick at least one hook to make', true);
+    if (!fmts.length) return toast('Pick 16:9, 9:16 or both', true);
+    const empty = fmts.filter((f) => !S.bg[f].length);
+    if (empty.length && !confirm('No backgrounds for ' + empty.map((f) => (f === '16' ? '16:9' : '9:16')).join(' & ') + ' — those hooks will be black behind the lyrics. Keep going?')) return;
+    if (!S.dir && !confirm('No song folder picked, so all ' + list.length * fmts.length + ' files will download one at a time.\n\nTip: Cancel, click “Pick song folder” at the top, and they’ll save into a Hooks folder inside it. Download anyway?')) return;
+    const secs = list.reduce((a, h) => a + h.len, 0);
+    H.queue = { cancel: false, made: 0 };
+    $('hkGo').disabled = true; $('hkCancel').classList.remove('hidden'); $('hkProg').classList.remove('hidden');
+    $('hkMsg').innerHTML = 'Making ' + list.length + ' hooks — about ' + Math.ceil((secs + list.length * 2) / 60) + ' min (they record in real time, both sizes at once).';
+    const log = [];
+    for (let i = 0; i < list.length; i++) {
+      if (H.queue.cancel) break;
+      const h = list[i], d = HK[h.type], names = {};
+      fmts.forEach((f) => { names[f] = S.song.id + '-hook-' + h.type + '-' + h.n + '-' + (f === '16' ? '16x9' : '9x16'); });
+      const res = await makeVideo(h.len, { from: h.start, fmts: fmts, names: names, sub: 'Hooks', fade: $('hkFade').checked, label: 'Hook ' + (i + 1) + ' of ' + list.length + ' · ' + d.name + ' ' + h.n, quiet: true });
+      if (!res || res.cancel) break;
+      h.done = { start: h.start, len: h.len }; S.dirty = true; H.queue.made++;
+      log.push('<b>' + d.name + ' ' + h.n + '</b>: ' + res.msgs.join(' &middot; '));
+      $('hkMsg').innerHTML = log.join('<br>');
+      hkRenderList(); hkDraw();
+    }
+    const made = H.queue.made, stopped = H.queue.cancel || made < list.length;
+    H.queue = null;
+    $('hkCancel').classList.add('hidden'); $('hkProg').classList.add('hidden');
+    hkRenderList();
+    $('hkMsg').innerHTML = (stopped ? 'Stopped after ' + made + ' of ' + list.length + ' hooks.' : '&#10003; All ' + made + ' hooks made' + (S.dir ? ' — they’re in <b>' + esc(S.dir.name) + '/Hooks</b>.' : '.')) + (log.length ? '<br>' + log.join('<br>') : '')
+      + (made ? '<br><span class="mv-dim">Hit <b>Save hooks</b> so their spots (and the ✓ made marks) are remembered.</span>' : '');
+    toast(stopped ? 'Hooks stopped' : 'Hooks done');
   }
 
   // ---------- wiring ----------
@@ -1223,12 +1646,43 @@
       if (e.key === 'Enter' && e.target.matches('input')) { e.preventDefault(); e.stopPropagation(); e.target.blur(); }
       if (e.key === 'Escape' && e.target.matches('input')) { const ev = evById(e.target.dataset.evt || e.target.dataset.evx); if (ev) e.target.value = e.target.dataset.evt ? fmtT(ev.t) : ev.text; e.target.blur(); }
     });
+    document.querySelectorAll('#view-mkvideo [data-mvtab]').forEach((b) => { b.onclick = () => hkMode(b.dataset.mvtab); });
+    document.querySelectorAll('#view-mkvideo [data-hkadd]').forEach((b) => { b.onclick = () => hkAdd(b.dataset.hkadd); });
+    $('hkSuggest').onclick = hkSuggest;
+    $('hkGo').onclick = hkMake;
+    $('hkCancel').onclick = () => { if (H.queue) H.queue.cancel = true; if (S.rec) { S.rec.cancel = true; finishRender(); } };
+    $('hkSave').onclick = saveSetup;
+    ['hk16', 'hk9'].forEach((id) => { $(id).onchange = hkRenderList; });
+    const hc = $('hkCanvas');
+    ['pointerdown', 'pointermove', 'pointerup', 'pointercancel'].forEach((ev) => hc.addEventListener(ev, hkPointer));
+    hc.addEventListener('dblclick', () => { if (H.sel) hkPlay(H.sel); });
+    if (window.ResizeObserver) new ResizeObserver(() => { if (H.mode === 'hooks') { H.baseKey = ''; hkDraw(); } }).observe(hc.parentElement);
+    const hl = $('hkList');
+    hl.addEventListener('click', (e) => {
+      const pl = e.target.closest('[data-hkplay]'); if (pl) { hkPlay(pl.dataset.hkplay); return; }
+      const dl = e.target.closest('[data-hkdel]'); if (dl) { S.hooks = S.hooks.filter((h) => h.id !== +dl.dataset.hkdel); S.dirty = true; if (H.sel === +dl.dataset.hkdel) H.sel = null; hkRenderList(); hkDraw(); return; }
+      const nd = e.target.closest('[data-hkn]'); if (nd) { const [id, d] = nd.dataset.hkn.split(','); const h = hkById(id); if (h) { hkSet(h, h.start + +d, null); H.sel = h.id; if (audio.paused) audio.currentTime = h.start; hkRenderList(); hkDraw(); } return; }
+      if (e.target.closest('input, select, label')) return;
+      const row = e.target.closest('[data-hk]'); if (row) { const h = hkById(row.dataset.hk); H.sel = h.id; if (audio.paused) audio.currentTime = h.start; hkRenderList(); hkDraw(); }
+    });
+    hl.addEventListener('change', (e) => {
+      const tt = e.target.closest('[data-hkt]'); if (tt) { const h = hkById(tt.dataset.hkt), v = parseT(tt.value); if (h && v != null) { hkSet(h, v, null); H.sel = h.id; } hkRenderList(); hkDraw(); return; }
+      const ln = e.target.closest('[data-hklen]'); if (ln) { const h = hkById(ln.dataset.hklen); if (h) hkSet(h, null, +ln.value); hkRenderList(); hkDraw(); return; }
+      const on = e.target.closest('[data-hkon]'); if (on) { const h = hkById(on.dataset.hkon); if (h) { h.on = on.checked; S.dirty = true; } hkRenderList(); hkDraw(); }
+    });
+    hl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('input')) { e.preventDefault(); e.stopPropagation(); e.target.blur(); } });
     $('mvGo').onclick = () => makeVideo(0);
     $('mvTest').onclick = () => makeVideo(20);
     $('mvCancel').onclick = () => { if (S.rec) { S.rec.cancel = true; finishRender(); } };
     document.addEventListener('keydown', (e) => {
       if (root.classList.contains('hidden') || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) return;
       if (e.code === 'Space') { e.preventDefault(); if (e.target && e.target.tagName === 'BUTTON') e.target.blur(); togglePlay(); } // a focused button would also 'click' on key-up and toggle twice
+      if (H.mode === 'hooks') {
+        const h = hkById(H.sel);
+        if (h && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) { e.preventDefault(); hkSet(h, h.start + (e.code === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 0.1), null); if (audio.paused) audio.currentTime = h.start; hkRow(h); hkDraw(); return; }
+        if (h && (e.code === 'Delete' || e.code === 'Backspace')) { e.preventDefault(); S.hooks = S.hooks.filter((x) => x !== h); H.sel = null; S.dirty = true; hkRenderList(); hkDraw(); return; }
+        if (e.code === 'Enter' || e.code === 'NumpadEnter') return;   // Enter stamps lyric lines - not on the Hooks tab
+      }
       if (e.code === 'Enter' || e.code === 'NumpadEnter') {
         const btn = e.target && e.target.closest ? e.target.closest('button') : null;
         if (btn && !btn.closest('#mvLines, #mvTsBar')) return; // Enter on other buttons keeps its normal meaning
@@ -1257,5 +1711,5 @@
     fillArtists();
   }
 
-  window.MV = { onShow: onShow, _state: S, _buildLines: buildLines, _dbx: dbx, _serialize: tsSerialize };
+  window.MV = { onShow: onShow, _state: S, _hk: H, _buildLines: buildLines, _dbx: dbx, _serialize: tsSerialize };
 })();
