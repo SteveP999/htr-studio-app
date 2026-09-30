@@ -526,10 +526,10 @@
   .hk-row{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--line);font-size:13.5px;cursor:pointer}
   .hk-row:hover{background:var(--panel2)} .hk-row.on{background:#2c1d12;outline:1px solid var(--warn);outline-offset:-1px} .hk-row.off{opacity:.5}
   .hk-dot{width:11px;height:11px;border-radius:3px;flex:none}
-  .hk-name{min-width:92px}
+  .hk-name{min-width:92px;white-space:nowrap}
   .hk-t{width:68px !important;padding:4px 6px !important;font-family:monospace;font-size:13px !important;text-align:center;color:var(--warn)}
-  .hk-end{min-width:62px;font-family:monospace}
-  .hk-len{width:62px !important;padding:3px 4px !important;font-size:12.5px !important;text-align:center}
+  .hk-len{min-width:44px;font-family:monospace;font-size:12.5px;color:var(--muted);text-align:right} .hk-len.out{color:var(--warn)}
+  .hk-lab{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-left:4px}
   .hk-on{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);cursor:pointer;margin-left:auto} .hk-on input{width:auto}
   .hk-made{color:var(--ok);font-size:12px;min-width:50px}
   .hk-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
@@ -581,16 +581,20 @@
         </div>
         <div id="mvHooksPane" class="hidden">
           <div class="hk-bar">
-            <button class="btn btn-ghost mv-sm" data-hkadd="quick" title="Add a 15-second hook at the playhead"><span class="hk-sw" style="background:#4cd08a"></span>+ Quick 15s</button>
-            <button class="btn btn-ghost mv-sm" data-hkadd="standard" title="Add a 30-second hook at the playhead"><span class="hk-sw" style="background:#ff6a4d"></span>+ Standard 30s</button>
-            <button class="btn btn-ghost mv-sm" data-hkadd="extended" title="Add a 45-60 second hook at the playhead"><span class="hk-sw" style="background:#58b7ff"></span>+ Extended 45&ndash;60s</button>
+            <button class="btn btn-ghost mv-sm" data-hkadd="quick" title="Add a Quick hook (starts at 15s) at the playhead"><span class="hk-sw" style="background:#4cd08a"></span>+ Quick</button>
+            <button class="btn btn-ghost mv-sm" data-hkadd="standard" title="Add a Standard hook (starts at 30s) at the playhead"><span class="hk-sw" style="background:#ff6a4d"></span>+ Standard</button>
+            <button class="btn btn-ghost mv-sm" data-hkadd="extended" title="Add an Extended hook (starts at 45s) at the playhead"><span class="hk-sw" style="background:#58b7ff"></span>+ Extended</button>
             <button class="btn btn-blue mv-sm" id="hkSuggest" title="Pick starting spots from the chorus markers, repeated lines and the loud parts">&#10024; Suggest hooks</button>
+            <span style="flex:1"></span>
+            <span class="mv-dim" id="hkZoomLbl">whole song</span>
+            <button class="btn btn-ghost mv-sm" id="hkZoomSel" title="Zoom the timeline to the selected hook">&#128269; Zoom to hook</button>
+            <button class="btn btn-ghost mv-sm" id="hkZoomFit" title="Show the whole song">Whole song</button>
           </div>
           <div class="hk-tl"><canvas id="hkCanvas"></canvas></div>
-          <div class="mv-dim" style="margin:6px 2px">Click the waveform to jump there &middot; drag a bar to move it (it snaps to lyric lines &mdash; hold <b>Shift</b> to place it freely) &middot; drag the right edge of an Extended to lengthen it &middot; &#9654; plays just that hook &middot; arrow keys nudge the selected hook, Delete removes it.</div>
+          <div class="mv-dim" style="margin:6px 2px">Click the waveform to jump there &middot; <b>drag the middle</b> of a bar to move it, <b>drag either end</b> to set exactly where it starts and stops (snaps to the lyrics &mdash; hold <b>Shift</b> for free placement) &middot; <b>mouse wheel</b> zooms the timeline, Shift+wheel scrolls it &middot; while the song plays, <b>[</b> and <b>]</b> set the selected hook&rsquo;s start and end right there &middot; &#9654; plays the hook, &#9654;| plays just its last 4 seconds &middot; arrows move it (Alt+arrows trim the end), Delete removes it. Lengths are a guide, not a limit.</div>
           <details class="hk-tips"><summary>How to pick a good hook</summary>
             <div class="mv-dim">Start right on the line people will sing back &mdash; usually the chorus. The first second decides whether someone keeps watching, so skip slow intros and start on a word or a hit, not a breath.
-            <b>Quick</b> = the one catchiest line or two. <b>Standard</b> = one full chorus (the everyday post). <b>Extended</b> = the build into the chorus and the chorus itself.
+            <b>Quick</b> (about 10&ndash;20s) = the one catchiest line or two. <b>Standard</b> (about 22&ndash;40s) = one full chorus, the everyday post. <b>Extended</b> (about 40&ndash;75s) = the build into the chorus and the chorus itself. Those are guides &mdash; end where the line ends, not on a number.
             Make several from different spots and post them over a few weeks; the ones that get watched to the end tell you which part of the song is the real hook.</div></details>
           <div id="hkList" class="hk-list"></div>
           <div class="hk-foot">
@@ -982,7 +986,7 @@
     const b = B();
     audio.pause(); allItems().forEach((it) => { if (it.el && it.el.pause) it.el.pause(); });
     Object.assign(S, { song: song, lines: [], pick: -1, shown: -1, cfg: clone(DEF), bg: { '16': [], '9': [] }, end: { '16': null, '9': null }, dirty: false, total: 0, hooks: [] });
-    H.sel = null; H.play = null; H.baseKey = '';
+    H.sel = null; H.play = null; H.baseKey = ''; H.v0 = 0; H.v1 = 0;
     $('mvSongName').textContent = '\u2014 ' + song.title;
     const src = dbx(b.audioOf(song));
     audio.src = src || ''; S.audioName = src ? nameOf(src) : '';
@@ -1193,16 +1197,20 @@
   // ---------- hooks: short clips for TikTok / Reels / Shorts, cut from the same render engine ----------
   // A hook = { id, type, start, len, n, on, done }. Rendered straight from the song timeline (same backgrounds,
   // lyrics and look as the full video), both frame sizes at once, saved into <song folder>/Hooks/.
+  // len = what a new one starts at; lo..hi = the usual range (shown as a hint only - any length from 3 s to 2 min is
+  // allowed, because a hook should start and stop where the song does); sMin..sMax = what Suggest hooks tries
   const HK = {
-    quick: { name: 'Quick', short: 'Q', min: 15, max: 15, color: '#4cd08a', count: 8, gap: 6, ov: 0.5 },
-    standard: { name: 'Standard', short: 'S', min: 30, max: 30, color: '#ff6a4d', count: 4, gap: 10, ov: 0.5 },
-    extended: { name: 'Extended', short: 'E', min: 45, max: 60, color: '#58b7ff', count: 2, gap: 18, ov: 0.4 }
+    quick: { name: 'Quick', short: 'Q', len: 15, lo: 10, hi: 20, sMin: 12, sMax: 18, color: '#4cd08a', count: 8, gap: 6, ov: 0.5 },
+    standard: { name: 'Standard', short: 'S', len: 30, lo: 22, hi: 40, sMin: 26, sMax: 34, color: '#ff6a4d', count: 4, gap: 10, ov: 0.5 },
+    extended: { name: 'Extended', short: 'E', len: 45, lo: 40, hi: 75, sMin: 45, sMax: 60, color: '#58b7ff', count: 2, gap: 18, ov: 0.4 }
   };
+  const HK_MIN = 3, HK_MAX = 120;
   const HK_ORDER = ['quick', 'standard', 'extended'];
   const SEC_COL = { chorus: '#9a7424', pre: '#2b6f69', post: '#80582c', verse: '#34507f', bridge: '#62428c', intro: '#3b3b3b', outro: '#3b3b3b', inst: '#4f5c30', other: '#4a4a4a' };
-  const H = { mode: 'lines', peaks: null, energy: null, forUrl: '', loading: false, sel: null, drag: null, play: null, queue: null, rects: [], base: null, baseKey: '', G: 74 };
+  const H = { mode: 'lines', peaks: null, energy: null, forUrl: '', loading: false, sel: null, drag: null, play: null, queue: null, rects: [], base: null, baseKey: '', G: 74, v0: 0, v1: 0 };
   const hkById = (id) => S.hooks.find((h) => h.id === +id);
-  const hkDone = (h) => !!(h.done && Math.abs(h.done.start - h.start) < 0.05 && h.done.len === h.len);
+  const hkDone = (h) => !!(h.done && Math.abs(h.done.start - h.start) < 0.05 && Math.abs(h.done.len - h.len) < 0.05);
+  const r10 = (x) => Math.round(x * 10) / 10;
   function hkTotal() { return S.total || H.dur || 0; }
   function sectionsOf() {
     const mk = S.ev.filter((e) => e.marker && !/^\[(gap|start|end)\]$/i.test(e.text)).sort((a, b) => a.t - b.t);
@@ -1231,7 +1239,7 @@
       ensureGraph();
       const buf = await decodeSong();
       const a = buf.getChannelData(0), b = buf.numberOfChannels > 1 ? buf.getChannelData(1) : a;
-      const N = 2400, per = Math.max(1, Math.floor(a.length / N)), peaks = new Float32Array(N);
+      const N = Math.min(60000, Math.max(2400, Math.ceil(buf.duration * 100))), per = Math.max(1, Math.floor(a.length / N)), peaks = new Float32Array(N);
       for (let i = 0; i < N; i++) { let m = 0; for (let j = i * per, z = Math.min(a.length, j + per); j < z; j += 3) { const v = (Math.abs(a[j]) + Math.abs(b[j])) / 2; if (v > m) m = v; } peaks[i] = m; }
       const win = Math.floor(buf.sampleRate * 0.25), M = Math.ceil(a.length / win), en = new Float32Array(M);
       for (let i = 0; i < M; i++) { let s = 0, c = 0; for (let j = i * win, z = Math.min(a.length, j + win); j < z; j += 6) { const v = (a[j] + b[j]) / 2; s += v * v; c++; } en[i] = Math.sqrt(s / Math.max(1, c)); }
@@ -1254,9 +1262,17 @@
     sectionsOf().forEach((s) => c.add(Math.round(s.s * 10) / 10));
     return Array.from(c).sort((a, b) => a - b);
   }
-  function hkSnap(t) {
-    let best = t, d = 0.9;
-    hkSnaps().forEach((s) => { if (Math.abs(s - t) < d) { d = Math.abs(s - t); best = s; } });
+  function hkEnds() {
+    const c = new Set();
+    S.lines.forEach((L) => { c.add(r10(vocalEnd(L) + 0.3)); c.add(r10(L.start - 0.1)); });
+    sectionsOf().forEach((s) => c.add(r10(s.s)));
+    return Array.from(c).filter((t) => t > 0).sort((a, b) => a - b);
+  }
+  // snap distance is a few pixels, so zoomed in you can place it exactly
+  function hkSnap(t, ends) {
+    const tol = H.pxSec ? Math.min(0.9, 8 / H.pxSec) : 0.9;
+    let best = t, d = tol;
+    (ends ? hkEnds() : hkSnaps()).forEach((s) => { if (Math.abs(s - t) < d) { d = Math.abs(s - t); best = s; } });
     return best;
   }
   // "how chorus-like" each half second is: section markers first, repeated lyric lines as the fallback
@@ -1302,15 +1318,15 @@
     HK_ORDER.forEach((type) => {
       const d = HK[type], scored = [], cs = new Set(hkSnaps());
       // also try clips that END cleanly just after a line finishes
-      S.lines.forEach((L) => { const s = Math.round((vocalEnd(L) + 0.4 - d.min) * 10) / 10; if (s >= 0) cs.add(s); });
+      S.lines.forEach((L) => { const s = r10(vocalEnd(L) + 0.3 - d.len); if (s >= 0) cs.add(s); });
       const cands = Array.from(cs);
       cands.forEach((s) => {
         let best = null;
-        for (let L = d.min; L <= d.max; L += 1) { const v = hkScore(s, L, cm, secStarts, first, hookStarts); if (!best || v > best.v) best = { s: s, len: L, v: v }; }
+        for (let L = d.sMin; L <= d.sMax + 0.001; L += 0.5) { const v = hkScore(s, L, cm, secStarts, first, hookStarts) - 0.006 * Math.abs(L - d.len); if (!best || v > best.v) best = { s: s, len: L, v: v }; }
         if (best && best.v > -5) scored.push(best);
       });
       scored.sort((a, b) => b.v - a.v);
-      const chosen = [], floor = scored.length ? scored[0].v - 0.35 : 0;   // only spots nearly as good as the best one
+      const chosen = [], floor = scored.length ? scored[0].v - 0.45 : 0;   // only spots nearly as good as the best one
       for (const c of scored) {
         if (chosen.length >= d.count || c.v < floor) break;
         const clash = chosen.some((x) => Math.abs(x.s - c.s) < d.gap || (Math.min(x.s + x.len, c.s + c.len) - Math.max(x.s, c.s)) / Math.min(x.len, c.len) > d.ov);
@@ -1325,25 +1341,37 @@
   function hkAdd(type) {
     if (!S.song) return toast('Pick a song first', true);
     const d = HK[type], T = hkTotal(); if (!T) return toast('The song is still loading', true);
-    const len = d.min, start = clamp(hkSnap(Math.max(0, (audio.currentTime || 0) - 0.3)), 0, Math.max(0, T - len));
+    const len = Math.min(d.len, T), start = clamp(hkSnap(Math.max(0, (audio.currentTime || 0) - 0.3)), 0, Math.max(0, T - len));
     const n = S.hooks.filter((h) => h.type === type).reduce((m, h) => Math.max(m, h.n || 0), 0) + 1;
     const h = { id: ++_uid, type: type, start: Math.round(start * 10) / 10, len: len, n: n, on: true };
     S.hooks.push(h); S.dirty = true; H.sel = h.id;
     hkRenderList(); hkDraw();
   }
+  // move (start only), or set exact start and/or end - lengths are free between 3 s and 2 min
   function hkSet(h, start, len) {
-    const T = hkTotal(), d = HK[h.type];
-    if (len != null) h.len = clamp(Math.round(len), d.min, d.max);
-    if (start != null) h.start = Math.round(clamp(start, 0, Math.max(0, T - h.len)) * 10) / 10;
-    if (h.start + h.len > T) h.start = Math.max(0, Math.round((T - h.len) * 10) / 10);
+    const T = hkTotal();
+    if (len != null) h.len = r10(clamp(len, HK_MIN, Math.min(HK_MAX, T || HK_MAX)));
+    if (start != null) h.start = r10(clamp(start, 0, Math.max(0, T - h.len)));
+    if (h.start + h.len > T) h.start = Math.max(0, r10(T - h.len));
     S.dirty = true;
   }
-  function hkPlay(id) {
+  function hkSetStart(h, t) { const end = h.start + h.len; t = clamp(t, 0, end - HK_MIN); h.len = r10(end - r10(t)); h.start = r10(t); S.dirty = true; }
+  function hkSetEnd(h, t) { const T = hkTotal(); t = clamp(t, h.start + HK_MIN, Math.min(T, h.start + HK_MAX)); h.len = r10(t - h.start); S.dirty = true; }
+  // zoomed view of the song (v0..v1 seconds); 0,0 = the whole song
+  function hkView() { const T = hkTotal(); return H.v1 > H.v0 && H.v1 - H.v0 < T ? [H.v0, H.v1] : [0, T]; }
+  function hkZoom(a, b) {
+    const T = hkTotal(); if (!T) return;
+    let w = clamp(b - a, 4, T); a = clamp(a, 0, T - w);
+    if (w >= T - 0.01) { H.v0 = 0; H.v1 = 0; } else { H.v0 = a; H.v1 = a + w; }
+    H.baseKey = ''; hkDraw();
+  }
+  function hkZoomHook() { const h = hkById(H.sel); if (!h) return toast('Click a hook first', true); const pad = Math.max(2, h.len * 0.15); hkZoom(h.start - pad, h.start + h.len + pad); }
+  function hkPlay(id, tail) {
     const h = hkById(id); if (!h) return;
-    if (H.play && H.play.id === h.id && !audio.paused) { audio.pause(); H.play = null; return; }
+    if (H.play && H.play.id === h.id && !!H.play.tail === !!tail && !audio.paused) { audio.pause(); H.play = null; hkRenderList(); return; }
     if (!audio.src) return toast('No audio for this song yet', true);
-    ensureGraph(); H.sel = h.id; H.play = { id: h.id, end: h.start + h.len };
-    audio.currentTime = h.start; audio.play().catch((e) => toast('Audio: ' + e.message, true));
+    ensureGraph(); H.sel = h.id; H.play = { id: h.id, end: h.start + h.len, tail: !!tail };
+    audio.currentTime = tail ? Math.max(h.start, h.start + h.len - 4) : h.start; audio.play().catch((e) => toast('Audio: ' + e.message, true));
     hkRenderList();
   }
   // ----- timeline -----
@@ -1369,10 +1397,12 @@
     const c = $('hkCanvas'); if (!c || H.mode !== 'hooks' || !built) return;
     const T = hkTotal(), dpr = window.devicePixelRatio || 1, W = Math.max(300, c.parentElement.clientWidth), g = hkGeom(W);
     if (c.width !== Math.round(W * dpr) || c.height !== Math.round(g.H * dpr)) { c.width = Math.round(W * dpr); c.height = Math.round(g.H * dpr); c.style.height = g.H + 'px'; H.baseKey = ''; }
-    const x = c.getContext('2d'), G = H.G, X = (t) => G + (T ? t / T : 0) * (W - G - 6);
+    const G = H.G, [v0, v1] = hkView(), span = Math.max(0.001, v1 - v0), PW = W - G - 6;
+    const x = c.getContext('2d'), X = (t) => G + (T ? (t - v0) / span : 0) * PW;
+    H.pxSec = PW / span;
     x.setTransform(dpr, 0, 0, dpr, 0, 0);
     // static layer: section band + waveform + line ticks, cached until something changes
-    const key = [W, g.H, T, H.forUrl, S.ev.length, S.ev.map((e) => e.t + e.text).join('|').length, S.lines.length].join(':');
+    const key = [W, g.H, T, v0, v1, H.forUrl, S.ev.length, S.ev.map((e) => e.t + e.text).join('|').length, S.lines.length].join(':');
     if (H.baseKey !== key) {
       const b = H.base || (H.base = document.createElement('canvas'));
       b.width = c.width; b.height = c.height; const bx = b.getContext('2d'); bx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1381,6 +1411,7 @@
       bx.fillStyle = '#8f8676'; bx.fillText('SECTIONS', 6, g.band / 2 + 1); bx.fillText('SONG', 6, g.waveY + g.waveH / 2);
       HK_ORDER.forEach((t) => { bx.fillStyle = HK[t].color; bx.fillText(HK[t].name.toUpperCase(), 6, g.lane[t].y + g.lane[t].h / 2); });
       if (T) {
+        bx.save(); bx.beginPath(); bx.rect(G, 0, PW, g.H); bx.clip();
         const secs = sectionsOf();
         if (!secs.length) { bx.fillStyle = '#6d6556'; bx.fillText('no [section] markers — add some in the timestamps for colored sections', G + 4, g.band / 2 + 1); }
         secs.forEach((s) => {
@@ -1396,11 +1427,17 @@
           const mid = g.waveY + g.waveH / 2, P = H.peaks, n = P.length;
           bx.fillStyle = '#cfc4ae';
           for (let px = G; px < W - 6; px++) {
-            const i0 = Math.floor((px - G) / (W - G - 6) * n), i1 = Math.max(i0 + 1, Math.floor((px + 1 - G) / (W - G - 6) * n));
+            const i0 = Math.floor((v0 + (px - G) / PW * span) / T * n), i1 = Math.max(i0 + 1, Math.floor((v0 + (px + 1 - G) / PW * span) / T * n));
             let m = 0; for (let i = i0; i < i1 && i < n; i++) if (P[i] > m) m = P[i];
             const h = Math.max(1, m * (g.waveH / 2 - 3)); bx.fillRect(px, mid - h, 1, h * 2);
           }
-        } else { bx.fillStyle = '#8f8676'; bx.fillText(H.loading ? 'Reading the song…' : 'Waveform loads when the song audio is ready', G + 6, g.waveY + g.waveH / 2); }
+        } else { bx.fillStyle = '#8f8676'; bx.fillText(H.loading ? 'Reading the song\u2026' : 'Waveform loads when the song audio is ready', G + 6, g.waveY + g.waveH / 2); }
+        // time ruler along the bottom of the wave: finer ticks as you zoom in
+        const step = [0.5, 1, 2, 5, 10, 15, 30, 60].find((st) => st * PW / span >= 55) || 60;
+        bx.fillStyle = 'rgba(255,255,255,.55)'; bx.font = '10px system-ui,sans-serif';
+        bx.strokeStyle = 'rgba(0,0,0,.85)'; bx.lineWidth = 3; bx.lineJoin = 'round';
+        for (let tt = Math.ceil(v0 / step) * step; tt <= v1; tt += step) { const tx = X(tt), lb = step < 1 ? fmtT(tt) : fmtS(tt); bx.fillRect(Math.round(tx), g.waveY + g.waveH - 5, 1, 5); bx.strokeText(lb, tx + 3, g.waveY + g.waveH - 9); bx.fillText(lb, tx + 3, g.waveY + g.waveH - 9); }
+        bx.restore();
       }
       HK_ORDER.forEach((t) => { bx.fillStyle = 'rgba(255,255,255,.035)'; bx.fillRect(G, g.lane[t].y, W - G - 6, g.lane[t].h); });
       H.baseKey = key;
@@ -1409,7 +1446,11 @@
     if (!T) return;
     // selected hook: tint the part of the song it covers
     const sel = hkById(H.sel);
-    if (sel) { x.fillStyle = HK[sel.type].color; x.globalAlpha = 0.16; x.fillRect(X(sel.start), 0, X(sel.start + sel.len) - X(sel.start), g.waveY + g.waveH); x.globalAlpha = 1; }
+    x.save(); x.beginPath(); x.rect(G, 0, PW, g.H); x.clip();
+    if (sel) {
+      x.fillStyle = HK[sel.type].color; x.globalAlpha = 0.16; x.fillRect(X(sel.start), 0, X(sel.start + sel.len) - X(sel.start), g.waveY + g.waveH); x.globalAlpha = 1;
+      x.strokeStyle = HK[sel.type].color; x.lineWidth = 1; [sel.start, sel.start + sel.len].forEach((tt) => { const ex = Math.round(X(tt)) + 0.5; x.beginPath(); x.moveTo(ex, 0); x.lineTo(ex, g.H); x.stroke(); });
+    }
     H.rects = [];
     x.font = '700 10.5px system-ui,sans-serif'; x.textBaseline = 'middle';
     S.hooks.forEach((h) => {
@@ -1417,15 +1458,27 @@
       x.globalAlpha = h.on === false ? 0.35 : 1;
       x.fillStyle = d.color; x.fillRect(x0, y0, Math.max(3, x1 - x0), g.RH - 3);
       if (on) { x.strokeStyle = '#fff'; x.lineWidth = 2; x.strokeRect(x0 + 1, y0 + 1, Math.max(3, x1 - x0) - 2, g.RH - 5); }
-      if (d.max > d.min) { x.fillStyle = 'rgba(0,0,0,.45)'; x.fillRect(x1 - 4, y0 + 2, 2, g.RH - 7); }
-      x.fillStyle = '#111'; const lab = (x1 - x0 > 70 ? d.name + ' ' : d.short) + h.n + (hkDone(h) ? ' ✓' : '');
-      x.save(); x.beginPath(); x.rect(x0, y0, x1 - x0, g.RH); x.clip(); x.fillText(lab, x0 + 4, y0 + (g.RH - 3) / 2 + 1); x.restore();
+      if (x1 - x0 > 16) { x.fillStyle = 'rgba(0,0,0,.45)'; x.fillRect(x0 + 2, y0 + 2, 2, g.RH - 7); x.fillRect(x1 - 4, y0 + 2, 2, g.RH - 7); }
+      x.fillStyle = '#111'; const lab = (x1 - x0 > 70 ? d.name + ' ' : d.short) + h.n + (x1 - x0 > 120 ? ' \u00b7 ' + h.len.toFixed(1) + 's' : '') + (hkDone(h) ? ' \u2713' : '');
+      x.save(); x.beginPath(); x.rect(x0, y0, x1 - x0, g.RH); x.clip(); x.fillText(lab, x0 + 7, y0 + (g.RH - 3) / 2 + 1); x.restore();
       x.globalAlpha = 1;
-      H.rects.push({ id: h.id, x0: x0, x1: Math.max(x0 + 3, x1), y0: y0, y1: y0 + g.RH - 3, grow: d.max > d.min });
+      H.rects.push({ id: h.id, x0: x0, x1: Math.max(x0 + 3, x1), y0: y0, y1: y0 + g.RH - 3 });
     });
+    x.restore();
     const t = S.rec ? recTime() : (audio.currentTime || 0), px = Math.round(X(t)) + 0.5;
     x.strokeStyle = '#ff3b30'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(px, 0); x.lineTo(px, g.H); x.stroke();
-    H.geom = g; H.X = X; H.tAt = (cx) => clamp((cx - G) / (W - G - 6), 0, 1) * T;
+    const zl = $('hkZoomLbl'); if (zl) zl.textContent = span < T - 0.01 ? fmtS(v0) + '\u2013' + fmtS(v1) : 'whole song';
+    H.geom = g; H.X = X; H.tAt = (cx) => clamp(v0 + (cx - G) / PW * span, 0, T);
+  }
+  // within 7 px of either end of a bar = trim that end (short bars: the outer third)
+  function hkEdge(q, mx) { const w = q.x1 - q.x0, z = Math.min(7, w / 3); return mx <= q.x0 + z ? 'L' : mx >= q.x1 - z ? 'R' : null; }
+  function hkWheel(e) {
+    const T = hkTotal(); if (!T || !H.tAt) return;
+    e.preventDefault();
+    const [v0, v1] = hkView(), r = $('hkCanvas').getBoundingClientRect(), at = H.tAt(e.clientX - r.left);
+    if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) { const d = (e.deltaX || e.deltaY) / (H.pxSec || 1); hkZoom(v0 + d, v1 + d); return; }
+    const f = e.deltaY > 0 ? 1.25 : 0.8, w = (v1 - v0) * f;
+    hkZoom(at - (at - v0) * f, at - (at - v0) * f + w);
   }
   function hkPointer(e) {
     const c = $('hkCanvas'), r = c.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
@@ -1434,8 +1487,8 @@
       const hit = H.rects.slice().reverse().find((q) => mx >= q.x0 - 2 && mx <= q.x1 + 2 && my >= q.y0 && my <= q.y1);
       if (hit) {
         const h = hkById(hit.id); H.sel = h.id;
-        const grow = hit.grow && mx >= hit.x1 - 7;
-        H.drag = { id: h.id, grow: grow, off: H.tAt(mx) - h.start, moved: false, x: mx };
+        const edge = hkEdge(hit, mx);
+        H.drag = { id: h.id, edge: edge, off: H.tAt(mx) - h.start, moved: false, x: mx };
         c.setPointerCapture(e.pointerId); hkRenderList(); hkDraw(); return;
       }
       if (my < H.geom.waveY + H.geom.waveH + 4) { audio.currentTime = H.tAt(mx); H.play = null; H.drag = { seek: true }; c.setPointerCapture(e.pointerId); hkDraw(); }
@@ -1444,17 +1497,20 @@
     if (e.type === 'pointermove') {
       if (!H.drag) {
         const over = H.rects.find((q) => mx >= q.x0 - 2 && mx <= q.x1 + 2 && my >= q.y0 && my <= q.y1);
-        c.style.cursor = over ? (over.grow && mx >= over.x1 - 7 ? 'ew-resize' : 'grab') : (my < (H.geom ? H.geom.waveY + H.geom.waveH + 4 : 0) ? 'pointer' : 'default');
+        c.style.cursor = over ? (hkEdge(over, mx) ? 'ew-resize' : 'grab') : (my < (H.geom ? H.geom.waveY + H.geom.waveH + 4 : 0) ? 'pointer' : 'default');
         return;
       }
       if (H.drag.seek) { audio.currentTime = H.tAt(mx); hkDraw(); return; }
       const h = hkById(H.drag.id); if (!h) return;
       if (Math.abs(mx - H.drag.x) > 2) H.drag.moved = true;
       if (!H.drag.moved) return;
-      if (H.drag.grow) hkSet(h, null, H.tAt(mx) - h.start);
-      else { let s = H.tAt(mx) - H.drag.off; if (!e.shiftKey) s = hkSnap(s); hkSet(h, s, null); }
+      const tm = H.tAt(mx);
+      if (H.drag.edge === 'L') hkSetStart(h, e.shiftKey ? tm : hkSnap(tm));
+      else if (H.drag.edge === 'R') hkSetEnd(h, e.shiftKey ? tm : hkSnap(tm, true));
+      else { let s = tm - H.drag.off; if (!e.shiftKey) s = hkSnap(s); hkSet(h, s, null); }
       hkDraw(); hkRow(h);
-      if (!H.drag.grow && audio.paused) audio.currentTime = h.start; // the preview follows the hook's first frame
+      // the preview shows the frame at whatever edge you're moving
+      if (audio.paused) audio.currentTime = H.drag.edge === 'R' ? Math.max(h.start, h.start + h.len - 0.05) : h.start;
       return;
     }
     if (e.type === 'pointerup' || e.type === 'pointercancel') {
@@ -1464,16 +1520,17 @@
   }
   // ----- list -----
   function hkRowHtml(h) {
-    const d = HK[h.type], lens = [];
-    if (d.max > d.min) for (let L = d.min; L <= d.max; L += 5) lens.push(L);
-    if (lens.length && lens.indexOf(h.len) < 0) { lens.push(h.len); lens.sort((a, b) => a - b); }
+    const d = HK[h.type], out = h.len < d.lo || h.len > d.hi, playing = (tail) => H.play && H.play.id === h.id && !!H.play.tail === tail && !audio.paused;
     return '<div class="hk-row' + (h.id === H.sel ? ' on' : '') + (h.on === false ? ' off' : '') + '" data-hk="' + h.id + '">'
       + '<span class="hk-dot" style="background:' + d.color + '"></span><b class="hk-name">' + d.name + ' ' + h.n + '</b>'
-      + '<input class="hk-t" data-hkt="' + h.id + '" value="' + fmtT(h.start) + '" title="Start (M:SS.s) — type and press Enter">'
-      + '<span class="mv-dim hk-end">→ ' + fmtT(h.start + h.len) + '</span>'
-      + (lens.length ? '<select class="hk-len" data-hklen="' + h.id + '">' + lens.map((L) => '<option value="' + L + '"' + (L === h.len ? ' selected' : '') + '>' + L + 's</option>').join('') + '</select>' : '<span class="mv-dim hk-len">' + h.len + 's</span>')
-      + '<button class="mv-ib" data-hkn="' + h.id + ',-0.5" title="0.5s earlier">&minus;</button><button class="mv-ib" data-hkn="' + h.id + ',0.5" title="0.5s later">+</button>'
-      + '<button class="mv-ib hk-play" data-hkplay="' + h.id + '" title="Play just this hook">' + (H.play && H.play.id === h.id && !audio.paused ? '&#10074;&#10074;' : '&#9654;') + '</button>'
+      + '<span class="hk-lab">start</span><input class="hk-t" data-hkt="' + h.id + '" value="' + fmtT(h.start) + '" title="Start (M:SS.s) \u2014 type and press Enter">'
+      + '<button class="mv-ib" data-hkn="' + h.id + ',s,-0.1" title="Start 0.1s earlier">&minus;</button><button class="mv-ib" data-hkn="' + h.id + ',s,0.1" title="Start 0.1s later">+</button>'
+      + '<span class="hk-lab">end</span><input class="hk-t" data-hke="' + h.id + '" value="' + fmtT(h.start + h.len) + '" title="End (M:SS.s) \u2014 type and press Enter">'
+      + '<button class="mv-ib" data-hkn="' + h.id + ',e,-0.1" title="End 0.1s earlier">&minus;</button><button class="mv-ib" data-hkn="' + h.id + ',e,0.1" title="End 0.1s later">+</button>'
+      + '<span class="hk-len' + (out ? ' out' : '') + '" title="' + (out ? 'Outside the usual ' + d.lo + '\u2013' + d.hi + 's for a ' + d.name + ' hook \u2014 fine if that\u2019s where the song says to cut' : 'Usual ' + d.name + ' length: ' + d.lo + '\u2013' + d.hi + 's') + '">' + h.len.toFixed(1) + 's</span>'
+      + '<button class="mv-ib hk-play" data-hkplay="' + h.id + '" title="Play this hook from the start">' + (playing(false) ? '&#10074;&#10074;' : '&#9654;') + '</button>'
+      + '<button class="mv-ib hk-play" data-hkplay="' + h.id + ',end" title="Play just the last 4 seconds (check the ending)">' + (playing(true) ? '&#10074;&#10074;' : '&#9654;|') + '</button>'
+      + '<button class="mv-ib" data-hkzoom="' + h.id + '" title="Zoom the timeline to this hook">&#128269;</button>'
       + '<label class="hk-on" title="Include when you hit Make hooks"><input type="checkbox" data-hkon="' + h.id + '"' + (h.on === false ? '' : ' checked') + '> make</label>'
       + '<span class="hk-made">' + (hkDone(h) ? '&#10003; made' : '') + '</span>'
       + '<button class="mv-ib" data-hkdel="' + h.id + '" title="Delete this hook">&#10005;</button></div>';
@@ -1656,18 +1713,31 @@
     const hc = $('hkCanvas');
     ['pointerdown', 'pointermove', 'pointerup', 'pointercancel'].forEach((ev) => hc.addEventListener(ev, hkPointer));
     hc.addEventListener('dblclick', () => { if (H.sel) hkPlay(H.sel); });
+    hc.addEventListener('wheel', hkWheel, { passive: false });
+    $('hkZoomSel').onclick = hkZoomHook;
+    $('hkZoomFit').onclick = () => hkZoom(0, hkTotal());
     if (window.ResizeObserver) new ResizeObserver(() => { if (H.mode === 'hooks') { H.baseKey = ''; hkDraw(); } }).observe(hc.parentElement);
     const hl = $('hkList');
     hl.addEventListener('click', (e) => {
-      const pl = e.target.closest('[data-hkplay]'); if (pl) { hkPlay(pl.dataset.hkplay); return; }
+      const pl = e.target.closest('[data-hkplay]'); if (pl) { const [id, w] = pl.dataset.hkplay.split(','); hkPlay(id, w === 'end'); return; }
+      const zm = e.target.closest('[data-hkzoom]'); if (zm) { H.sel = +zm.dataset.hkzoom; hkRenderList(); hkZoomHook(); return; }
       const dl = e.target.closest('[data-hkdel]'); if (dl) { S.hooks = S.hooks.filter((h) => h.id !== +dl.dataset.hkdel); S.dirty = true; if (H.sel === +dl.dataset.hkdel) H.sel = null; hkRenderList(); hkDraw(); return; }
-      const nd = e.target.closest('[data-hkn]'); if (nd) { const [id, d] = nd.dataset.hkn.split(','); const h = hkById(id); if (h) { hkSet(h, h.start + +d, null); H.sel = h.id; if (audio.paused) audio.currentTime = h.start; hkRenderList(); hkDraw(); } return; }
+      const nd = e.target.closest('[data-hkn]'); if (nd) {
+        const [id, which, d] = nd.dataset.hkn.split(','), h = hkById(id);
+        if (h) {
+          if (which === 'e') { hkSetEnd(h, h.start + h.len + +d); if (audio.paused) audio.currentTime = Math.max(h.start, h.start + h.len - 0.05); }
+          else { hkSetStart(h, h.start + +d); if (audio.paused) audio.currentTime = h.start; }
+          H.sel = h.id; hkRenderList(); hkDraw();
+        }
+        return;
+      }
       if (e.target.closest('input, select, label')) return;
       const row = e.target.closest('[data-hk]'); if (row) { const h = hkById(row.dataset.hk); H.sel = h.id; if (audio.paused) audio.currentTime = h.start; hkRenderList(); hkDraw(); }
     });
     hl.addEventListener('change', (e) => {
-      const tt = e.target.closest('[data-hkt]'); if (tt) { const h = hkById(tt.dataset.hkt), v = parseT(tt.value); if (h && v != null) { hkSet(h, v, null); H.sel = h.id; } hkRenderList(); hkDraw(); return; }
-      const ln = e.target.closest('[data-hklen]'); if (ln) { const h = hkById(ln.dataset.hklen); if (h) hkSet(h, null, +ln.value); hkRenderList(); hkDraw(); return; }
+      // typing a start keeps the end where it is (it's a trim, not a move); typing an end trims the end
+      const tt = e.target.closest('[data-hkt]'); if (tt) { const h = hkById(tt.dataset.hkt), v = parseT(tt.value); if (h && v != null) { hkSetStart(h, v); H.sel = h.id; if (audio.paused) audio.currentTime = h.start; } hkRenderList(); hkDraw(); return; }
+      const te = e.target.closest('[data-hke]'); if (te) { const h = hkById(te.dataset.hke), v = parseT(te.value); if (h && v != null) { hkSetEnd(h, v); H.sel = h.id; } hkRenderList(); hkDraw(); return; }
       const on = e.target.closest('[data-hkon]'); if (on) { const h = hkById(on.dataset.hkon); if (h) { h.on = on.checked; S.dirty = true; } hkRenderList(); hkDraw(); }
     });
     hl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('input')) { e.preventDefault(); e.stopPropagation(); e.target.blur(); } });
@@ -1679,7 +1749,14 @@
       if (e.code === 'Space') { e.preventDefault(); if (e.target && e.target.tagName === 'BUTTON') e.target.blur(); togglePlay(); } // a focused button would also 'click' on key-up and toggle twice
       if (H.mode === 'hooks') {
         const h = hkById(H.sel);
-        if (h && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) { e.preventDefault(); hkSet(h, h.start + (e.code === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 0.1), null); if (audio.paused) audio.currentTime = h.start; hkRow(h); hkDraw(); return; }
+        if (h && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+          e.preventDefault(); const d = (e.code === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 0.1);
+          if (e.altKey) { hkSetEnd(h, h.start + h.len + d); if (audio.paused) audio.currentTime = Math.max(h.start, h.start + h.len - 0.05); }
+          else { hkSet(h, h.start + d, null); if (audio.paused) audio.currentTime = h.start; }
+          hkRow(h); hkDraw(); return;
+        }
+        // [ / ] = set the selected hook's start / end to right where the song is now (great while it plays)
+        if (h && (e.code === 'BracketLeft' || e.code === 'BracketRight')) { e.preventDefault(); const t = r10(audio.currentTime || 0); if (e.code === 'BracketLeft') hkSetStart(h, t); else hkSetEnd(h, t); hkRenderList(); hkDraw(); return; }
         if (h && (e.code === 'Delete' || e.code === 'Backspace')) { e.preventDefault(); S.hooks = S.hooks.filter((x) => x !== h); H.sel = null; S.dirty = true; hkRenderList(); hkDraw(); return; }
         if (e.code === 'Enter' || e.code === 'NumpadEnter') return;   // Enter stamps lyric lines - not on the Hooks tab
       }
