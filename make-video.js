@@ -13,7 +13,7 @@
   const FONTS = ['Bebas Neue', 'Anton', 'Archivo Black', 'Alfa Slab One', 'Fjalla One', 'Oswald', 'Montserrat', 'Poppins', 'Kanit', 'Teko', 'Barlow Condensed', 'Bungee', 'Luckiest Guy', 'Inter'];
   const HEAVY = ['Montserrat', 'Poppins', 'Inter', 'Oswald', 'Barlow Condensed', 'Teko', 'Kanit'];
   const TIGHT = ['Bebas Neue', 'Anton', 'Teko'];
-  const ANIMS = [['appear', 'Word-appear (pop)'], ['floatup', 'Word-appear (float up)'], ['slidein', 'Word-appear (slide in)'], ['karaoke', 'Karaoke highlight'], ['pop', 'Whole-line pop']];
+  const ANIMS = [['appear', 'Word-appear (pop)'], ['floatup', 'Word-appear (float up)'], ['slidein', 'Word-appear (slide in)'], ['dissolve', 'Word-appear (dissolve)'], ['drift', 'Word-appear (drift)'], ['karaoke', 'Karaoke highlight'], ['pop', 'Whole-line pop']];
   const SIZES = { '16': [1920, 1080], '9': [1080, 1920] };
   const PREVIEW_SCALE = 0.5;
   const MEDIA = /\.(mp3|wav|m4a|mp4|mov|webm|m4v|png|jpe?g)$/i;
@@ -22,7 +22,7 @@
   const DEF = {
     anim: 'appear', font: 'Bebas Neue', text: '#ffffff', hi: '#e6bd52', out: '#101010', size: 5.5, stressSize: 1.5, ow: 6,
     upper: true, ori: 'h', vRows: 1, align: 'center', posX: 50, posY: 80, offset: 0, maxHold: 10,
-    crossfade: 1, transition: 'dissolve', endFade: 4, endHold: 2, introHold: 0, kenburns: true, linePos: {}, lineSize: {}, stress: {},
+    crossfade: 1, transition: 'dissolve', endFade: 4, endHold: 2, introHold: 0, kenburns: true, linePos: {}, lineSize: {}, stress: {}, lineStyle: {},
     logoPos: 'br', logoSize: 10, logoOpacity: 100
   };
   const SLIDERS = {
@@ -236,21 +236,31 @@
   }
 
   // ---------- lyrics ----------
-  function fontStr(px) { return fontWeight() + ' ' + px.toFixed(1) + 'px "' + S.cfg.font + '", sans-serif'; }
-  function setSpacing(ctx, px) { if ('letterSpacing' in ctx) ctx.letterSpacing = (TIGHT.indexOf(S.cfg.font) >= 0 ? px * 0.02 : 0).toFixed(1) + 'px'; }
+  function fontStr(px, font, weight) { return (weight || fontWeight()) + ' ' + px.toFixed(1) + 'px "' + (font || S.cfg.font) + '", sans-serif'; }
+  function setSpacing(ctx, px, font) { if ('letterSpacing' in ctx) ctx.letterSpacing = (TIGHT.indexOf(font || S.cfg.font) >= 0 ? px * 0.02 : 0).toFixed(1) + 'px'; }
   function drawLyrics(ctx, t, W, H, record) {
     const idx = lineAt(t);
     if (record) { S.hits = []; S.block = null; S.shown = idx; }
     if (idx < 0) return;
     const c = S.cfg, L = S.lines[idx], vis = Math.min(L.end, L.start + c.maxHold);
+    const ov = c.lineStyle[L.key] || {};
+    const lAnim = ov.anim != null ? ov.anim : c.anim;
+    const lFont = ov.font != null ? ov.font : c.font;
+    const lBold = ov.bold != null ? ov.bold : c.bold;
+    const lUpper = ov.upper != null ? ov.upper : c.upper;
+    const lText = ov.text != null ? ov.text : c.text;
+    const lHi = ov.hi != null ? ov.hi : c.hi;
+    const lOut = ov.out != null ? ov.out : c.out;
+    const lOw = ov.ow != null ? ov.ow : c.ow;
+    const lWeight = lBold == null ? (HEAVY.indexOf(lFont) >= 0 ? 800 : 400) : (lBold ? 700 : 400);
     const la = clamp((t - L.start) / 0.12, 0, 1) * clamp((vis - t) / 0.12, 0, 1);
     const pct = c.lineSize[L.key] != null ? c.lineSize[L.key] : c.size;
     const fs = pct / 100 * H, u = H / 1080, gapX = fs * 0.24;
     const items = [];
     L.words.forEach((w, i) => {
       if (w.br) { items.push({ br: true }); return; }
-      const st = !!c.stress[L.key + ':' + i], wfs = st ? fs * c.stressSize : fs, txt = c.upper ? w.w.toUpperCase() : w.w;
-      ctx.font = fontStr(wfs); setSpacing(ctx, wfs);
+      const st = !!c.stress[L.key + ':' + i], wfs = st ? fs * c.stressSize : fs, txt = lUpper ? w.w.toUpperCase() : w.w;
+      ctx.font = fontStr(wfs, lFont, lWeight); setSpacing(ctx, wfs, lFont);
       items.push({ i: i, txt: txt, at: w.at, st: st, fs: wfs, w: ctx.measureText(txt).width });
     });
     const rows = []; let row = [], rw = 0; const maxW = W * 0.94;
@@ -276,23 +286,26 @@
       const cy = y + r.h / 2;
       r.it.forEach((it) => {
         const e = t - it.at;
-        let op = 1, sc = 1, dx = 0, dy = 0, col = it.st ? c.hi : c.text;
-        if (c.anim === 'pop') { const e0 = t - L.start; op = clamp(e0 / 0.15, 0, 1); sc = 0.6 + 0.4 * easeBack(e0 / 0.22); }
-        else if (c.anim === 'karaoke') { col = e >= 0 ? c.hi : c.text; }
+        let op = 1, sc = 1, dx = 0, dy = 0, blur = 0, col = it.st ? lHi : lText;
+        if (lAnim === 'pop') { const e0 = t - L.start; op = clamp(e0 / 0.15, 0, 1); sc = 0.6 + 0.4 * easeBack(e0 / 0.22); }
+        else if (lAnim === 'karaoke') { col = e >= 0 ? lHi : lText; }
         else if (e < 0) { op = 0; }
-        else if (c.anim === 'floatup') { op = clamp(e / 0.3, 0, 1); const q = easeOut(e / 0.55); dy = 36 * u * (1 - q); sc = 0.94 + 0.06 * q; }
-        else if (c.anim === 'slidein') { op = clamp(e / 0.2, 0, 1); dx = -42 * u * (1 - easeOut(e / 0.34)); }
+        else if (lAnim === 'floatup') { op = clamp(e / 0.3, 0, 1); const q = easeOut(e / 0.55); dy = 36 * u * (1 - q); sc = 0.94 + 0.06 * q; }
+        else if (lAnim === 'slidein') { op = clamp(e / 0.2, 0, 1); dx = -42 * u * (1 - easeOut(e / 0.34)); }
+        else if (lAnim === 'dissolve') { const q = clamp(e / 0.4, 0, 1); op = q; blur = 14 * u * (1 - q); }
+        else if (lAnim === 'drift') { const q = easeOut(clamp(e / 0.9, 0, 1)); op = clamp(e / 0.55, 0, 1); dy = 50 * u * (1 - q); blur = 8 * u * (1 - q); }
         else { op = clamp(e / 0.15, 0, 1); const q = easeBack(e / 0.22); dy = 14 * u * (1 - q); sc = 0.6 + 0.4 * q; }
-        if (it.st && c.anim !== 'karaoke' && e >= 0 && e < 0.4) sc *= 1.35 - 0.35 * easeOut(e / 0.4);
+        if (it.st && lAnim !== 'karaoke' && e >= 0 && e < 0.4) sc *= 1.35 - 0.35 * easeOut(e / 0.4);
         if (record) S.hits.push({ x: x, y: cy - r.h / 2, w: it.w, h: r.h, key: L.key + ':' + it.i });
         const a = op * la;
         if (a > 0.001) {
           ctx.save();
           ctx.translate(x + it.w / 2 + dx, cy + dy); ctx.scale(sc, sc);
-          ctx.globalAlpha = a; ctx.font = fontStr(it.fs); setSpacing(ctx, it.fs);
-          if (c.ow > 0) {
-            ctx.lineWidth = it.fs * 0.09 * (c.ow / 6) * 2; ctx.strokeStyle = c.out;
-            ctx.shadowColor = c.out; ctx.shadowBlur = it.fs * 0.06 * (c.ow / 6);
+          ctx.globalAlpha = a; ctx.font = fontStr(it.fs, lFont, lWeight); setSpacing(ctx, it.fs, lFont);
+          if (blur > 0.1) ctx.filter = 'blur(' + blur.toFixed(1) + 'px)';
+          if (lOw > 0) {
+            ctx.lineWidth = it.fs * 0.09 * (lOw / 6) * 2; ctx.strokeStyle = lOut;
+            ctx.shadowColor = lOut; ctx.shadowBlur = it.fs * 0.06 * (lOw / 6);
             ctx.strokeText(it.txt, -it.w / 2, 0); ctx.shadowBlur = 0;
           }
           ctx.fillStyle = col; ctx.fillText(it.txt, -it.w / 2, 0);
@@ -393,7 +406,7 @@
     }
     return FT.loaded[key];
   }
-  function ensureCurrentFont() { return Promise.all([ensureFont(S.cfg.font, fontWeight()), ensureFont(S.cfg.font, 400)]); }
+  function ensureCurrentFont() { const f = getVal('font'); return Promise.all([ensureFont(f, fontWeight()), ensureFont(f, 400)]); }
   async function loadFontData() {
     try { const r = await fetch('fonts.json?v=' + (window.MV_FONTS_V || '1')); if (r.ok) FT.cat = await r.json(); } catch (e) { }
     try {
@@ -411,15 +424,16 @@
   }
   function toggleFav(n) { const i = FT.fav.indexOf(n); if (i >= 0) FT.fav.splice(i, 1); else FT.fav.push(n); saveFontData(); renderFontBtn(); renderDrawer(); }
   function applyFont(n) {
-    S.cfg.font = n; S.dirty = true;
+    setVal('font', n);
     ensureCurrentFont(); renderFontBtn(); renderDrawer();
   }
   function renderFontBtn() {
     const b = $('mvFontBtn'); if (!b) return;
-    ensureFont(S.cfg.font, 400);
-    b.innerHTML = '<span style="font-family:\'' + esc(S.cfg.font) + '\',sans-serif;font-size:22px;line-height:1">' + esc(S.cfg.font) + '</span><span class="mv-dim">change ▸</span>';
+    const cur = getVal('font');
+    ensureFont(cur, 400);
+    b.innerHTML = '<span style="font-family:\'' + esc(cur) + '\',sans-serif;font-size:22px;line-height:1">' + esc(cur) + '</span><span class="mv-dim">change ▸</span>';
     const q = $('mvFavChips');
-    if (q) q.innerHTML = FT.fav.length ? FT.fav.map((n) => { ensureFont(n, 400); return '<span class="mv-fchip' + (n === S.cfg.font ? ' on' : '') + '" data-font="' + esc(n) + '" style="font-family:\'' + esc(n) + '\',sans-serif">' + esc(n) + '</span>'; }).join('')
+    if (q) q.innerHTML = FT.fav.length ? FT.fav.map((n) => { ensureFont(n, 400); return '<span class="mv-fchip' + (n === cur ? ' on' : '') + '" data-font="' + esc(n) + '" style="font-family:\'' + esc(n) + '\',sans-serif">' + esc(n) + '</span>'; }).join('')
       : '<span class="mv-dim">Star fonts in the browser to keep them here.</span>';
   }
   function sampleText() {
@@ -437,7 +451,7 @@
     if (q) list = (FT.tab === 'fav' ? list : all).filter((f) => f.n.toLowerCase().indexOf(q) >= 0);
     $('mvFtTabs').innerHTML = cats.map((c) => '<span class="mv-ftab' + (c === FT.tab ? ' on' : '') + '" data-ftab="' + esc(c) + '">' + (c === 'fav' ? '★ Favorites (' + FT.fav.length + ')' : c === 'all' ? 'All (' + all.length + ')' : esc(c)) + '</span>').join('');
     const sample = esc(sampleText()), w = fontWeight();
-    $('mvFtList').innerHTML = list.length ? list.map((f) => '<div class="mv-fcard' + (f.n === S.cfg.font ? ' on' : '') + '" data-font="' + esc(f.n) + '">'
+    $('mvFtList').innerHTML = list.length ? list.map((f) => '<div class="mv-fcard' + (f.n === getVal('font') ? ' on' : '') + '" data-font="' + esc(f.n) + '">'
       + '<div class="mv-fhead"><span>' + esc(f.n) + ' <span class="mv-dim">' + esc(f.c) + (f.w && f.w.indexOf(700) < 0 && f.w.indexOf(800) < 0 ? ' · no true bold' : '') + '</span></span>'
       + '<span class="mv-fstar' + (FT.fav.indexOf(f.n) >= 0 ? ' on' : '') + '" data-star="' + esc(f.n) + '" title="Favorite">' + (FT.fav.indexOf(f.n) >= 0 ? '★' : '☆') + '</span></div>'
       + '<div class="mv-fsample" data-lazy="' + esc(f.n) + '" style="font-weight:' + w + '">' + sample + '</div></div>').join('')
@@ -726,20 +740,26 @@
 
   // ---------- controls ----------
   function tgtKey() { const i = S.shown >= 0 ? S.shown : S.pick; return i >= 0 && S.lines[i] ? S.lines[i].key : null; }
+  const LINE_STYLE_KEYS = ['anim', 'font', 'text', 'hi', 'out', 'ow', 'bold', 'upper'];
   function getVal(k) {
     const c = S.cfg, key = tgtKey();
     if (S.move === 'line' && key) {
       if (k === 'size' && c.lineSize[key] != null) return c.lineSize[key];
       if ((k === 'posX' || k === 'posY') && c.linePos[key]) return k === 'posX' ? c.linePos[key].x : c.linePos[key].y;
+      if (LINE_STYLE_KEYS.indexOf(k) >= 0 && c.lineStyle[key] && c.lineStyle[key][k] != null) return c.lineStyle[key][k];
     }
     return c[k];
   }
   function setVal(k, v) {
     const c = S.cfg, key = tgtKey();
     if (S.move === 'line' && key && (k === 'size' || k === 'posX' || k === 'posY')) {
-      const fresh = c.lineSize[key] == null && !c.linePos[key];
+      const fresh = c.lineSize[key] == null && !c.linePos[key] && !c.lineStyle[key];
       if (k === 'size') c.lineSize[key] = v;
       else { const p = c.linePos[key] || { x: c.posX, y: c.posY }; p[k === 'posX' ? 'x' : 'y'] = v; c.linePos[key] = p; }
+      if (fresh) renderLines();
+    } else if (S.move === 'line' && key && LINE_STYLE_KEYS.indexOf(k) >= 0) {
+      const fresh = c.lineSize[key] == null && !c.linePos[key] && !c.lineStyle[key];
+      c.lineStyle[key] = c.lineStyle[key] || {}; c.lineStyle[key][k] = v;
       if (fresh) renderLines();
     } else c[k] = v;
     S.dirty = true;
@@ -752,7 +772,10 @@
   }
   function segVal(g) {
     if (g === 'fmt') return S.fmt; if (g === 'move') return S.move; if (g === 'out') return S.out;
-    if (g === 'lyricsOn') return String(S.lyricsOn); if (g === 'bold') return String(fontWeight() >= 700); return String(S.cfg[g]);
+    if (g === 'lyricsOn') return String(S.lyricsOn);
+    if (g === 'bold') { const b = getVal('bold'); return String(b == null ? fontWeight() >= 700 : b); }
+    if (g === 'upper') return String(getVal('upper'));
+    return String(S.cfg[g]);
   }
   function segSet(g, v) {
     if (S.rec && (g === 'out' || g === 'lyricsOn')) return;
@@ -760,8 +783,8 @@
     else if (g === 'move') S.move = v;
     else if (g === 'out') S.out = v;
     else if (g === 'lyricsOn') S.lyricsOn = v === 'true';
-    else if (g === 'upper') { S.cfg.upper = v === 'true'; S.dirty = true; renderDrawer(); }
-    else if (g === 'bold') { S.cfg.bold = v === 'true'; S.dirty = true; ensureCurrentFont(); renderDrawer(); }
+    else if (g === 'upper') { setVal('upper', v === 'true'); renderDrawer(); }
+    else if (g === 'bold') { setVal('bold', v === 'true'); ensureCurrentFont(); renderDrawer(); }
     else { S.cfg[g] = v; S.dirty = true; }
     syncControls();
   }
@@ -769,8 +792,8 @@
     if (!built) return;
     document.querySelectorAll('#view-mkvideo .mv-seg').forEach((s) => { const v = segVal(s.dataset.g); s.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); });
     document.querySelectorAll('#view-mkvideo [data-k]').forEach((r) => { const k = r.dataset.k, v = +getVal(k); if (document.activeElement !== r) r.value = v; const sh = document.querySelector('#view-mkvideo [data-show="' + k + '"]'); if (sh) sh.textContent = SLIDERS[k][4](v); });
-    document.querySelectorAll('#view-mkvideo [data-col]').forEach((i) => { i.value = S.cfg[i.dataset.col]; });
-    $('mvAnim').value = S.cfg.anim; renderFontBtn(); $('mvKen').checked = !!S.cfg.kenburns;
+    document.querySelectorAll('#view-mkvideo [data-col]').forEach((i) => { i.value = getVal(i.dataset.col); });
+    $('mvAnim').value = getVal('anim'); renderFontBtn(); $('mvKen').checked = !!S.cfg.kenburns;
     const fl = $('mvFinalLen');
     if (fl) fl.textContent = S.total ? ('Final video length: ' + fmtS((S.cfg.introHold || 0) + S.total + (S.cfg.endHold || 0)) + ' \u2014 song itself is ' + fmtS(S.total)) : '';
     const k = tgtKey();
@@ -795,7 +818,7 @@
     const keep = box.scrollTop;
     box.innerHTML = S.ev.map((e) => {
       const i = li[e.id], L = i != null ? S.lines[i] : null;
-      const own = L && (c.linePos[L.key] || c.lineSize[L.key] != null);
+      const own = L && (c.linePos[L.key] || c.lineSize[L.key] != null || c.lineStyle[L.key]);
       return '<div class="mv-line' + (e.marker ? ' mk' : '') + (e.id === S.sel ? ' pick' : '') + '" data-ev="' + e.id + '"' + (i != null ? ' data-li="' + i + '"' : '') + '>'
         + '<input class="mv-lt" data-evt="' + e.id + '" value="' + fmtT(e.t) + '" title="Start time (M:SS.s) \u2014 type a new one and press Enter">'
         + '<button class="mv-ib" data-evnow="' + e.id + '" title="Set to the current playhead (or select the row and press Enter while it plays)">&#9201;</button>'
@@ -811,27 +834,28 @@
   }
   // ---------- lyric edits (saved back to data/lyrics/<song>-timestamps.txt) ----------
   function evById(id) { return S.ev.find((e) => e.id === +id); }
-  function tsPush() { S.tsHist.push(JSON.stringify({ ev: S.ev, lp: S.cfg.linePos, ls: S.cfg.lineSize, st: S.cfg.stress })); if (S.tsHist.length > 100) S.tsHist.shift(); }
+  function tsPush() { S.tsHist.push(JSON.stringify({ ev: S.ev, lp: S.cfg.linePos, ls: S.cfg.lineSize, st: S.cfg.stress, lst: S.cfg.lineStyle })); if (S.tsHist.length > 100) S.tsHist.shift(); }
   function tsCommit() {
-    // carry per-line looks (position / size / stressed words) over to the edited line's new key
+    // carry per-line looks (position / size / stressed words / style overrides) over to the edited line's new key
     const oldK = {}; S.lines.forEach((L) => { oldK[L.evId] = L; });
     S.ev.sort((a, b) => a.t - b.t);
     S.lines = deriveLines(S.ev);
-    const c = S.cfg, lp = {}, ls = {}, st = {};
+    const c = S.cfg, lp = {}, ls = {}, st = {}, lst = {};
     S.lines.forEach((L) => {
       const o = oldK[L.evId]; if (!o) return;
       if (c.linePos[o.key]) lp[L.key] = c.linePos[o.key];
       if (c.lineSize[o.key] != null) ls[L.key] = c.lineSize[o.key];
+      if (c.lineStyle[o.key]) lst[L.key] = c.lineStyle[o.key];
       Object.keys(c.stress).forEach((k) => { const cut = k.lastIndexOf(':'); if (k.slice(0, cut) === o.key && +k.slice(cut + 1) < L.words.length) st[L.key + ':' + k.slice(cut + 1)] = c.stress[k]; });
     });
-    c.linePos = lp; c.lineSize = ls; c.stress = st;
+    c.linePos = lp; c.lineSize = ls; c.stress = st; c.lineStyle = lst;
     S.tsDirty = true; S.dirty = true; S.shown = -1; S._marked = null;
     renderLines(); syncControls();
   }
   function tsUndo() {
     if (!S.tsHist.length) return toast('Nothing to undo', true);
     const h = JSON.parse(S.tsHist.pop());
-    S.ev = h.ev; S.cfg.linePos = h.lp; S.cfg.lineSize = h.ls; S.cfg.stress = h.st;
+    S.ev = h.ev; S.cfg.linePos = h.lp; S.cfg.lineSize = h.ls; S.cfg.stress = h.st; S.cfg.lineStyle = h.lst || {};
     S.lines = deriveLines(S.ev); S.tsDirty = true; renderLines(); syncControls();
   }
   const now10 = () => Math.round(((audio.currentTime || 0) + S.cfg.offset) * 10) / 10;
@@ -1774,7 +1798,7 @@
       const z = e.target.closest('[data-zone]'); if (z) { const [x, y] = z.dataset.zone.split(',').map(Number); setPos(x, y, tgtKey()); return; }
       const ln = e.target.closest('.mv-line');
       const rs = e.target.closest('[data-reset]');
-      if (rs) { const L = S.lines[+rs.dataset.reset]; delete S.cfg.linePos[L.key]; delete S.cfg.lineSize[L.key]; S.dirty = true; renderLines(); syncControls(); return; }
+      if (rs) { const L = S.lines[+rs.dataset.reset]; delete S.cfg.linePos[L.key]; delete S.cfg.lineSize[L.key]; delete S.cfg.lineStyle[L.key]; S.dirty = true; renderLines(); syncControls(); return; }
       const now = e.target.closest('[data-evnow]'); if (now) { S.sel = +now.dataset.evnow; evSetTime(now.dataset.evnow, now10()); return; }
       const nd = e.target.closest('[data-evn]'); if (nd) { const [id, d] = nd.dataset.evn.split(','); const ev = evById(id); if (ev) evSetTime(id, ev.t + +d); return; }
       const dl = e.target.closest('[data-evdel]'); if (dl) { evDel(dl.dataset.evdel); return; }
@@ -1793,7 +1817,7 @@
     });
     root.addEventListener('input', (e) => {
       const r = e.target.closest('[data-k]'); if (r) { setVal(r.dataset.k, +r.value); syncControls(); return; }
-      const col = e.target.closest('[data-col]'); if (col) { S.cfg[col.dataset.col] = col.value; S.dirty = true; }
+      const col = e.target.closest('[data-col]'); if (col) { setVal(col.dataset.col, col.value); syncControls(); }
     });
     root.addEventListener('change', (e) => {
       const et = e.target.closest('[data-evt]'); if (et) { evSetTime(et.dataset.evt, parseT(et.value)); return; }
@@ -1801,7 +1825,7 @@
       const bt = e.target.closest('[data-bgt]');
       if (bt) { const it = S.bg[S.fmt][+bt.dataset.bgt]; if (it) { it.start = parseT(bt.value); S.dirty = true; } bt.blur(); S.bgPending = false; renderBg(); }
     });
-    $('mvAnim').onchange = function () { S.cfg.anim = this.value; S.dirty = true; };
+    $('mvAnim').onchange = function () { setVal('anim', this.value); syncControls(); };
     $('mvFontBtn').onclick = () => openDrawer(!FT.open);
     $('mvFavChips').addEventListener('click', (e) => { const f = e.target.closest('[data-font]'); if (f) applyFont(f.dataset.font); });
     $('mvFontDrawer').addEventListener('click', (e) => {
