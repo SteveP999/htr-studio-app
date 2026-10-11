@@ -22,12 +22,13 @@
   const DEF = {
     anim: 'appear', font: 'Bebas Neue', text: '#ffffff', hi: '#e6bd52', out: '#101010', size: 5.5, stressSize: 1.5, ow: 6,
     upper: true, ori: 'h', vRows: 1, align: 'center', posX: 50, posY: 80, offset: 0, maxHold: 10,
-    crossfade: 1, transition: 'dissolve', endFade: 4, endHold: 2, kenburns: true, linePos: {}, lineSize: {}, stress: {}
+    crossfade: 1, transition: 'dissolve', endFade: 4, endHold: 2, introHold: 0, kenburns: true, linePos: {}, lineSize: {}, stress: {}
   };
   const SLIDERS = {
     crossfade: ['Transition length', 0, 4, 0.1, (v) => v.toFixed(1) + 's'],
     endFade: ['End card fades in over the last', 1, 12, 0.5, (v) => v + 's'],
     endHold: ['Extra time after the song ends', 0, 10, 0.5, (v) => v + 's'],
+    introHold: ['Time before the song starts', 0, 10, 0.5, (v) => v + 's'],
     size: ['Caption size', 2.5, 14, 0.1, (v) => v.toFixed(1)],
     stressSize: ['Stressed word size', 1, 2.6, 0.1, (v) => v.toFixed(1) + '\u00d7'],
     posX: ['Horizontal', 2, 98, 0.5, (v) => Math.round(v) + '%'],
@@ -169,9 +170,10 @@
     }
     coverDraw(ctx, b.el, W, H, alpha, z);
   }
-  function drawBackground(ctx, fmt, t, W, H) {
+  function drawBackground(ctx, fmt, t, W, H, totalOverride) {
     ctx.globalAlpha = 1; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    const sg = segsFor(S.bg[fmt], S.total); if (!sg.length) return;
+    const total = totalOverride != null ? totalOverride : S.total;
+    const sg = segsFor(S.bg[fmt], total); if (!sg.length) return;
     const xf = S.cfg.crossfade;
     for (let k = 1; k < sg.length && xf > 0; k++) {
       const bk = sg[k].s;
@@ -192,10 +194,10 @@
     if (a > 0) coverDraw(ctx, ec.el, W, H, a, 1);
   }
   // keep every video layer playing at the right spot (loops if the clip is shorter than its slot)
-  function syncVideos(fmts, t, playing) {
-    const want = new Map(), xf = S.cfg.crossfade;
+  function syncVideos(fmts, t, playing, totalOverride) {
+    const want = new Map(), xf = S.cfg.crossfade, total = totalOverride != null ? totalOverride : S.total;
     fmts.forEach((f) => {
-      segsFor(S.bg[f], S.total).forEach((g) => { if (g.b.kind === 'video' && t >= g.s - xf && t < g.e + xf) want.set(g.b, g); });
+      segsFor(S.bg[f], total).forEach((g) => { if (g.b.kind === 'video' && t >= g.s - xf && t < g.e + xf) want.set(g.b, g); });
       const ec = S.end[f];
       if (ec && ec.kind === 'video' && S.total && t >= S.total - S.cfg.endFade - 1) want.set(ec, { s: S.total - S.cfg.endFade });
     });
@@ -284,10 +286,10 @@
     });
     setSpacing(ctx, 0);
   }
-  function drawFrame(ctx, fmt, t, scale, record, lyrics) {
+  function drawFrame(ctx, fmt, t, scale, record, lyrics, bgT) {
     const [W, H] = SIZES[fmt];
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    drawBackground(ctx, fmt, t, W, H);
+    drawBackground(ctx, fmt, bgT != null ? bgT : t, W, H, S.rec ? S.rec._bgTotal : null);
     drawEnd(ctx, fmt, t, W, H);
     if (lyrics) drawLyrics(ctx, t + S.cfg.offset, W, H, record);
     else if (record) { S.hits = []; S.block = null; S.shown = lineAt(t + S.cfg.offset); }
@@ -309,26 +311,33 @@
     if (!built) return;
     const visible = !$('view-mkvideo').classList.contains('hidden');
     if (!visible && !S.rec) { if (!audio.paused) audio.pause(); return; }
-    const t = S.rec ? recTime() : (audio.currentTime || 0), playing = S.rec ? true : !audio.paused;
-    const set = new Set([S.fmt]); if (S.rec) S.rec.list.forEach((r) => set.add(r.fmt));
-    syncVideos(Array.from(set), t, playing);
-    if (S.rec) {
-      const R = S.rec, from = R.from || 0, lim = (R.limit || (S.total - from)) + (R.hold || 0), el = t - from;
-      R.list.forEach((r) => { drawFrame(r.ctx, r.fmt, t, 1, false, R.lyrics); if (R.fade) fadeBlack(r.ctx, r.fmt, el, lim); });
-      const pct = clamp(el / lim * 100, 0, 100) + '%';
+    const R = S.rec;
+    const intro = R ? (R.intro || 0) : 0, from = R ? (R.from || 0) : 0;
+    const vt = R ? recVideoElapsed() : 0;
+    const t = R ? (vt - intro + from) : (audio.currentTime || 0);
+    const bgT = R ? vt : t;
+    const playing = R ? true : !audio.paused;
+    const set = new Set([S.fmt]); if (R) R.list.forEach((r) => set.add(r.fmt));
+    if (R) R._bgTotal = intro + (R.limit || (S.total - from)) + (R.hold || 0);
+    syncVideos(Array.from(set), bgT, playing, R ? R._bgTotal : null);
+    if (R) {
+      const lim = R._bgTotal;
+      R.list.forEach((r) => { drawFrame(r.ctx, r.fmt, t, 1, false, R.lyrics, bgT); if (R.fade) fadeBlack(r.ctx, r.fmt, vt, lim); });
+      const pct = clamp(vt / lim * 100, 0, 100) + '%';
       $('mvProg').firstChild.style.width = pct; if ($('hkProg')) $('hkProg').firstChild.style.width = pct;
-      const msg = (R.label ? R.label + ' \u2014 ' : '') + 'Recording ' + fmtS(el) + ' / ' + fmtS(lim) + ' \u2014 you can switch windows, just don\u2019t close this tab.';
+      const msg = (R.label ? R.label + ' \u2014 ' : '') + 'Recording ' + fmtS(vt) + ' / ' + fmtS(lim) + ' \u2014 you can switch windows, just don\u2019t close this tab.';
       $('mvRenderMsg').textContent = msg;
       if (R.label && $('hkNow')) $('hkNow').textContent = msg;
-      if (el >= lim - 0.02) finishRender();
+      if (vt >= lim - 0.02) finishRender();
     } else if (H.play && (audio.paused || audio.currentTime >= H.play.end - 0.03)) {
       if (!audio.paused) audio.pause();
       H.play = null; hkRenderList();
     }
-    drawFrame(cx, S.fmt, t, PREVIEW_SCALE, true, S.lyricsOn);
+    drawFrame(cx, S.fmt, t, PREVIEW_SCALE, true, S.lyricsOn, bgT);
     if (S.total) {
-      if (!S.seeking) $('mvSeek').value = Math.round(t / S.total * 1000);
-      $('mvTime').textContent = fmtS(t) + ' / ' + fmtS(S.total);
+      const tDisp = clamp(t, 0, S.total);
+      if (!S.seeking) $('mvSeek').value = Math.round(tDisp / S.total * 1000);
+      $('mvTime').textContent = fmtS(tDisp) + ' / ' + fmtS(S.total);
     }
     markLine();
     if (H.mode === 'hooks') hkDraw();
@@ -627,7 +636,7 @@
           <label class="mv-chk"><input type="checkbox" id="mvKen"> Slow zoom on still images</label>
           <span class="mv-lab">End card <span id="mvEndName" style="text-transform:none;letter-spacing:0"></span></span>
           <div class="mv-row"><input id="mvEndLink" placeholder="Dropbox link&hellip;"><label class="btn btn-ghost mv-sm mv-file">Pick&hellip;<input type="file" id="mvEndFile" accept="image/*,video/*"></label><button class="btn btn-ghost mv-sm" id="mvEndClear" title="Remove end card">&#10005;</button></div>
-          ${slider('endFade')}${slider('endHold')}
+          ${slider('endFade')}${slider('endHold')}${slider('introHold')}
         </div>
         <div class="card mv-card">
           <h4><span class="n">2</span>Lyrics look</h4>
@@ -1050,6 +1059,8 @@
   function setRenderMsg(t) { const e = $('mvRenderMsg'); if (e) e.textContent = t; }
   // position in the song while recording = the audio clock, the same clock the recorded sound runs on
   function recTime() { const R = S.rec; if (!R) return 0; const f = R.from || 0; return R.t0 != null ? f + Math.max(0, AC.currentTime - R.t0) : f; }
+  // video-relative clock: 0 at the moment recording actually began, independent of when the song itself starts playing (intro hold)
+  function recVideoElapsed() { const R = S.rec; return R && R.videoStart != null ? Math.max(0, AC.currentTime - R.videoStart) : 0; }
   function togglePlay() {
     if (S.rec) return;
     if (!audio.src) return toast('No audio for this song yet', true);
@@ -1082,7 +1093,10 @@
     if (!S.total) S.total = songBuf.duration;
     const from = clamp(O.from || 0, 0, Math.max(0, songBuf.duration - 1));
     if (from) limit = Math.min(limit || songBuf.duration, songBuf.duration - from);
-    syncVideos(fmts, from, false); await wait(700); // let video layers land on the first frame
+    const isFullRender = !limit && !from;
+    const introH = isFullRender ? (S.cfg.introHold || 0) : 0;
+    const preTotal = isFullRender ? (introH + S.total + (S.cfg.endHold || 0)) : undefined;
+    syncVideos(fmts, isFullRender ? 0 : from, false, preTotal); await wait(700); // let video layers land on the first frame (video-elapsed 0, which is the start of any intro hold)
     const at = mdest.stream.getAudioTracks()[0], ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
     const list = fmts.map((f) => {
       const [W, H] = SIZES[f]; const c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -1100,8 +1114,8 @@
     });
     S.rec = { list: list, lyrics: S.lyricsOn, ext: ext, mime: mime, limit: limit || 0, hidden: false, t0: null,
       from: from, names: O.names || null, sub: O.sub || '', label: O.label || '', fade: !!O.fade };
-    const isFullRender = !S.rec.limit && !S.rec.from;
     S.rec.hold = isFullRender ? (S.cfg.endHold || 0) : 0;
+    S.rec.intro = introH;
     const node = AC.createBufferSource(); node.buffer = songBuf;
     const listen = AC.createGain(); listen.gain.value = $('mvListen').checked ? 1 : 0;
     const vol = AC.createGain();                  // fades for clips that start / stop mid-song
@@ -1112,7 +1126,8 @@
     $('mvCancel').classList.remove('hidden'); $('mvProg').classList.remove('hidden');
     list.forEach((r) => { r.rec.start(1000); if (r.web) r.web.rec.start(1000); });
     S.rec.acStart = AC.currentTime;
-    const t0 = AC.currentTime + (from ? 0.15 : 0.25); // recorders are running; the song starts exactly here on the audio clock
+    const t0 = AC.currentTime + (from ? 0.15 : 0.25) + S.rec.intro; // recorders are running; the song starts exactly here on the audio clock (delayed by any intro hold)
+    S.rec.videoStart = t0 - S.rec.intro; // video-elapsed clock's zero point \u2014 equals the old start-of-audio point when intro is 0
     if (from) { vol.gain.setValueAtTime(0, t0); vol.gain.linearRampToValueAtTime(1, t0 + 0.06); }
     if (O.fade && S.rec.limit) { vol.gain.setValueAtTime(1, t0 + Math.max(0.1, S.rec.limit - 1)); vol.gain.linearRampToValueAtTime(0, t0 + S.rec.limit); }
     node.start(t0, from); S.rec.t0 = t0;
