@@ -13,14 +13,22 @@
   const FONTS = ['Bebas Neue', 'Anton', 'Archivo Black', 'Alfa Slab One', 'Fjalla One', 'Oswald', 'Montserrat', 'Poppins', 'Kanit', 'Teko', 'Barlow Condensed', 'Bungee', 'Luckiest Guy', 'Inter'];
   const HEAVY = ['Montserrat', 'Poppins', 'Inter', 'Oswald', 'Barlow Condensed', 'Teko', 'Kanit'];
   const TIGHT = ['Bebas Neue', 'Anton', 'Teko'];
-  const ANIMS = [['appear', 'Word-appear (pop)'], ['floatup', 'Word-appear (float up)'], ['slidein', 'Word-appear (slide in)'], ['dissolve', 'Word-appear (dissolve)'], ['drift', 'Word-appear (drift)'], ['karaoke', 'Karaoke highlight'], ['pop', 'Whole-line pop']];
+  const ANIM_STYLES = [['pop', 'Pop'], ['floatup', 'Float up'], ['slidein', 'Slide in'], ['dissolve', 'Dissolve'], ['drift', 'Drift (cloud)']];
+  const ANIM_FAMILIES = [['word', 'Word-appear'], ['line', 'Whole-line pop'], ['karaoke', 'Karaoke highlight']];
+  function splitAnim(v) {
+    if (!v) v = 'word:pop';
+    if (v.indexOf(':') >= 0) { const p = v.split(':'); return { family: p[0], style: p[1] }; }
+    const LEGACY = { appear: ['word', 'pop'], floatup: ['word', 'floatup'], slidein: ['word', 'slidein'], dissolve: ['word', 'dissolve'], drift: ['word', 'drift'], pop: ['line', 'pop'], karaoke: ['karaoke', 'pop'] };
+    const m = LEGACY[v] || ['word', 'pop'];
+    return { family: m[0], style: m[1] };
+  }
   const SIZES = { '16': [1920, 1080], '9': [1080, 1920] };
   const PREVIEW_SCALE = 0.5;
   const MEDIA = /\.(mp3|wav|m4a|mp4|mov|webm|m4v|png|jpe?g)$/i;
   const OUTPUT = /-(16x9|9x16)(-test)?\.(mp4|webm)$/i; // our own renders - never offered as backgrounds
   const AUDIO_EXT = /\.(mp3|wav|m4a)$/i;
   const DEF = {
-    anim: 'appear', font: 'Bebas Neue', text: '#ffffff', hi: '#e6bd52', out: '#101010', size: 5.5, stressSize: 1.5, ow: 6,
+    anim: 'word:pop', font: 'Bebas Neue', text: '#ffffff', hi: '#e6bd52', out: '#101010', size: 5.5, stressSize: 1.5, ow: 6,
     upper: true, ori: 'h', vRows: 1, align: 'center', posX: 50, posY: 80, offset: 0, maxHold: 10,
     crossfade: 1, transition: 'dissolve', endFade: 4, endHold: 2, introHold: 0, kenburns: true, linePos: {}, lineSize: {}, stress: {}, lineStyle: {},
     logoPos: 'br', logoSize: 10, logoOpacity: 100
@@ -244,7 +252,7 @@
     if (idx < 0) return;
     const c = S.cfg, L = S.lines[idx], vis = Math.min(L.end, L.start + c.maxHold);
     const ov = c.lineStyle[L.key] || {};
-    const lAnim = ov.anim != null ? ov.anim : c.anim;
+    const { family: lFamily, style: lStyle } = splitAnim(ov.anim != null ? ov.anim : c.anim);
     const lFont = ov.font != null ? ov.font : c.font;
     const lBold = ov.bold != null ? ov.bold : c.bold;
     const lUpper = ov.upper != null ? ov.upper : c.upper;
@@ -285,17 +293,16 @@
       let x = c.align === 'left' ? bx : c.align === 'right' ? bx + bw - r.w : bx + (bw - r.w) / 2;
       const cy = y + r.h / 2;
       r.it.forEach((it) => {
-        const e = t - it.at;
-        let op = 1, sc = 1, dx = 0, dy = 0, blur = 0, col = it.st ? lHi : lText;
-        if (lAnim === 'pop') { const e0 = t - L.start; op = clamp(e0 / 0.15, 0, 1); sc = 0.6 + 0.4 * easeBack(e0 / 0.22); }
-        else if (lAnim === 'karaoke') { col = e >= 0 ? lHi : lText; }
-        else if (e < 0) { op = 0; }
-        else if (lAnim === 'floatup') { op = clamp(e / 0.3, 0, 1); const q = easeOut(e / 0.55); dy = 36 * u * (1 - q); sc = 0.94 + 0.06 * q; }
-        else if (lAnim === 'slidein') { op = clamp(e / 0.2, 0, 1); dx = -42 * u * (1 - easeOut(e / 0.34)); }
-        else if (lAnim === 'dissolve') { const q = clamp(e / 0.4, 0, 1); op = q; blur = 14 * u * (1 - q); }
-        else if (lAnim === 'drift') { const q = easeOut(clamp(e / 0.9, 0, 1)); op = clamp(e / 0.55, 0, 1); dy = 50 * u * (1 - q); blur = 8 * u * (1 - q); }
-        else { op = clamp(e / 0.15, 0, 1); const q = easeBack(e / 0.22); dy = 14 * u * (1 - q); sc = 0.6 + 0.4 * q; }
-        if (it.st && lAnim !== 'karaoke' && e >= 0 && e < 0.4) sc *= 1.35 - 0.35 * easeOut(e / 0.4);
+        const e = lFamily === 'word' ? (t - it.at) : (t - L.start);
+        let op = 1, sc = 1, dx = 0, dy = 0, blur = 0;
+        let col = it.st ? lHi : lText;
+        if (lFamily === 'karaoke') col = (t >= it.at) ? lHi : lText;
+        if (lStyle === 'pop') { op = clamp(e / 0.15, 0, 1); const q = easeBack(e / 0.22); dy = 14 * u * (1 - q); sc = 0.6 + 0.4 * q; }
+        else if (lStyle === 'floatup') { op = clamp(e / 0.3, 0, 1); const q = easeOut(e / 0.55); dy = 36 * u * (1 - q); sc = 0.94 + 0.06 * q; }
+        else if (lStyle === 'slidein') { op = clamp(e / 0.2, 0, 1); dx = -42 * u * (1 - easeOut(e / 0.34)); }
+        else if (lStyle === 'dissolve') { const q = clamp(e / 0.4, 0, 1); op = q; blur = 14 * u * (1 - q); }
+        else if (lStyle === 'drift') { const q = easeOut(clamp(e / 0.9, 0, 1)); op = clamp(e / 0.55, 0, 1); dy = 50 * u * (1 - q); blur = 8 * u * (1 - q); }
+        if (lFamily === 'word' && it.st && e >= 0 && e < 0.4) sc *= 1.35 - 0.35 * easeOut(e / 0.4);
         if (record) S.hits.push({ x: x, y: cy - r.h / 2, w: it.w, h: r.h, key: L.key + ':' + it.i });
         const a = op * la;
         if (a > 0.001) {
@@ -693,7 +700,7 @@
           ${slider('vRows')}
           ${seg('align', [['left', 'Left'], ['center', 'Middle'], ['right', 'Right']])}
           <span class="mv-lab">Animation &amp; font</span>
-          <select id="mvAnim" style="margin-bottom:6px">${ANIMS.map((a) => '<option value="' + a[0] + '">' + a[1] + '</option>').join('')}</select>
+          <select id="mvAnim" style="margin-bottom:6px">${ANIM_FAMILIES.map((f) => '<optgroup label="' + f[1] + '">' + ANIM_STYLES.map((s) => '<option value="' + f[0] + ':' + s[0] + '">' + s[1] + '</option>').join('') + '</optgroup>').join('')}</select>
           <button class="mv-fontbtn" id="mvFontBtn" title="Browse fonts"></button>
           <div id="mvFavChips" class="mv-fchips"></div>
           ${seg('bold', [['false', 'Regular'], ['true', 'Bold']])}
