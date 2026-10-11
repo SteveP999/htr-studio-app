@@ -338,10 +338,9 @@
     drawFrame(cx, S.fmt, t, PREVIEW_SCALE, true, S.lyricsOn, bgT, bgTotal);
     if (S.total) {
       const fl = finalLen();
-      if (!S.seeking) $('mvSeek').value = Math.round(clamp(vt, 0, fl) / fl * 1000);
-      const tDisp = clamp(t, 0, S.total);
-      const outside = vt < intro - 0.03 || vt > intro + S.total + 0.03;
-      $('mvTime').textContent = fmtS(tDisp) + ' / ' + fmtS(S.total) + (outside ? ' (preview)' : '');
+      const vtc = clamp(vt, 0, fl);
+      if (!S.seeking) $('mvSeek').value = Math.round(vtc / fl * 1000);
+      $('mvTime').textContent = fmtS(vtc) + ' / ' + fmtS(fl);
     }
     markLine();
     if (H.mode === 'hooks') hkDraw();
