@@ -196,6 +196,7 @@
   // keep every video layer playing at the right spot (loops if the clip is shorter than its slot)
   function syncVideos(fmts, t, playing, totalOverride) {
     const want = new Map(), xf = S.cfg.crossfade, total = totalOverride != null ? totalOverride : S.total;
+    const seeking = [];
     fmts.forEach((f) => {
       segsFor(S.bg[f], total).forEach((g) => { if (g.b.kind === 'video' && t >= g.s - xf && t < g.e + xf) want.set(g.b, g); });
       const ec = S.end[f];
@@ -209,12 +210,13 @@
       const lt = Math.max(0, t - g.s) % d, diff = Math.abs(v.currentTime - lt);
       if (playing) {
         if (v.paused) v.play().catch(() => { });
-        if (diff > 0.35 && diff < d - 0.35) v.currentTime = lt;
+        if (diff > 0.35 && diff < d - 0.35) { v.currentTime = lt; seeking.push(v); }
       } else {
         if (!v.paused) v.pause();
-        if (diff > 0.04) v.currentTime = lt;
+        if (diff > 0.04) { v.currentTime = lt; seeking.push(v); }
       }
     });
+    return seeking;
   }
 
   // ---------- lyrics ----------
@@ -1104,7 +1106,16 @@
     const isFullRender = !limit && !from;
     const introH = isFullRender ? (S.cfg.introHold || 0) : 0;
     const preTotal = isFullRender ? (introH + S.total + (S.cfg.endHold || 0)) : undefined;
-    syncVideos(fmts, isFullRender ? 0 : from, false, preTotal); await wait(700); // let video layers land on the first frame (video-elapsed 0, which is the start of any intro hold)
+    const seekingVids = syncVideos(fmts, isFullRender ? 0 : from, false, preTotal) || [];
+    // Wait for real confirmation the background video(s) actually landed on frame 0 before we start capturing \u2014
+    // a fixed delay isn't reliable (seeking a long video can take longer, especially right after it was scrubbed
+    // to the far end for preview) and capturing before the seek lands is how a stray end-card frame gets baked
+    // into the start of the export.
+    await Promise.all(seekingVids.map((v) => new Promise((res) => {
+      let done = false; const fin = () => { if (done) return; done = true; v.removeEventListener('seeked', fin); clearTimeout(tm); res(); };
+      const tm = setTimeout(fin, 1500); v.addEventListener('seeked', fin, { once: true });
+    })));
+    await wait(150); // short settle so the newly-seeked frame is actually painted, not just reported seeked
     const at = mdest.stream.getAudioTracks()[0], ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
     const list = fmts.map((f) => {
       const [W, H] = SIZES[f]; const c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -1159,12 +1170,15 @@
     if ($('hkNow')) $('hkNow').textContent = '';
     if (R.cancel) { $('mvRenderMsg').textContent = 'Render cancelled.'; if (H.queue) H.queue.cancel = true; if (R.done) R.done({ cancel: true }); hkRenderList(); return; }
     const msgs = [];
+    setRenderMsg('Finishing \u2014 repairing the video file so it seeks and thumbnails correctly...');
     for (const r of R.list) {
-      const blob = await withDuration(new Blob(r.chunks, { type: R.mime.split(';')[0] }), R.recorded);
+      let blob = await withDuration(new Blob(r.chunks, { type: R.mime.split(';')[0] }), R.recorded);
+      blob = await remuxMp4(blob);
       const name = R.names ? R.names[r.fmt] + '.' + R.ext : S.song.id + (R.lyrics ? '-lyric' : '') + '-' + (r.fmt === '16' ? '16x9' : '9x16') + (R.limit ? '-test' : '') + '.' + R.ext;
       msgs.push(await saveBlob(blob, name, R.sub) + ' <span class="mv-dim">(' + (blob.size / 1048576).toFixed(R.names ? 1 : 0) + ' MB)</span>');
       if (r.web && r.web.chunks.length) {
-        const wb = await withDuration(new Blob(r.web.chunks, { type: R.mime.split(';')[0] }), R.recorded);
+        let wb = await withDuration(new Blob(r.web.chunks, { type: R.mime.split(';')[0] }), R.recorded);
+        wb = await remuxMp4(wb);
         msgs.push(await saveBlob(wb, name.replace(/(\.[a-z0-9]+)$/i, '-web$1')) + ' <span class="mv-dim">(' + (wb.size / 1048576).toFixed(0) + ' MB \u2014 website copy)</span>');
       }
     }
@@ -1205,6 +1219,43 @@
       (found.mehd || []).forEach((p) => { const v = dv.getUint8(p + 8); put(p + 12, v, seconds * movieTS); });
       return new Blob([buf, blob.slice(headLen)], { type: blob.type });
     } catch (e) { console.warn('duration fix skipped', e); return blob; }
+  }
+  let ffmpegInst = null, ffmpegLoading = null;
+  async function ensureFFmpeg() {
+    if (ffmpegInst) return ffmpegInst;
+    if (ffmpegLoading) return ffmpegLoading;
+    ffmpegLoading = (async () => {
+      if (!window.FFmpeg) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js';
+          s.onload = resolve; s.onerror = () => reject(new Error('ffmpeg script failed to load'));
+          document.head.appendChild(s);
+        });
+      }
+      const { createFFmpeg } = window.FFmpeg;
+      const ff = createFFmpeg({ corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js', log: false });
+      await ff.load();
+      ffmpegInst = ff;
+      return ff;
+    })();
+    return ffmpegLoading;
+  }
+  // Chrome's MediaRecorder writes MP4 as a stream of fragments with no final index, so some players (Windows
+  // Media Player among them) can't seek the file, and a thumbnail generator reading that same broken index can
+  // grab the wrong frame \u2014 that's how an end card ends up looking like it's at the front. Remux (not re-encode,
+  // so this is fast and lossless) into a standard, fully-indexed MP4 with the moov box moved to the front.
+  async function remuxMp4(blob) {
+    if (!/mp4/.test(blob.type)) return blob;
+    try {
+      const ff = await ensureFFmpeg();
+      const buf = new Uint8Array(await blob.arrayBuffer());
+      ff.FS('writeFile', 'in.mp4', buf);
+      await ff.run('-i', 'in.mp4', '-c', 'copy', '-movflags', 'faststart', 'out.mp4');
+      const data = ff.FS('readFile', 'out.mp4');
+      try { ff.FS('unlink', 'in.mp4'); ff.FS('unlink', 'out.mp4'); } catch (e) { }
+      return new Blob([data.buffer], { type: 'video/mp4' });
+    } catch (e) { console.warn('mp4 remux skipped, keeping original file', e); return blob; }
   }
   async function saveBlob(blob, name, sub) {
     if (S.dir) {
