@@ -22,7 +22,8 @@
   const DEF = {
     anim: 'appear', font: 'Bebas Neue', text: '#ffffff', hi: '#e6bd52', out: '#101010', size: 5.5, stressSize: 1.5, ow: 6,
     upper: true, ori: 'h', vRows: 1, align: 'center', posX: 50, posY: 80, offset: 0, maxHold: 10,
-    crossfade: 1, transition: 'dissolve', endFade: 4, endHold: 2, introHold: 0, kenburns: true, linePos: {}, lineSize: {}, stress: {}
+    crossfade: 1, transition: 'dissolve', endFade: 4, endHold: 2, introHold: 0, kenburns: true, linePos: {}, lineSize: {}, stress: {},
+    logoPos: 'br', logoSize: 10, logoOpacity: 100
   };
   const SLIDERS = {
     crossfade: ['Transition length', 0, 4, 0.1, (v) => v.toFixed(1) + 's'],
@@ -36,7 +37,9 @@
     vRows: ['Words per row (vertical layout)', 1, 4, 1, (v) => String(v)],
     ow: ['Outline width', 0, 14, 1, (v) => v + 'px'],
     offset: ['Timing nudge (+ = lyrics earlier)', -1, 1.5, 0.02, (v) => (v > 0 ? '+' : '') + v.toFixed(2) + 's'],
-    maxHold: ['Longest a line stays up', 3, 30, 0.5, (v) => v + 's']
+    maxHold: ['Longest a line stays up', 3, 30, 0.5, (v) => v + 's'],
+    logoSize: ['Logo size', 3, 25, 1, (v) => v + '%'],
+    logoOpacity: ['Logo opacity', 10, 100, 5, (v) => v + '%']
   };
   const clone = (o) => JSON.parse(JSON.stringify(o));
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -62,7 +65,7 @@
 
   // ---------- state ----------
   const S = {
-    songs: null, song: null, lines: [], total: 0, cfg: clone(DEF), bg: { '16': [], '9': [] }, end: { '16': null, '9': null },
+    songs: null, song: null, lines: [], total: 0, cfg: clone(DEF), bg: { '16': [], '9': [] }, end: { '16': null, '9': null }, logo: { '16': null, '9': null },
     fmt: '16', move: 'all', pick: -1, shown: -1, dir: null, dirFiles: [], lyricsOn: true, out: '16', rec: null, dirty: false,
     hits: [], block: null, drag: null, seeking: false, audioName: '', ev: [], sel: null, tsDirty: false, tsHist: [], hooks: []
   };
@@ -137,7 +140,7 @@
     const it = { name: x.name || nameOf(x.src || ''), src: x.src || null, kind: x.kind || kindOf(x.name || nameOf(x.src || '')), start: x.start == null ? null : +x.start, url: x.src ? dbx(x.src) : null };
     mount(it); return it;
   }
-  function allItems() { return [].concat(S.bg['16'], S.bg['9'], [S.end['16'], S.end['9']].filter(Boolean)); }
+  function allItems() { return [].concat(S.bg['16'], S.bg['9'], [S.end['16'], S.end['9'], S.logo['16'], S.logo['9']].filter(Boolean)); }
   // manual start times are pins; blanks spread evenly between them (same rule the old FFmpeg renderer used)
   function segsFor(list, total) {
     const n = list.length; if (!n || !total) return [];
@@ -192,6 +195,19 @@
     const ec = S.end[fmt]; if (!ec || !ec.el || !ec.ready || !S.total) return;
     const f = S.cfg.endFade, a = clamp((t - (S.total - f)) / f, 0, 1);
     if (a > 0) coverDraw(ctx, ec.el, W, H, a, 1);
+  }
+  // covers a corner watermark (e.g. Gemini) with the artist's own logo, drawn on every frame, same spot throughout
+  function drawLogo(ctx, fmt, W, H) {
+    const lg = S.logo[fmt]; if (!lg || !lg.el || !lg.ready) return;
+    const iw = lg.el.naturalWidth || lg.el.videoWidth, ih = lg.el.naturalHeight || lg.el.videoHeight;
+    if (!iw || !ih) return;
+    const margin = 0.03 * W, dw = (S.cfg.logoSize / 100) * W, dh = dw * (ih / iw);
+    const pos = S.cfg.logoPos || 'br';
+    const x = pos.indexOf('l') >= 0 ? margin : W - margin - dw;
+    const y = pos.indexOf('t') >= 0 ? margin : H - margin - dh;
+    ctx.globalAlpha = (S.cfg.logoOpacity != null ? S.cfg.logoOpacity : 100) / 100;
+    ctx.drawImage(lg.el, x, y, dw, dh);
+    ctx.globalAlpha = 1;
   }
   // keep every video layer playing at the right spot (loops if the clip is shorter than its slot)
   function syncVideos(fmts, t, playing, totalOverride) {
@@ -293,6 +309,7 @@
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     drawBackground(ctx, fmt, bgT != null ? bgT : t, W, H, totalOverride);
     drawEnd(ctx, fmt, t, W, H);
+    drawLogo(ctx, fmt, W, H);
     if (lyrics) drawLyrics(ctx, t + S.cfg.offset, W, H, record);
     else if (record) { S.hits = []; S.block = null; S.shown = lineAt(t + S.cfg.offset); }
   }
@@ -642,6 +659,11 @@
           <span class="mv-lab">End card <span id="mvEndName" style="text-transform:none;letter-spacing:0"></span></span>
           <div class="mv-row"><input id="mvEndLink" placeholder="Dropbox link&hellip;"><label class="btn btn-ghost mv-sm mv-file">Pick&hellip;<input type="file" id="mvEndFile" accept="image/*,video/*"></label><button class="btn btn-ghost mv-sm" id="mvEndClear" title="Remove end card">&#10005;</button></div>
           ${slider('endFade')}${slider('endHold')}${slider('introHold')}
+          <span class="mv-lab">Logo overlay <span id="mvLogoName"></span></span>
+          <div class="mv-dim" style="margin:2px 2px 4px">Covers a corner watermark (e.g. Gemini) with your own logo, the whole video through.</div>
+          <div class="mv-row"><input id="mvLogoLink" placeholder="Dropbox link&hellip;"><label class="btn btn-ghost mv-sm mv-file">Pick&hellip;<input type="file" id="mvLogoFile" accept="image/*"></label><button class="btn btn-ghost mv-sm" id="mvLogoClear" title="Remove logo overlay">&#10005;</button></div>
+          ${seg('logoPos', [['tl', '&#8598;'], ['tr', '&#8599;'], ['bl', '&#8601;'], ['br', '&#8600;']])}
+          ${slider('logoSize')}${slider('logoOpacity')}
           <div class="mv-dim" id="mvFinalLen" style="margin-top:4px"></div>
         </div>
         <div class="card mv-card">
@@ -758,7 +780,7 @@
     S.fmt = f;
     const [W, H] = SIZES[f]; cv.width = W * PREVIEW_SCALE; cv.height = H * PREVIEW_SCALE;
     cv.classList.toggle('v', f === '9');
-    renderBg(); renderEnd(); renderFolder();
+    renderBg(); renderEnd(); renderLogo(); renderFolder();
   }
 
   // ---------- lines list ----------
@@ -911,6 +933,24 @@
     const e = S.end[S.fmt];
     el.innerHTML = e ? '&mdash; ' + esc(e.name) + (!e.url ? ' <span class="mv-warn">(re-pick)</span>' : e.err ? ' <span class="mv-warn">(can\u2019t load)</span>' : '') : '<span class="mv-dim">(none)</span>';
   }
+  function renderLogo() {
+    const el = $('mvLogoName'); if (!el) return;
+    const e = S.logo[S.fmt];
+    el.innerHTML = e ? '&mdash; ' + esc(e.name) + (!e.url ? ' <span class="mv-warn">(re-pick)</span>' : e.err ? ' <span class="mv-warn">(can\u2019t load)</span>' : '') : '<span class="mv-dim">(none)</span>';
+  }
+  function addLogoLink(v) {
+    v = (v || '').trim(); if (!v) return false;
+    if (/dropbox\.com\/scl\/fo\//i.test(v)) { toast('That\u2019s a Dropbox FOLDER link \u2014 right-click the file itself and copy its link', true); return false; }
+    const it = itemFrom({ src: v, kind: 'image' });
+    S.logo[S.fmt] = it; S.dirty = true; renderLogo(); return true;
+  }
+  function addLogoFile(f) {
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    const it = { name: f.name, src: null, kind: 'image', start: null, url: url };
+    mount(it);
+    S.logo[S.fmt] = it; S.dirty = true; renderLogo();
+  }
   function addFiles(files, asEnd) {
     Array.from(files).forEach((f) => {
       const url = URL.createObjectURL(f);
@@ -1003,7 +1043,7 @@
     const song = S.songs.find((s) => s.id === id); if (!song) return;
     const b = B();
     audio.pause(); allItems().forEach((it) => { if (it.el && it.el.pause) it.el.pause(); });
-    Object.assign(S, { song: song, lines: [], pick: -1, shown: -1, cfg: clone(DEF), bg: { '16': [], '9': [] }, end: { '16': null, '9': null }, dirty: false, total: 0, hooks: [] });
+    Object.assign(S, { song: song, lines: [], pick: -1, shown: -1, cfg: clone(DEF), bg: { '16': [], '9': [] }, end: { '16': null, '9': null }, logo: { '16': null, '9': null }, dirty: false, total: 0, hooks: [] });
     H.sel = null; H.play = null; H.baseKey = ''; H.v0 = 0; H.v1 = 0;
     $('mvSongName').textContent = '\u2014 ' + song.title;
     const src = dbx(b.audioOf(song));
@@ -1016,13 +1056,13 @@
       const f = await b.gh(P('data/video-projects/' + song.id + '.json?ref=main'));
       const p = JSON.parse(b.b64decode(f.content));
       S.cfg = Object.assign(clone(DEF), p.cfg || {});
-      ['16', '9'].forEach((k) => { S.bg[k] = ((p.bg && p.bg[k]) || []).map(itemFrom); S.end[k] = p.end && p.end[k] ? itemFrom(p.end[k]) : null; });
+      ['16', '9'].forEach((k) => { S.bg[k] = ((p.bg && p.bg[k]) || []).map(itemFrom); S.end[k] = p.end && p.end[k] ? itemFrom(p.end[k]) : null; S.logo[k] = p.logo && p.logo[k] ? itemFrom(p.logo[k]) : null; });
       S.hooks = (Array.isArray(p.hooks) ? p.hooks : []).filter((h) => h && HK[h.type]).map((h) => Object.assign({ id: ++_uid, on: true }, h));
       bits.push([true, 'saved video setup loaded']);
     } catch (e) { bits.push([true, 'new video setup']); }
     S.statusBits = bits; showStatus();
     if (S.dirFiles.length) await afterFolder();
-    renderLines(); renderBg(); renderEnd(); syncControls();
+    renderLines(); renderBg(); renderEnd(); renderLogo(); syncControls();
     ensureCurrentFont();
     hkRenderList(); if (H.mode === 'hooks') { hkDraw(); hkAnalyze(); }
   }
@@ -1031,6 +1071,7 @@
     const pack = (it) => (it ? { name: it.name, src: it.src || null, kind: it.kind, start: it.start == null ? null : Math.round(it.start * 10) / 10 } : null);
     const data = { version: 1, song: S.song.id, updated: new Date().toISOString(), cfg: S.cfg,
       bg: { '16': S.bg['16'].map(pack), '9': S.bg['9'].map(pack) }, end: { '16': pack(S.end['16']), '9': pack(S.end['9']) },
+      logo: { '16': pack(S.logo['16']), '9': pack(S.logo['9']) },
       hooks: S.hooks.map((h) => ({ type: h.type, start: h.start, len: h.len, n: h.n, on: h.on !== false, done: h.done || null })) };
     if (S.tsDirty && !(await saveTimestamps(true))) return;
     try {
@@ -1782,6 +1823,9 @@
     $('mvEndLink').onchange = function () { if (addLink(this.value, true)) this.value = ''; };
     $('mvEndFile').onchange = function () { addFiles(this.files, true); this.value = ''; };
     $('mvEndClear').onclick = () => { S.end[S.fmt] = null; S.dirty = true; renderEnd(); };
+    $('mvLogoLink').onchange = function () { if (addLogoLink(this.value)) this.value = ''; };
+    $('mvLogoFile').onchange = function () { addLogoFile(this.files[0]); this.value = ''; };
+    $('mvLogoClear').onclick = () => { S.logo[S.fmt] = null; S.dirty = true; renderLogo(); };
     $('mvSave').onclick = saveSetup;
     $('mvAddLine').onclick = () => evAdd('New line');
     $('mvAddGap').onclick = () => evAdd('[gap]');
