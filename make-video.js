@@ -22,11 +22,12 @@
   const DEF = {
     anim: 'appear', font: 'Bebas Neue', text: '#ffffff', hi: '#e6bd52', out: '#101010', size: 5.5, stressSize: 1.5, ow: 6,
     upper: true, ori: 'h', vRows: 1, align: 'center', posX: 50, posY: 80, offset: 0, maxHold: 10,
-    crossfade: 1, transition: 'dissolve', endFade: 4, kenburns: true, linePos: {}, lineSize: {}, stress: {}
+    crossfade: 1, transition: 'dissolve', endFade: 4, endHold: 2, kenburns: true, linePos: {}, lineSize: {}, stress: {}
   };
   const SLIDERS = {
     crossfade: ['Transition length', 0, 4, 0.1, (v) => v.toFixed(1) + 's'],
     endFade: ['End card fades in over the last', 1, 12, 0.5, (v) => v + 's'],
+    endHold: ['End card stays after the song ends', 0, 8, 0.5, (v) => v + 's'],
     size: ['Caption size', 2.5, 14, 0.1, (v) => v.toFixed(1)],
     stressSize: ['Stressed word size', 1, 2.6, 0.1, (v) => v.toFixed(1) + '\u00d7'],
     posX: ['Horizontal', 2, 98, 0.5, (v) => Math.round(v) + '%'],
@@ -312,7 +313,7 @@
     const set = new Set([S.fmt]); if (S.rec) S.rec.list.forEach((r) => set.add(r.fmt));
     syncVideos(Array.from(set), t, playing);
     if (S.rec) {
-      const R = S.rec, from = R.from || 0, lim = R.limit || (S.total - from), el = t - from;
+      const R = S.rec, from = R.from || 0, lim = (R.limit || (S.total - from)) + (R.hold || 0), el = t - from;
       R.list.forEach((r) => { drawFrame(r.ctx, r.fmt, t, 1, false, R.lyrics); if (R.fade) fadeBlack(r.ctx, r.fmt, el, lim); });
       const pct = clamp(el / lim * 100, 0, 100) + '%';
       $('mvProg').firstChild.style.width = pct; if ($('hkProg')) $('hkProg').firstChild.style.width = pct;
@@ -626,7 +627,7 @@
           <label class="mv-chk"><input type="checkbox" id="mvKen"> Slow zoom on still images</label>
           <span class="mv-lab">End card <span id="mvEndName" style="text-transform:none;letter-spacing:0"></span></span>
           <div class="mv-row"><input id="mvEndLink" placeholder="Dropbox link&hellip;"><label class="btn btn-ghost mv-sm mv-file">Pick&hellip;<input type="file" id="mvEndFile" accept="image/*,video/*"></label><button class="btn btn-ghost mv-sm" id="mvEndClear" title="Remove end card">&#10005;</button></div>
-          ${slider('endFade')}
+          ${slider('endFade')}${slider('endHold')}
         </div>
         <div class="card mv-card">
           <h4><span class="n">2</span>Lyrics look</h4>
@@ -1099,11 +1100,14 @@
     });
     S.rec = { list: list, lyrics: S.lyricsOn, ext: ext, mime: mime, limit: limit || 0, hidden: false, t0: null,
       from: from, names: O.names || null, sub: O.sub || '', label: O.label || '', fade: !!O.fade };
+    const isFullRender = !S.rec.limit && !S.rec.from;
+    const hasEndCard = fmts.some((f) => S.end[f] && S.end[f].ready);
+    S.rec.hold = (isFullRender && hasEndCard) ? (S.cfg.endHold || 0) : 0;
     const node = AC.createBufferSource(); node.buffer = songBuf;
     const listen = AC.createGain(); listen.gain.value = $('mvListen').checked ? 1 : 0;
     const vol = AC.createGain();                  // fades for clips that start / stop mid-song
     node.connect(vol); vol.connect(mdest); vol.connect(listen); listen.connect(AC.destination);
-    node.onended = () => { if (S.rec && S.rec.node === node) finishRender(); };
+    node.onended = () => { if (S.rec && S.rec.node === node && !S.rec.hold) finishRender(); };
     S.rec.node = node; S.rec.listen = listen;
     ['mvGo', 'mvTest', 'mvSave', 'hkGo'].forEach((id) => { if ($(id)) $(id).disabled = true; });
     $('mvCancel').classList.remove('hidden'); $('mvProg').classList.remove('hidden');
