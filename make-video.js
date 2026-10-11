@@ -27,7 +27,7 @@
   const SLIDERS = {
     crossfade: ['Transition length', 0, 4, 0.1, (v) => v.toFixed(1) + 's'],
     endFade: ['End card fades in over the last', 1, 12, 0.5, (v) => v + 's'],
-    endHold: ['End card stays after the song ends', 0, 8, 0.5, (v) => v + 's'],
+    endHold: ['Extra time after the song ends', 0, 10, 0.5, (v) => v + 's'],
     size: ['Caption size', 2.5, 14, 0.1, (v) => v.toFixed(1)],
     stressSize: ['Stressed word size', 1, 2.6, 0.1, (v) => v.toFixed(1) + '\u00d7'],
     posX: ['Horizontal', 2, 98, 0.5, (v) => Math.round(v) + '%'],
@@ -1101,8 +1101,7 @@
     S.rec = { list: list, lyrics: S.lyricsOn, ext: ext, mime: mime, limit: limit || 0, hidden: false, t0: null,
       from: from, names: O.names || null, sub: O.sub || '', label: O.label || '', fade: !!O.fade };
     const isFullRender = !S.rec.limit && !S.rec.from;
-    const hasEndCard = fmts.some((f) => S.end[f] && S.end[f].ready);
-    S.rec.hold = (isFullRender && hasEndCard) ? (S.cfg.endHold || 0) : 0;
+    S.rec.hold = isFullRender ? (S.cfg.endHold || 0) : 0;
     const node = AC.createBufferSource(); node.buffer = songBuf;
     const listen = AC.createGain(); listen.gain.value = $('mvListen').checked ? 1 : 0;
     const vol = AC.createGain();                  // fades for clips that start / stop mid-song
