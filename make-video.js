@@ -637,6 +637,7 @@
           <span class="mv-lab">End card <span id="mvEndName" style="text-transform:none;letter-spacing:0"></span></span>
           <div class="mv-row"><input id="mvEndLink" placeholder="Dropbox link&hellip;"><label class="btn btn-ghost mv-sm mv-file">Pick&hellip;<input type="file" id="mvEndFile" accept="image/*,video/*"></label><button class="btn btn-ghost mv-sm" id="mvEndClear" title="Remove end card">&#10005;</button></div>
           ${slider('endFade')}${slider('endHold')}${slider('introHold')}
+          <div class="mv-dim" id="mvFinalLen" style="margin-top:4px"></div>
         </div>
         <div class="card mv-card">
           <h4><span class="n">2</span>Lyrics look</h4>
@@ -743,6 +744,8 @@
     document.querySelectorAll('#view-mkvideo [data-k]').forEach((r) => { const k = r.dataset.k, v = +getVal(k); if (document.activeElement !== r) r.value = v; const sh = document.querySelector('#view-mkvideo [data-show="' + k + '"]'); if (sh) sh.textContent = SLIDERS[k][4](v); });
     document.querySelectorAll('#view-mkvideo [data-col]').forEach((i) => { i.value = S.cfg[i.dataset.col]; });
     $('mvAnim').value = S.cfg.anim; renderFontBtn(); $('mvKen').checked = !!S.cfg.kenburns;
+    const fl = $('mvFinalLen');
+    if (fl) fl.textContent = S.total ? ('Final video length: ' + fmtS((S.cfg.introHold || 0) + S.total + (S.cfg.endHold || 0)) + ' \u2014 song itself is ' + fmtS(S.total)) : '';
     const k = tgtKey();
     document.querySelector('#view-mkvideo [data-show="size"]').previousElementSibling.textContent = (S.move === 'line' ? (k ? 'Caption size (this line)' : 'Caption size (pick a line)') : 'Caption size (all lines)');
   }
