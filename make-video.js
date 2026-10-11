@@ -286,10 +286,10 @@
     });
     setSpacing(ctx, 0);
   }
-  function drawFrame(ctx, fmt, t, scale, record, lyrics, bgT) {
+  function drawFrame(ctx, fmt, t, scale, record, lyrics, bgT, totalOverride) {
     const [W, H] = SIZES[fmt];
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    drawBackground(ctx, fmt, bgT != null ? bgT : t, W, H, S.rec ? S.rec._bgTotal : null);
+    drawBackground(ctx, fmt, bgT != null ? bgT : t, W, H, totalOverride);
     drawEnd(ctx, fmt, t, W, H);
     if (lyrics) drawLyrics(ctx, t + S.cfg.offset, W, H, record);
     else if (record) { S.hits = []; S.block = null; S.shown = lineAt(t + S.cfg.offset); }
@@ -312,17 +312,19 @@
     const visible = !$('view-mkvideo').classList.contains('hidden');
     if (!visible && !S.rec) { if (!audio.paused) audio.pause(); return; }
     const R = S.rec;
-    const intro = R ? (R.intro || 0) : 0, from = R ? (R.from || 0) : 0;
-    const vt = R ? recVideoElapsed() : 0;
-    const t = R ? (vt - intro + from) : (audio.currentTime || 0);
-    const bgT = R ? vt : t;
-    const playing = R ? true : !audio.paused;
+    const intro = R ? (R.intro || 0) : (S.cfg.introHold || 0), from = R ? (R.from || 0) : 0;
+    let vt, t;
+    if (R) { vt = recVideoElapsed(); t = vt - intro + from; }
+    else if (S.previewT != null) { vt = clamp(S.previewT, 0, finalLen()); t = vt - intro; }
+    else { t = (audio.currentTime || 0); vt = t + intro; }
+    const bgT = vt;
+    const playing = R ? true : (S.previewT != null ? false : !audio.paused);
     const set = new Set([S.fmt]); if (R) R.list.forEach((r) => set.add(r.fmt));
-    if (R) R._bgTotal = intro + (R.limit || (S.total - from)) + (R.hold || 0);
-    syncVideos(Array.from(set), bgT, playing, R ? R._bgTotal : null);
+    const bgTotal = R ? (intro + (R.limit || (S.total - from)) + (R.hold || 0)) : finalLen();
+    syncVideos(Array.from(set), bgT, playing, bgTotal);
     if (R) {
-      const lim = R._bgTotal;
-      R.list.forEach((r) => { drawFrame(r.ctx, r.fmt, t, 1, false, R.lyrics, bgT); if (R.fade) fadeBlack(r.ctx, r.fmt, vt, lim); });
+      const lim = bgTotal;
+      R.list.forEach((r) => { drawFrame(r.ctx, r.fmt, t, 1, false, R.lyrics, bgT, bgTotal); if (R.fade) fadeBlack(r.ctx, r.fmt, vt, lim); });
       const pct = clamp(vt / lim * 100, 0, 100) + '%';
       $('mvProg').firstChild.style.width = pct; if ($('hkProg')) $('hkProg').firstChild.style.width = pct;
       const msg = (R.label ? R.label + ' \u2014 ' : '') + 'Recording ' + fmtS(vt) + ' / ' + fmtS(lim) + ' \u2014 you can switch windows, just don\u2019t close this tab.';
@@ -333,11 +335,13 @@
       if (!audio.paused) audio.pause();
       H.play = null; hkRenderList();
     }
-    drawFrame(cx, S.fmt, t, PREVIEW_SCALE, true, S.lyricsOn, bgT);
+    drawFrame(cx, S.fmt, t, PREVIEW_SCALE, true, S.lyricsOn, bgT, bgTotal);
     if (S.total) {
+      const fl = finalLen();
+      if (!S.seeking) $('mvSeek').value = Math.round(clamp(vt, 0, fl) / fl * 1000);
       const tDisp = clamp(t, 0, S.total);
-      if (!S.seeking) $('mvSeek').value = Math.round(tDisp / S.total * 1000);
-      $('mvTime').textContent = fmtS(tDisp) + ' / ' + fmtS(S.total);
+      const outside = vt < intro - 0.03 || vt > intro + S.total + 0.03;
+      $('mvTime').textContent = fmtS(tDisp) + ' / ' + fmtS(S.total) + (outside ? ' (preview)' : '');
     }
     markLine();
     if (H.mode === 'hooks') hkDraw();
@@ -1064,10 +1068,12 @@
   function recTime() { const R = S.rec; if (!R) return 0; const f = R.from || 0; return R.t0 != null ? f + Math.max(0, AC.currentTime - R.t0) : f; }
   // video-relative clock: 0 at the moment recording actually began, independent of when the song itself starts playing (intro hold)
   function recVideoElapsed() { const R = S.rec; return R && R.videoStart != null ? Math.max(0, AC.currentTime - R.videoStart) : 0; }
+  // total length of the exported video: intro hold + the song itself + end hold
+  function finalLen() { return (S.cfg.introHold || 0) + (S.total || 0) + (S.cfg.endHold || 0); }
   function togglePlay() {
     if (S.rec) return;
     if (!audio.src) return toast('No audio for this song yet', true);
-    ensureGraph(); H.play = null;
+    ensureGraph(); H.play = null; S.previewT = null;
     if (audio.paused) audio.play().catch((e) => toast('Audio: ' + e.message, true)); else audio.pause();
   }
   function pickMime() {
@@ -1103,7 +1109,7 @@
     const at = mdest.stream.getAudioTracks()[0], ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
     const list = fmts.map((f) => {
       const [W, H] = SIZES[f]; const c = document.createElement('canvas'); c.width = W; c.height = H;
-      const ctx = c.getContext('2d'); drawFrame(ctx, f, from, 1, false, S.lyricsOn);
+      const ctx = c.getContext('2d'); drawFrame(ctx, f, isFullRender ? 0 : from, 1, false, S.lyricsOn, isFullRender ? 0 : from, preTotal);
       const ms = new MediaStream([c.captureStream(30).getVideoTracks()[0], at.clone()]);
       const rec = new MediaRecorder(ms, { mimeType: mime, videoBitsPerSecond: 16000000, audioBitsPerSecond: 192000 });
       const r = { fmt: f, ctx: ctx, rec: rec, ms: ms, chunks: [], web: null };
@@ -1634,7 +1640,19 @@
     audio.addEventListener('ended', () => { if (S.rec) finishRender(); });
     audio.addEventListener('error', () => { if (audio.src) toast('Couldn\u2019t load the song audio \u2014 check the MP3 link in Song Catalog', true); });
     const seek = $('mvSeek');
-    seek.oninput = () => { if (S.rec || !S.total) return; S.seeking = true; audio.currentTime = seek.value / 1000 * S.total; };
+    seek.oninput = () => {
+      if (S.rec || !S.total) return;
+      S.seeking = true;
+      const fl = finalLen(), intro = S.cfg.introHold || 0, target = seek.value / 1000 * fl;
+      if (target >= intro && target <= intro + S.total) {
+        S.previewT = null;
+        if (!audio.paused) audio.pause();
+        audio.currentTime = clamp(target - intro, 0, S.total);
+      } else {
+        if (!audio.paused) audio.pause();
+        S.previewT = target;
+      }
+    };
     seek.onchange = () => { S.seeking = false; };
     // canvas: drag the lyric block, click a word to stress it
     const toFull = (e) => { const r = cv.getBoundingClientRect(), [W, H] = SIZES[S.fmt]; return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; };
