@@ -1257,6 +1257,47 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   const OWNER = 'SteveP999';
   const REPO = 'htr-studio';
+
+window.uiConfirm = function (message) {
+  return new Promise(function (resolve) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:inherit;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#1b1f27;color:#eee;border-radius:10px;padding:20px 24px;max-width:440px;box-shadow:0 10px 40px rgba(0,0,0,.5);';
+    const msg = document.createElement('div');
+    msg.style.cssText = 'white-space:pre-wrap;margin-bottom:16px;line-height:1.45;font-size:14px;';
+    msg.textContent = message;
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = 'padding:8px 16px;border-radius:6px;border:1px solid #444;background:#2a2f3a;color:#eee;cursor:pointer;font-size:14px;';
+    const okBtn = document.createElement('button');
+    okBtn.textContent = 'OK';
+    okBtn.style.cssText = 'padding:8px 16px;border-radius:6px;border:none;background:#4a7dfc;color:#fff;cursor:pointer;font-size:14px;';
+    function close(result) {
+      document.removeEventListener('keydown', onKey);
+      overlay.remove();
+      resolve(result);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') close(false);
+      if (e.key === 'Enter') close(true);
+    }
+    cancelBtn.onclick = function () { close(false); };
+    okBtn.onclick = function () { close(true); };
+    overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) close(false); });
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(okBtn);
+    box.appendChild(msg);
+    box.appendChild(btnRow);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    setTimeout(function () { okBtn.focus(); }, 0);
+    document.addEventListener('keydown', onKey);
+  });
+};
+
   const API = 'https://api.github.com';
   const PAT_KEY = 'htr_studio_pat';
   // Lyrics-only mode for co-writers: open the app with ?lyrics to hide everything
@@ -1936,9 +1977,9 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.artDeleteAlbum = async function(albumName, artistId, songCount) {
   songCount = songCount || 0;
   if (songCount > 0) {
-    if (!confirm('This album has ' + songCount + ' song(s). To protect BMI-registered songs, HTR Studio never deletes songs from Publishing automatically.\n\nThis will instead mark all ' + songCount + ' song(s) in "' + albumName + '" as Retired (hidden from the live site, but kept in Publishing/master data).\n\nContinue?')) return;
+    if (!await uiConfirm('This album has ' + songCount + ' song(s). To protect BMI-registered songs, HTR Studio never deletes songs from Publishing automatically.\n\nThis will instead mark all ' + songCount + ' song(s) in "' + albumName + '" as Retired (hidden from the live site, but kept in Publishing/master data).\n\nContinue?')) return;
   } else {
-    if (!confirm('Delete empty album "' + albumName + '"?')) return;
+    if (!await uiConfirm('Delete empty album "' + albumName + '"?')) return;
   }
   try {
     const sf = await gh('/repos/'+OWNER+'/'+REPO+'/contents/data/master-songs.json');
@@ -2199,7 +2240,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   }
 
   window.artDeleteSong = async function (artistId, songId, songTitle) {
-    if (!confirm('Delete "' + songTitle + '"?\n\nThis cannot be undone.')) return;
+    if (!await uiConfirm('Delete "' + songTitle + '"?\n\nThis cannot be undone.')) return;
     const btn = document.querySelector('[onclick*="'+songId+'"]');
     if (btn) { btn.textContent = 'Deleting...'; btn.disabled = true; }
     try {
@@ -2379,7 +2420,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   window.publishAfterSave = async function () {
     if (!selectedId) return;
-    if (!confirm('Publish LIVE: rebuild ' + selectedId + "'s site and the label homepage?")) return;
+    if (!await uiConfirm('Publish LIVE: rebuild ' + selectedId + "'s site and the label homepage?")) return;
     try {
       await dispatch('build-artist.yml', { artist_id: selectedId, dry_run: 'false' });
       await dispatch('publish-homepage.yml', { dry_run: 'false' });
@@ -2401,7 +2442,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   }
 
   window.runWorkflow = async function (file, extraInputs, label) {
-    if (!confirm('This will publish LIVE: ' + label + '. Continue?')) return;
+    if (!await uiConfirm('This will publish LIVE: ' + label + '. Continue?')) return;
     const inputs = Object.assign({}, extraInputs, { dry_run: 'false' });
     try {
       await dispatch(file, inputs);
@@ -2608,7 +2649,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       const dup = songs.some((s) => s.artistId === artistId && (s.title || '').toLowerCase() === title.toLowerCase());
       let radio = $('asRadio').checked;
       if (RADIO_EXCLUDED.indexOf(artistId) !== -1) radio = false;
-      if (dup && !confirm('"' + title + '" already exists for this artist. Add anyway?')) {
+      if (dup && !await uiConfirm('"' + title + '" already exists for this artist. Add anyway?')) {
         throw new Error('Cancelled (duplicate title)');
       }
 
@@ -2714,7 +2755,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   window.publishNewSong = async function () {
     if (!lastAddedArtistId) return;
-    if (!confirm('Publish LIVE: rebuild ' + lastAddedArtistId + "'s site and the homepage?")) return;
+    if (!await uiConfirm('Publish LIVE: rebuild ' + lastAddedArtistId + "'s site and the homepage?")) return;
     try {
       await dispatch('build-artist.yml', { artist_id: lastAddedArtistId, dry_run: 'false' });
       await dispatch('publish-homepage.yml', { dry_run: 'false' });
@@ -2913,7 +2954,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const s = exSongs.find((x) => x.id === songId);
     if (!s || !Array.isArray(s.videos) || !s.videos[idx]) return;
     const v = s.videos[idx];
-    if (!confirm('Remove "' + (v.title || 'this video') + '" from ' + (s.title || songId) +
+    if (!await uiConfirm('Remove "' + (v.title || 'this video') + '" from ' + (s.title || songId) +
       '?\n\nThis clears it from the catalog. Publish the artist site afterward to take it off the live page.')) return;
     const removedUrl = v.youtube || v.url || '';
     $('exMsg').textContent = 'Removing video...';
@@ -3024,7 +3065,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (!oldName) return toast('Pick an album first', true);
     if (!newName) return toast('Enter the new album name', true);
     if (newName === oldName) return toast('That is already the album name', true);
-    if (!confirm("Rename album '" + oldName + "' to '" + newName + "' across all its tracks?")) return;
+    if (!await uiConfirm("Rename album '" + oldName + "' to '" + newName + "' across all its tracks?")) return;
     $('exAlbumMsg').textContent = 'Renaming...';
     try {
       const n = await exUpdateSongs((songs) => {
@@ -3044,8 +3085,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const album = $('exAlbumEdit').value;
     if (!album) return toast('Pick an album first', true);
     const count = exSongs.filter((s) => s.artistId === artistId && s.album === album).length;
-    if (!confirm("DELETE the entire album '" + album + "' (" + count + " tracks)? Every track is removed from the catalog.")) return;
-    if (!confirm("Confirm: permanently remove all " + count + " tracks of '" + album + "'. Publish the artist afterward.")) return;
+    if (!await uiConfirm("DELETE the entire album '" + album + "' (" + count + " tracks)? Every track is removed from the catalog.")) return;
+    if (!await uiConfirm("Confirm: permanently remove all " + count + " tracks of '" + album + "'. Publish the artist afterward.")) return;
     $('exAlbumMsg').textContent = 'Deleting album...';
     try {
       const n = await exUpdateSongs((songs) => {
@@ -3067,7 +3108,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (!s0) return toast('Pick a song first', true);
     if (!newTitle) return toast('Enter the corrected title', true);
     if (newTitle === s0.title) return toast('That is already the title', true);
-    if (!confirm('Rename \'' + s0.title + '\' to \'' + newTitle + '\'?')) return;
+    if (!await uiConfirm('Rename \'' + s0.title + '\' to \'' + newTitle + '\'?')) return;
     $('exTitleMsg').textContent = 'Saving...';
     try {
       await exUpdateSongs((songs) => {
@@ -3089,8 +3130,8 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const songId = $('exSong').value;
     const s0 = exSongs.find((x) => x.id === songId);
     if (!s0) return toast('Pick a song first', true);
-    if (!confirm('DELETE \'' + s0.title + '\' from the catalog? This removes it from HTR Studio.')) return;
-    if (!confirm('Confirm delete \'' + s0.title + '\'. Publish the artist afterward to remove it from the live site.')) return;
+    if (!await uiConfirm('DELETE \'' + s0.title + '\' from the catalog? This removes it from HTR Studio.')) return;
+    if (!await uiConfirm('Confirm delete \'' + s0.title + '\'. Publish the artist afterward to remove it from the live site.')) return;
     $('exDelMsg').textContent = 'Deleting...';
     try {
       await exUpdateSongs((songs) => {
@@ -3112,7 +3153,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (url.indexOf('/scl/fi/') === -1) {
       return toast('Need the FILE link (/scl/fi/...) — right-click the MP3 in Dropbox', true);
     }
-    if (!confirm('Replace the audio for this song with the new link?')) return;
+    if (!await uiConfirm('Replace the audio for this song with the new link?')) return;
     $('exMsg').textContent = 'Replacing audio...';
     try {
       await exUpdateSongs((songs) => {
@@ -3264,7 +3305,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const songId = $('exSong').value;
     const albumName = $('exAlbumTarget').value;
     if (!songId || !albumName) return toast('Pick a song and a target album', true);
-    if (!confirm('Move this song onto album "' + albumName + '"?')) return;
+    if (!await uiConfirm('Move this song onto album "' + albumName + '"?')) return;
     $('exMoveMsg').textContent = 'Moving…';
     try {
       await exUpdateSongs((songs) => {
@@ -3296,7 +3337,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const artist = artists.find((a) => a.id === artistId);
     if (!artist || !artist.githubRepo) return toast('Artist repo not found', true);
     const path = 'images/covers/' + artistId + '-' + slugify(album) + '-ALBUM-cover.png';
-    if (!confirm('Upload album cover for "' + album + '"?\n(' + path + ')')) return;
+    if (!await uiConfirm('Upload album cover for "' + album + '"?\n(' + path + ')')) return;
     $('exAlbumCoverMsg').textContent = 'Uploading…';
     try {
       const b64 = await fileToBase64(file);
@@ -3321,7 +3362,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     const m = cover.match(/raw\.githubusercontent\.com\/([^/]+\/[^/]+)\/[^/]+\/(.+)$/);
     if (!m) return toast('This song has no repo cover URL to replace', true);
     const repo = m[1], path = m[2];
-    if (!confirm('Replace the cover for "' + song.title + '"? (' + path + ')')) return;
+    if (!await uiConfirm('Replace the cover for "' + song.title + '"? (' + path + ')')) return;
     $('exCoverMsg').textContent = 'Uploading new cover…';
     try {
       const b64 = await fileToBase64(file);
@@ -3338,7 +3379,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   window.exPublish = async function () {
     if (!exLastArtist) return;
-    if (!confirm('Publish LIVE: rebuild ' + exLastArtist + "'s site and the homepage?")) return;
+    if (!await uiConfirm('Publish LIVE: rebuild ' + exLastArtist + "'s site and the homepage?")) return;
     try {
       await dispatch('build-artist.yml', { artist_id: exLastArtist, dry_run: 'false' });
       await dispatch('publish-homepage.yml', { dry_run: 'false' });
@@ -3532,7 +3573,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   };
 
   window.radioPublish = async function () {
-    if (!confirm('This will publish HTR Radio LIVE. Continue?')) return;
+    if (!await uiConfirm('This will publish HTR Radio LIVE. Continue?')) return;
     try {
       await dispatch('publish-radio.yml', { dry_run: 'false' });
       toast('Publish HTR Radio (LIVE) started — check Recent runs.');
@@ -4200,7 +4241,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     if (firstLyric) {
       const junk = edLines.filter((l) => l.marker
         && !/^\[(start|end)\]$/i.test(l.text) && l.t < firstLyric.t);
-      if (junk.length && confirm(junk.length + ' section marker(s) were never stamped (their times are before the first lyric):\n\n'
+      if (junk.length && await uiConfirm(junk.length + ' section marker(s) were never stamped (their times are before the first lyric):\n\n'
         + junk.map((j) => '  ' + edFmt(j.t) + '  ' + j.text).join('\n')
         + '\n\nRemove them? (OK = remove, Cancel = keep them)')) {
         edPush();
@@ -4368,7 +4409,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
   window.eaResetLogoSize = async function () {
     const a = eaArtistObj();
     if (!a) return;
-    if (!confirm('Remove the size override and return ' + a.name + "'s logo to default size?")) return;
+    if (!await uiConfirm('Remove the size override and return ' + a.name + "'s logo to default size?")) return;
     try {
       const f = await gh('/repos/' + a.githubRepo + '/contents/index.html');
       let html = eaB64Decode(f.content);
@@ -4489,7 +4530,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       const ac = eaCoverTarget(s.albumCover); if (ac && ac.path === tgt.path) shared++;
     });
     if (shared > 0) {
-      if (!confirm('This track shares its cover file with ' + shared + ' other item(s) — its album and/or other tracks — so replacing it changes those too. Continue?\n\n(Cancel if you want this one track to have its own distinct art instead — tell me and I will set that up.)')) return;
+      if (!await uiConfirm('This track shares its cover file with ' + shared + ' other item(s) — its album and/or other tracks — so replacing it changes those too. Continue?\n\n(Cancel if you want this one track to have its own distinct art instead — tell me and I will set that up.)')) return;
     }
     $('eaCoverStatus').textContent = 'Uploading song art…';
     try {
@@ -5144,7 +5185,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   window.pollDelete = async function (id) {
     const p = pollsCache.find(function (x) { return x.id === id; });
-    if (!confirm('Delete the poll for "' + (p ? p.song : id) + '"? This removes it and its votes.')) return;
+    if (!await uiConfirm('Delete the poll for "' + (p ? p.song : id) + '"? This removes it and its votes.')) return;
     try {
       await window.HTRPoll.deletePoll(id);
       toast('Poll deleted');
@@ -5470,11 +5511,11 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
   window.bmiEdClose = function () { $('bmiEditor').classList.add('hidden'); };
 
-  window.bmiEdDelete = function () {
+  window.bmiEdDelete = async function () {
     const i = parseInt($('bmiEdIdx').value, 10);
     const s = bmiData.songs[i];
     if (!s) return;
-    if (!confirm('Delete "' + s.title + '" (' + s.artist + ') from the catalog?')) return;
+    if (!await uiConfirm('Delete "' + s.title + '" (' + s.artist + ') from the catalog?')) return;
     bmiData.songs.splice(i, 1);
     bmiMarkDirty();
     window.bmiEdClose();
