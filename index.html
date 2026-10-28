@@ -1883,7 +1883,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       // Update artist repo songs.json
       const artist = artists.find(x => x.id === artistId);
       if (artist && artist.githubRepo) {
-        const repoName = artist.githubRepo.replace('SteveP999/','');
+        const repoName = artist.githubRepo.replace(/^.*\//,'');
         const asf = await gh('/repos/SteveP999/'+repoName+'/contents/songs.json');
         const asData = JSON.parse(b64decode(asf.content));
         asData.forEach(s => { if (orderMap[s.id]) { s.trackNumber=orderMap[s.id].trackNumber; s.albumOrder=orderMap[s.id].albumOrder; s.album=orderMap[s.id].album; s.num=String(orderMap[s.id].trackNumber).padStart(2,'0'); } });
@@ -1894,7 +1894,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       toast('Order saved');
       if (btn) { btn.textContent = '💾 Save Order'; btn.disabled = false; btn.style.display = 'none'; }
       const aObj = artists.find(x => x.id === artistId);
-      if (aObj && aObj.githubRepo) syncIndexHtml(aObj.githubRepo.replace('SteveP999/',''));
+      if (aObj && aObj.githubRepo) syncIndexHtml(aObj.githubRepo.replace(/^.*\//,''));
     } catch(e) {
       toast('Save order failed: '+e.message, true);
       if (btn) { btn.textContent = '💾 Save Order'; btn.disabled = false; }
@@ -1908,7 +1908,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     try {
       const b64 = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
       const artist = artists.find(x => x.id === artistId);
-      const repoName = artist.githubRepo.replace('SteveP999/','');
+      const repoName = artist.githubRepo.replace(/^.*\//,'');
       const fname = file.name.toLowerCase().replace(/\s+/g,'-');
       const path = 'images/covers/' + fname;
       let sha = null;
@@ -2011,7 +2011,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       // Update artist repo
       const artist = artists.find(x => x.id === artistId);
       if (artist && artist.githubRepo) {
-        const repoName = artist.githubRepo.replace('SteveP999/','');
+        const repoName = artist.githubRepo.replace(/^.*\//,'');
         const asf = await gh('/repos/SteveP999/'+repoName+'/contents/songs.json');
         const asData = JSON.parse(b64decode(asf.content));
         asData.forEach(s => { if (s.album === oldName) s.album = newName; });
@@ -2029,7 +2029,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
     try {
       const b64 = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
       const artist = artists.find(x => x.id === artistId);
-      const repoName = artist.githubRepo.replace('SteveP999/','');
+      const repoName = artist.githubRepo.replace(/^.*\//,'');
       const fname = file.name.toLowerCase().replace(/\s+/g,'-');
       const path = 'images/covers/' + fname;
       let sha = null;
@@ -2125,7 +2125,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       // Update artist repo songs.json
       const artist = artists.find(x => x.id === artistId);
       if (artist && artist.githubRepo) {
-        const repoName = artist.githubRepo.replace('SteveP999/','');
+        const repoName = artist.githubRepo.replace(/^.*\//,'');
         try {
           const asf = await gh('/repos/SteveP999/'+repoName+'/contents/songs.json');
           const asData = JSON.parse(b64decode(asf.content));
@@ -2149,7 +2149,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       if (msg) { msg.textContent = '✓ Saved'; setTimeout(()=>{ if(msg) msg.textContent=''; },3000); }
       // Sync index.html so the live site reflects the change immediately
       const a = artists.find(x => x.id === artistId);
-      if (a && a.githubRepo) syncIndexHtml(a.githubRepo.replace('SteveP999/',''));
+      if (a && a.githubRepo) syncIndexHtml(a.githubRepo.replace(/^.*\//,''));
       if (a) setTimeout(()=>renderMusic(a), 800);
     } catch(e) {
       if (msg) msg.textContent = '✗ ' + e.message;
@@ -2219,7 +2219,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
       // 2. Remove from artist repo songs.json
       if (repoFull) {
-        const repoName = repoFull.replace('SteveP999/', '');
+        const repoName = repoFull.replace(/^.*\//, '');
         const sFile = await gh('/repos/SteveP999/' + repoName + '/contents/songs.json');
         const sData = JSON.parse(b64decode(sFile.content));
         const sFiltered = sData.filter(s => s.id !== songId);
@@ -2234,7 +2234,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       toast('"' + songTitle + '" deleted.');
       invalidateCatalogCaches();
       const a = artists.find(x => x.id === artistId);
-      if (a && a.githubRepo) syncIndexHtml(a.githubRepo.replace('SteveP999/',''));
+      if (a && a.githubRepo) syncIndexHtml(a.githubRepo.replace(/^.*\//,''));
       if (a) setTimeout(() => renderMusic(a), 800);
     } catch (e) {
       toast('Delete failed: ' + e.message, true);
@@ -2435,7 +2435,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
       for (const a of artists) {
         if (!a.githubRepo) continue;
-        const repoName = a.githubRepo.replace('SteveP999/', '');
+        const repoName = a.githubRepo.replace(/^.*\//, '');
         let liveSongs = [];
         try {
           const lf = await gh('/repos/SteveP999/' + repoName + '/contents/songs.json');
@@ -2659,7 +2659,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       // Step 2: Write directly to artist repo songs.json — no Publish required
       $('asMsg').textContent = 'Saving to artist site...';
       try {
-        const repoName = repoFull.replace('SteveP999/', '');
+        const repoName = repoFull.replace(/^.*\//, '');
         let artistSongsSha = null;
         let artistSongs = [];
         try {
@@ -5598,7 +5598,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       let coverImageUrl = '';
       let albumCoverUrl = '';
       if (artist && artist.githubRepo) {
-        const repoName = artist.githubRepo.replace('SteveP999/','');
+        const repoName = artist.githubRepo.replace(/^.*\//,'');
         if (window._bmiAddCoverFile) {
           msg.textContent = 'Uploading song art...'; msg.style.color='var(--muted)';
           const ext = window._bmiAddCoverFile.name.split('.').pop().toLowerCase();
@@ -5670,7 +5670,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
 
       // Also write to artist repo songs.json if mp3 exists
       if (artist && artist.githubRepo) {
-        const repoName = artist.githubRepo.replace('SteveP999/','');
+        const repoName = artist.githubRepo.replace(/^.*\//,'');
         try {
           const asf = await gh('/repos/SteveP999/'+repoName+'/contents/songs.json');
           const asSongs = JSON.parse(b64decode(asf.content));
@@ -5700,7 +5700,7 @@ function wrOptsHTML(val){var v=String(val||'');var o=[['','-'],['P','Peters'],['
       invalidateCatalogCaches();
       // Sync index.html so live site updates immediately
       if (artist && artist.githubRepo) {
-        const repoName = artist.githubRepo.replace('SteveP999/','');
+        const repoName = artist.githubRepo.replace(/^.*\//,'');
         syncIndexHtml(repoName);
       }
       msg.textContent = '✓ Saved! Site will update in ~1 minute.'; msg.style.color='var(--ok)';
