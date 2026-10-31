@@ -200,6 +200,7 @@
     drawSeg(ctx, sg[i], W, H, 1, t, i);
   }
   function drawEnd(ctx, fmt, t, W, H) {
+    if (S.rec && !S.rec.full) return; // hooks/clips are their own short video, not the song ending, so no end card
     const ec = S.end[fmt]; if (!ec || !ec.el || !ec.ready || !S.total) return;
     const f = S.cfg.endFade, a = clamp((t - (S.total - f)) / f, 0, 1);
     if (a > 0) coverDraw(ctx, ec.el, W, H, a, 1);
@@ -1207,6 +1208,7 @@
       from: from, names: O.names || null, sub: O.sub || '', label: O.label || '', fade: !!O.fade };
     S.rec.hold = isFullRender ? (S.cfg.endHold || 0) : 0;
     S.rec.intro = introH;
+    S.rec.full = isFullRender;
     const node = AC.createBufferSource(); node.buffer = songBuf;
     const listen = AC.createGain(); listen.gain.value = $('mvListen').checked ? 1 : 0;
     const vol = AC.createGain();                  // fades for clips that start / stop mid-song
