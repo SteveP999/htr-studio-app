@@ -31,7 +31,9 @@
     anim: 'word:pop', font: 'Bebas Neue', text: '#ffffff', hi: '#e6bd52', out: '#101010', size: 5.5, stressSize: 1.5, ow: 6,
     upper: true, ori: 'h', vRows: 1, align: 'center', posX: 50, posY: 80, offset: 0, maxHold: 10,
     crossfade: 1, transition: 'dissolve', endFade: 4, endHold: 2, introHold: 0, kenburns: true, linePos: {}, lineSize: {}, stress: {}, lineStyle: {},
-    logoPos: 'br', logoSize: 10, logoOpacity: 100
+    logoPos: 'br', logoSize: 10, logoOpacity: 100,
+    viz: false, vzAccent: '#ff2d8a', vzAccent2: '#7a1bff', vzBg: '#07070b', vzPanel: 'neon', vzArt: 'square', vzSpec: 'bars', vzBack: 'plain',
+    vzBars: 56, vzGlow: 18, vzRadius: 22, vzDots: 60, vzFloor: 60, vzCtrl: true, vzProg: true
   };
   const SLIDERS = {
     crossfade: ['Transition length', 0, 4, 0.1, (v) => v.toFixed(1) + 's'],
@@ -47,7 +49,12 @@
     offset: ['Timing nudge (+ = lyrics earlier)', -1, 1.5, 0.02, (v) => (v > 0 ? '+' : '') + v.toFixed(2) + 's'],
     maxHold: ['Longest a line stays up', 3, 30, 0.5, (v) => v + 's'],
     logoSize: ['Logo size', 3, 25, 1, (v) => v + '%'],
-    logoOpacity: ['Logo opacity', 10, 100, 5, (v) => v + '%']
+    logoOpacity: ['Logo opacity', 10, 100, 5, (v) => v + '%'],
+    vzBars: ['Spectrum bars', 16, 96, 1, (v) => String(v)],
+    vzGlow: ['Glow', 0, 40, 1, (v) => String(v)],
+    vzRadius: ['Corner roundness', 0, 48, 1, (v) => String(v)],
+    vzDots: ['Floating dots', 0, 150, 5, (v) => String(v)],
+    vzFloor: ['Floor bars', 0, 100, 5, (v) => v + '%']
   };
   const clone = (o) => JSON.parse(JSON.stringify(o));
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -78,7 +85,7 @@
     hits: [], block: null, drag: null, seeking: false, audioName: '', ev: [], sel: null, tsDirty: false, tsHist: [], hooks: []
   };
   const audio = new Audio(); audio.crossOrigin = 'anonymous'; audio.preload = 'auto';
-  let AC = null, monGain = null, mdest = null, cv = null, cx = null, built = false;
+  let AC = null, monGain = null, mdest = null, ana = null, cv = null, cx = null, built = false;
 
   // ---------- timestamps -> lyric lines ----------
   // file format: "M:SS.s<TAB>text" per line; [brackets] are section markers / [gap]s that end the caption before them
@@ -325,9 +332,219 @@
     });
     setSpacing(ctx, 0);
   }
+  // ---------- visualizer look: player-style frame (art panel, scrolling lyrics, title, spectrum, progress, buttons) ----------
+  // The song's backgrounds play inside the art panel instead of full-frame, so one short loop carries the whole video.
+  const VZ_PRESETS = {
+    'Neon': { vzAccent: '#ff2d8a', vzAccent2: '#7a1bff', vzBg: '#07070b', vzPanel: 'neon', vzArt: 'square', vzSpec: 'bars', vzBack: 'plain', vzBars: 56, vzGlow: 18, vzRadius: 22, vzDots: 60, vzFloor: 60 },
+    'Glass': { vzAccent: '#4fd8ff', vzAccent2: '#2b5cff', vzBg: '#060a12', vzPanel: 'glass', vzArt: 'square', vzSpec: 'mirror', vzBack: 'blur', vzBars: 56, vzGlow: 8, vzRadius: 22, vzDots: 30, vzFloor: 40 },
+    'Vinyl': { vzAccent: '#ffb347', vzAccent2: '#ff5e3a', vzBg: '#0c0906', vzPanel: 'neon', vzArt: 'vinyl', vzSpec: 'line', vzBack: 'glow', vzBars: 64, vzGlow: 10, vzRadius: 22, vzDots: 40, vzFloor: 50 },
+    'Red Dirt': { vzAccent: '#e0863a', vzAccent2: '#8a3b12', vzBg: '#120b07', vzPanel: 'glass', vzArt: 'square', vzSpec: 'bars', vzBack: 'blur', vzBars: 48, vzGlow: 6, vzRadius: 8, vzDots: 25, vzFloor: 45 },
+    'Minimal': { vzAccent: '#ffffff', vzAccent2: '#888888', vzBg: '#000000', vzPanel: 'none', vzArt: 'square', vzSpec: 'line', vzBack: 'plain', vzBars: 64, vzGlow: 0, vzRadius: 10, vzDots: 0, vzFloor: 0 },
+    'Arcade': { vzAccent: '#39ff88', vzAccent2: '#00c2ff', vzBg: '#03060a', vzPanel: 'neon', vzArt: 'square', vzSpec: 'mirror', vzBack: 'glow', vzBars: 40, vzGlow: 24, vzRadius: 4, vzDots: 70, vzFloor: 70 }
+  };
+  const VZ = { bars: [], bass: 0, freq: null, off: {}, k: 1, dots: [] };
+  (function () { let sd = 1234567; const rnd = () => { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; };
+    for (let i = 0; i < 150; i++) VZ.dots.push({ x: rnd(), y: rnd(), r: rnd() * 3 + 0.6, v: rnd() * 0.02 + 0.004, a: rnd() * 0.6 + 0.15 }); })();
+  function vzRgba(hex, a) { const n = parseInt(String(hex).slice(1), 16) || 0; return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
+  function vzMix(h1, h2, p) {
+    const a = parseInt(String(h1).slice(1), 16) || 0, b = parseInt(String(h2).slice(1), 16) || 0;
+    const ch = (sh) => Math.round((a >> sh & 255) * (1 - p) + (b >> sh & 255) * p);
+    return 'rgb(' + ch(16) + ',' + ch(8) + ',' + ch(0) + ')';
+  }
+  function vzRR(ctx, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2)); ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  const vzGlow = (ctx, px, col) => { ctx.shadowColor = col || S.cfg.vzAccent; ctx.shadowBlur = px * VZ.k; };
+  // once per frame: read the spectrum (live audio in preview, the render's own audio while recording)
+  function vzTick(live) {
+    if (!S.cfg.viz) return;
+    const n = Math.round(S.cfg.vzBars) || 56, on = !!(live && ana);
+    if (on) { if (!VZ.freq) VZ.freq = new Uint8Array(ana.frequencyBinCount); ana.getByteFrequencyData(VZ.freq); }
+    if (VZ.bars.length !== n) VZ.bars = new Array(n).fill(0);
+    const now = performance.now() / 1000;
+    for (let i = 0; i < n; i++) {
+      const v = on ? VZ.freq[Math.floor(2 + Math.pow(i / n, 1.6) * 380)] / 255 : 0.1 + 0.06 * Math.sin(now * 1.5 + i * 0.35);
+      VZ.bars[i] += (v - VZ.bars[i]) * 0.35;
+    }
+    let b = 0; if (on) { for (let i = 1; i < 9; i++) b += VZ.freq[i]; b /= 8 * 255; }
+    VZ.bass += (b - VZ.bass) * 0.3;
+  }
+  function vzLayout(W, H, lyr) {
+    const m = Math.min(W, H) * 0.04, g = m * 0.5, L = {};
+    const stack = (x, y, w, parts) => { parts.forEach((q) => { L[q[0]] = { x: x, y: y, w: w, h: q[1] }; y += q[1] + g; }); };
+    if (W > H) {
+      const s = H - 2 * m; L.art = { x: m, y: m, w: s, h: s };
+      const x = m + s + g, w = W - x - m, lh = H - 2 * m - (H * 0.5 + 4 * g);
+      stack(x, m, w, [['lyr', lh], ['title', H * 0.16], ['wave', H * 0.12], ['prog', H * 0.08], ['ctrl', H * 0.14]]);
+      if (!lyr) ['title', 'wave', 'prog', 'ctrl'].forEach((k) => { L[k].y -= (lh + g) / 2; });
+    } else {
+      const s = W * 0.8; L.art = { x: (W - s) / 2, y: m, w: s, h: s };
+      const y = m + s + g, lh = H - m - y - (H * 0.275 + 4 * g);
+      stack(m, y, W - 2 * m, [['title', H * 0.08], ['lyr', lh], ['wave', H * 0.07], ['prog', H * 0.045], ['ctrl', H * 0.08]]);
+      if (!lyr) { ['wave', 'prog', 'ctrl'].forEach((k) => { L[k].y -= lh + g; }); Object.keys(L).forEach((k) => { L[k].y += (lh + g) / 2; }); }
+    }
+    return L;
+  }
+  function vzPanel(ctx, r) {
+    const c = S.cfg; if (c.vzPanel === 'none') return;
+    ctx.save(); vzRR(ctx, r.x, r.y, r.w, r.h, c.vzRadius);
+    if (c.vzPanel === 'neon') { ctx.fillStyle = 'rgba(8,8,14,0.72)'; ctx.fill(); vzGlow(ctx, c.vzGlow); ctx.strokeStyle = vzRgba(c.vzAccent, 0.85); ctx.lineWidth = 2; ctx.stroke(); }
+    else { ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke(); }
+    ctx.restore();
+  }
+  function vzFit(ctx, str, px, maxW, weight) {
+    do { ctx.font = fontStr(px, S.cfg.font, weight); setSpacing(ctx, px); px -= 2; } while (ctx.measureText(str).width > maxW && px > 10);
+  }
+  function vzSpectrum(ctx, r, alpha, floor) {
+    const c = S.cfg, n = VZ.bars.length; if (!n) return;
+    const pad = floor ? 0 : r.h * 0.18, x0 = r.x + pad, w = r.w - 2 * pad, bw = w / n, maxH = r.h - 2 * pad, style = floor ? 'bars' : c.vzSpec;
+    const gr = ctx.createLinearGradient(x0, 0, x0 + w, 0); gr.addColorStop(0, vzRgba(c.vzAccent, alpha)); gr.addColorStop(1, vzRgba(c.vzAccent2, alpha));
+    ctx.save(); ctx.fillStyle = gr; ctx.strokeStyle = gr;
+    if (style === 'line') {
+      ctx.lineWidth = Math.max(2, r.h * 0.04); ctx.lineJoin = 'round'; vzGlow(ctx, c.vzGlow); ctx.beginPath();
+      for (let i = 0; i < n; i++) { const y = r.y + r.h / 2 - (VZ.bars[i] - 0.1) * maxH * 0.9 * (i % 2 ? 1 : -1), x = x0 + bw * (i + 0.5); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.stroke();
+    } else for (let i = 0; i < n; i++) {
+      const h = Math.max(3, VZ.bars[i] * maxH), x = x0 + bw * i + bw * 0.15, ww = bw * 0.7;
+      const y = style === 'mirror' ? r.y + (r.h - h) / 2 : r.y + r.h - pad - h;
+      vzRR(ctx, x, y, ww, h, floor ? 0 : ww / 3); ctx.fill();
+    }
+    ctx.restore();
+  }
+  function vzArt(ctx, fmt, r, bgT, total) {
+    const c = S.cfg, vinyl = c.vzArt === 'vinyl', ax = r.x + r.w / 2, ay = r.y + r.h / 2;
+    const path = () => { if (vinyl) { ctx.beginPath(); ctx.arc(ax, ay, r.w / 2, 0, Math.PI * 2); } else vzRR(ctx, r.x, r.y, r.w, r.h, c.vzRadius); };
+    ctx.save(); path(); ctx.clip();
+    const z = 1 + VZ.bass * 0.025;
+    ctx.translate(ax, ay); if (vinyl) ctx.rotate(bgT * 0.5); ctx.scale(z, z); ctx.translate(-r.w / 2, -r.h / 2);
+    if (S.bg[fmt].length) drawBackground(ctx, fmt, bgT, r.w, r.h, total);
+    else {
+      const gr = ctx.createLinearGradient(0, 0, r.w, r.h); gr.addColorStop(0, c.vzAccent); gr.addColorStop(1, c.vzAccent2);
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, r.w, r.h);
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.font = '700 ' + (r.w * 0.055).toFixed(1) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('ADD A BACKGROUND', r.w / 2, r.h / 2);
+    }
+    ctx.restore();
+    ctx.save();
+    if (vinyl) { ctx.fillStyle = c.vzBg; ctx.beginPath(); ctx.arc(ax, ay, r.w * 0.035, 0, Math.PI * 2); ctx.fill(); }
+    if (c.vzPanel !== 'none') { path(); vzGlow(ctx, c.vzGlow + VZ.bass * 30); ctx.strokeStyle = vzRgba(c.vzAccent, 0.9); ctx.lineWidth = 3; ctx.stroke(); }
+    ctx.restore();
+  }
+  function vzLyrics(ctx, r, t) {
+    const c = S.cfg, ls = S.lines, tt = t + c.offset;
+    let ci = -1; for (let i = 0; i < ls.length; i++) { if (ls[i].start <= tt) ci = i; else break; }
+    const sp = ci < 0 ? -1 : ci - 1 + easeOut((tt - ls[ci].start) / 0.45);
+    const lit = ci >= 0 && tt < Math.min(ls[ci].end, ls[ci].start + c.maxHold);
+    const size = Math.min(r.h / 7.5, r.w / 11), lh = size * 1.8, cy = r.y + r.h / 2;
+    ctx.save(); vzRR(ctx, r.x, r.y, r.w, r.h, c.vzRadius); ctx.clip();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < ls.length; i++) {
+      const d = i - sp, y = cy + d * lh; if (y < r.y - lh || y > r.y + r.h + lh) continue;
+      let str = ls[i].text.replace(/\s+[\/|]\s+/g, ' '); if (c.upper) str = str.toUpperCase();
+      const on = lit && i === ci;
+      vzFit(ctx, str, on ? size * 1.12 : size, r.w * 0.9);
+      ctx.globalAlpha = Math.max(0, 1 - Math.abs(d) * 0.3) * (on ? 1 : 0.6);
+      vzGlow(ctx, on ? c.vzGlow : 0);
+      ctx.fillStyle = on ? vzMix(c.vzAccent, '#ffffff', 0.45) : vzMix(c.vzAccent, c.text, 0.35);
+      ctx.fillText(str, r.x + r.w / 2, y);
+    }
+    ctx.restore(); setSpacing(ctx, 0);
+  }
+  function vzArtistName() {
+    const s = S.song; if (!s) return '';
+    const a = ((B().getArtists && B().getArtists()) || []).find((x) => x.id === s.artistId);
+    return (a && (a.name || a.displayName || a.artistName)) || s.artistId || '';
+  }
+  function vzTitle(ctx, r) {
+    const c = S.cfg, up = (x) => (c.upper ? String(x).toUpperCase() : String(x)), mx = r.x + r.w / 2;
+    const a = up(vzArtistName()), s = up(S.song ? S.song.title : 'Pick a song');
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = c.text; vzGlow(ctx, c.vzGlow); vzFit(ctx, a, r.h * 0.48, r.w * 0.92); ctx.fillText(a, mx, r.y + r.h * 0.34);
+    ctx.fillStyle = vzMix(c.vzAccent, '#ffffff', 0.75); vzGlow(ctx, c.vzGlow * 0.5); vzFit(ctx, s, r.h * 0.32, r.w * 0.92); ctx.fillText(s, mx, r.y + r.h * 0.75);
+    ctx.restore(); setSpacing(ctx, 0);
+  }
+  function vzProgress(ctx, r, t) {
+    const c = S.cfg, d = S.total || 0, tc = clamp(t, 0, d || 0), p = d ? tc / d : 0, fs = r.h * 0.36, pad = r.h * 0.4;
+    ctx.save(); ctx.font = '500 ' + fs.toFixed(1) + 'px Inter, Montserrat, sans-serif'; ctx.textBaseline = 'middle'; ctx.fillStyle = c.text;
+    ctx.textAlign = 'left'; ctx.fillText(fmtS(tc), r.x + pad, r.y + r.h / 2);
+    ctx.textAlign = 'right'; ctx.fillText(fmtS(d), r.x + r.w - pad, r.y + r.h / 2);
+    const tw = fs * 3.2, x = r.x + pad + tw, w = r.w - 2 * (pad + tw), y = r.y + r.h / 2, th = Math.max(4, r.h * 0.12);
+    vzRR(ctx, x, y - th / 2, w, th, th / 2); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fill();
+    vzRR(ctx, x, y - th / 2, Math.max(th, w * p), th, th / 2); ctx.fillStyle = c.vzAccent; ctx.fill();
+    ctx.beginPath(); ctx.arc(x + w * p, y, th * 1.5, 0, Math.PI * 2); ctx.fillStyle = '#fff'; vzGlow(ctx, c.vzGlow); ctx.fill();
+    ctx.restore();
+  }
+  function vzTri(ctx, x, y, s, dir) { ctx.beginPath(); ctx.moveTo(x - dir * s * 0.5, y - s * 0.6); ctx.lineTo(x + dir * s * 0.5, y); ctx.lineTo(x - dir * s * 0.5, y + s * 0.6); ctx.closePath(); ctx.fill(); }
+  function vzButtons(ctx, r) {
+    const c = S.cfg, cy = r.y + r.h / 2, R = r.h * 0.46, sm = R * 0.62, mx = r.x + r.w / 2, gap = Math.min(r.w / 5.5, R * 3);
+    ctx.save();
+    for (let i = -2; i <= 2; i++) {
+      const x = mx + i * gap, rad = i ? sm : R, s = rad * 0.5;
+      ctx.beginPath(); ctx.arc(x, cy, rad, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fill();
+      if (!i) { vzGlow(ctx, c.vzGlow); ctx.strokeStyle = c.vzAccent; ctx.lineWidth = 3; ctx.stroke(); ctx.shadowBlur = 0; }
+      ctx.fillStyle = ctx.strokeStyle = c.text;
+      if (i === 0) { ctx.fillRect(x - s * 0.6, cy - s * 0.7, s * 0.42, s * 1.4); ctx.fillRect(x + s * 0.18, cy - s * 0.7, s * 0.42, s * 1.4); } // always "playing": it's a video
+      else if (Math.abs(i) === 1) { vzTri(ctx, x - i * s * 0.35, cy, s * 0.9, i); vzTri(ctx, x + i * s * 0.35, cy, s * 0.9, i); }
+      else {
+        ctx.lineWidth = Math.max(2, s * 0.18); ctx.lineCap = 'round';
+        if (i === -2) {
+          ctx.beginPath(); ctx.moveTo(x - s, cy - s * 0.5); ctx.bezierCurveTo(x, cy - s * 0.5, x, cy + s * 0.5, x + s * 0.7, cy + s * 0.5);
+          ctx.moveTo(x - s, cy + s * 0.5); ctx.bezierCurveTo(x, cy + s * 0.5, x, cy - s * 0.5, x + s * 0.7, cy - s * 0.5); ctx.stroke();
+          vzTri(ctx, x + s * 0.85, cy - s * 0.5, s * 0.5, 1); vzTri(ctx, x + s * 0.85, cy + s * 0.5, s * 0.5, 1);
+        } else { vzRR(ctx, x - s, cy - s * 0.55, s * 2, s * 1.1, s * 0.5); ctx.stroke(); vzTri(ctx, x + s * 0.15, cy - s * 0.55, s * 0.55, 1); vzTri(ctx, x - s * 0.15, cy + s * 0.55, s * 0.55, -1); }
+      }
+    }
+    ctx.restore();
+  }
+  function vzBackdrop(ctx, fmt, bgT, W, H, total) {
+    const c = S.cfg;
+    ctx.globalAlpha = 1; ctx.fillStyle = c.vzBg; ctx.fillRect(0, 0, W, H);
+    if (c.vzBack === 'blur' && S.bg[fmt].length) {
+      // soft blurred copy of the art: draw it tiny, blur that, scale it up (cheap enough for 30fps on two canvases)
+      let o = VZ.off[fmt];
+      if (!o) { o = VZ.off[fmt] = { a: document.createElement('canvas'), b: document.createElement('canvas') }; o.a.width = Math.round(W / 12); o.a.height = Math.round(H / 12); o.b.width = o.a.width; o.b.height = o.a.height; }
+      drawBackground(o.a.getContext('2d'), fmt, bgT, o.a.width, o.a.height, total);
+      const bx = o.b.getContext('2d'); bx.filter = 'blur(5px)'; bx.drawImage(o.a, 0, 0);
+      ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.globalAlpha = 0.6;
+      ctx.drawImage(o.b, -W * 0.06, -H * 0.06, W * 1.12, H * 1.12); ctx.restore();
+      ctx.fillStyle = vzRgba(c.vzBg, 0.45); ctx.fillRect(0, 0, W, H);
+    } else if (c.vzBack !== 'plain') {
+      const gr = ctx.createRadialGradient(W * 0.5, H * 0.35, 0, W * 0.5, H * 0.35, Math.max(W, H) * 0.8);
+      gr.addColorStop(0, vzRgba(c.vzAccent2, 0.35 + VZ.bass * 0.25)); gr.addColorStop(1, vzRgba(c.vzBg, 0)); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    }
+    ctx.save();
+    const nd = Math.min(VZ.dots.length, Math.round(c.vzDots));
+    for (let i = 0; i < nd; i++) {
+      const d = VZ.dots[i], y = ((d.y - bgT * d.v) % 1 + 1) % 1;
+      ctx.globalAlpha = Math.min(1, d.a * (0.6 + VZ.bass * 0.8)); ctx.fillStyle = i % 4 ? '#ffffff' : c.vzAccent;
+      ctx.beginPath(); ctx.arc(d.x * W, y * H, d.r * Math.min(W, H) / 1080 * (1 + VZ.bass), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    if (c.vzFloor > 0) vzSpectrum(ctx, { x: 0, y: H * 0.74, w: W, h: H * 0.26 }, c.vzFloor / 100 * 0.45, true);
+  }
+  function vzDraw(ctx, fmt, t, bgT, W, H, total, lyrics) {
+    const c = S.cfg, L = vzLayout(W, H, lyrics);
+    vzBackdrop(ctx, fmt, bgT, W, H, total);
+    vzArt(ctx, fmt, L.art, bgT, total);
+    if (lyrics) { vzPanel(ctx, L.lyr); vzLyrics(ctx, L.lyr, t); }
+    vzPanel(ctx, L.title); vzTitle(ctx, L.title);
+    vzPanel(ctx, L.wave); vzSpectrum(ctx, L.wave, 1, false);
+    if (c.vzProg) { vzPanel(ctx, L.prog); vzProgress(ctx, L.prog, t); }
+    if (c.vzCtrl) vzButtons(ctx, L.ctrl);
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  }
+
   function drawFrame(ctx, fmt, t, scale, record, lyrics, bgT, totalOverride) {
     const [W, H] = SIZES[fmt];
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    if (S.cfg.viz) {
+      VZ.k = scale;
+      vzDraw(ctx, fmt, t, bgT != null ? bgT : t, W, H, totalOverride, lyrics);
+      drawEnd(ctx, fmt, t, W, H);
+      if (record) { S.hits = []; S.block = null; S.shown = lineAt(t + S.cfg.offset); }
+      return;
+    }
     drawBackground(ctx, fmt, bgT != null ? bgT : t, W, H, totalOverride);
     drawEnd(ctx, fmt, t, W, H);
     drawLogo(ctx, fmt, W, H);
@@ -362,6 +579,7 @@
     const set = new Set([S.fmt]); if (R) R.list.forEach((r) => set.add(r.fmt));
     const bgTotal = R ? (intro + (R.limit || (S.total - from)) + (R.hold || 0)) : finalLen();
     syncVideos(Array.from(set), bgT, playing, bgTotal);
+    vzTick(playing);
     if (R) {
       const lim = bgTotal;
       R.list.forEach((r) => { drawFrame(r.ctx, r.fmt, t, 1, false, R.lyrics, bgT, bgTotal); if (R.fade) fadeBlack(r.ctx, r.fmt, vt, lim); });
@@ -689,6 +907,28 @@
           <div class="mv-dim" id="mvFinalLen" style="margin-top:4px"></div>
         </div>
         <div class="card mv-card">
+          <h4><span class="n">&#9835;</span>Video style</h4>
+          ${seg('viz', [['false', 'Lyric video'], ['true', 'Visualizer']])}
+          <div class="mv-dim">Visualizer = a music-player frame: your background plays in the art panel (one short loop is enough for the whole song), with scrolling lyrics, the title, live spectrum bars and a progress bar. Font, UPPERCASE and text color come from <b>Lyrics look</b>.</div>
+          <div id="mvVzBox">
+          <span class="mv-lab">Design</span>
+          <div class="mv-fchips">${Object.keys(VZ_PRESETS).map((n) => '<span class="mv-fchip" data-vzp="' + n + '">' + n + '</span>').join('')}</div>
+          <div class="mv-colors"><label>Accent<input type="color" data-col="vzAccent"></label><label>Second<input type="color" data-col="vzAccent2"></label><label>Backdrop<input type="color" data-col="vzBg"></label></div>
+          <span class="mv-lab">Panels</span>
+          ${seg('vzPanel', [['neon', 'Neon outline'], ['glass', 'Glass'], ['none', 'None']])}
+          <span class="mv-lab">Art shape</span>
+          ${seg('vzArt', [['square', 'Square'], ['vinyl', 'Spinning record']])}
+          <span class="mv-lab">Spectrum</span>
+          ${seg('vzSpec', [['bars', 'Bars'], ['mirror', 'Mirrored'], ['line', 'Line']])}
+          <span class="mv-lab">Behind everything</span>
+          ${seg('vzBack', [['plain', 'Plain'], ['glow', 'Color glow'], ['blur', 'Blurred art']])}
+          ${slider('vzBars')}${slider('vzGlow')}${slider('vzRadius')}${slider('vzDots')}${slider('vzFloor')}
+          <span class="mv-lab">Show</span>
+          ${seg('vzProg', [['true', 'Progress bar'], ['false', 'Hide it']])}
+          ${seg('vzCtrl', [['true', 'Player buttons'], ['false', 'Hide them']])}
+          </div>
+        </div>
+        <div class="card mv-card">
           <h4><span class="n">2</span>Lyrics look</h4>
           <span class="mv-lab" style="margin-top:0">Changes apply to</span>
           ${seg('move', [['all', 'All lines'], ['line', 'This line only']])}
@@ -793,6 +1033,7 @@
     else if (g === 'lyricsOn') S.lyricsOn = v === 'true';
     else if (g === 'upper') { setVal('upper', v === 'true'); renderDrawer(); }
     else if (g === 'bold') { setVal('bold', v === 'true'); ensureCurrentFont(); renderDrawer(); }
+    else if (g === 'viz' || g === 'vzProg' || g === 'vzCtrl') { S.cfg[g] = v === 'true'; S.dirty = true; }
     else { S.cfg[g] = v; S.dirty = true; }
     syncControls();
   }
@@ -802,6 +1043,7 @@
     document.querySelectorAll('#view-mkvideo [data-k]').forEach((r) => { const k = r.dataset.k, v = +getVal(k); if (document.activeElement !== r) r.value = v; const sh = document.querySelector('#view-mkvideo [data-show="' + k + '"]'); if (sh) sh.textContent = SLIDERS[k][4](v); });
     document.querySelectorAll('#view-mkvideo [data-col]').forEach((i) => { i.value = getVal(i.dataset.col); });
     $('mvAnim').value = getVal('anim'); renderFontBtn(); $('mvKen').checked = !!S.cfg.kenburns;
+    if ($('mvVzBox')) $('mvVzBox').classList.toggle('hidden', !S.cfg.viz);
     const fl = $('mvFinalLen');
     if (fl) fl.textContent = S.total ? ('Final video length: ' + fmtS((S.cfg.introHold || 0) + S.total + (S.cfg.endHold || 0)) + ' \u2014 song itself is ' + fmtS(S.total)) : '';
     const k = tgtKey();
@@ -1122,6 +1364,7 @@
     AC = new (window.AudioContext || window.webkitAudioContext)();
     const src = AC.createMediaElementSource(audio);
     monGain = AC.createGain(); src.connect(monGain); monGain.connect(AC.destination);
+    ana = AC.createAnalyser(); ana.fftSize = 2048; ana.smoothingTimeConstant = 0.78; src.connect(ana); // spectrum for the Visualizer look
     // Renders do NOT record the <audio> player: after a rewind it can push the first slice of the song into the
     // stream twice (heard as the first note repeating ~0.5s in). Renders play a decoded copy on the audio clock instead.
     mdest = AC.createMediaStreamDestination();
@@ -1212,7 +1455,7 @@
     const node = AC.createBufferSource(); node.buffer = songBuf;
     const listen = AC.createGain(); listen.gain.value = $('mvListen').checked ? 1 : 0;
     const vol = AC.createGain();                  // fades for clips that start / stop mid-song
-    node.connect(vol); vol.connect(mdest); vol.connect(listen); listen.connect(AC.destination);
+    node.connect(vol); vol.connect(mdest); vol.connect(listen); listen.connect(AC.destination); vol.connect(ana);
     node.onended = () => { if (S.rec && S.rec.node === node && !S.rec.hold) finishRender(); };
     S.rec.node = node; S.rec.listen = listen;
     ['mvGo', 'mvTest', 'mvSave', 'hkGo'].forEach((id) => { if ($(id)) $(id).disabled = true; });
@@ -1804,6 +2047,7 @@
     // segmented buttons, sliders, zones, colors, selects
     root.addEventListener('click', (e) => {
       const sb = e.target.closest('.mv-seg button'); if (sb) { segSet(sb.closest('.mv-seg').dataset.g, sb.dataset.v); return; }
+      const vp = e.target.closest('[data-vzp]'); if (vp && VZ_PRESETS[vp.dataset.vzp]) { Object.assign(S.cfg, VZ_PRESETS[vp.dataset.vzp]); S.dirty = true; syncControls(); return; }
       const z = e.target.closest('[data-zone]'); if (z) { const [x, y] = z.dataset.zone.split(',').map(Number); setPos(x, y, tgtKey()); return; }
       const ln = e.target.closest('.mv-line');
       const rs = e.target.closest('[data-reset]');
